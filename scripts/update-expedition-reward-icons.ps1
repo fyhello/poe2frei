@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$catalogPath = Join-Path $repoRoot 'reference-analysis\POE2Radar\src\POE2Radar.Core\Game\expedition2_recipes.json'
+$catalogPath = Join-Path $repoRoot 'src\FreiAtlas.Game\Data\expedition2_recipes.json'
 $assetParent = Join-Path $repoRoot 'src\FreiAtlas.Platform.Windows\Assets'
 $outputPath = Join-Path $assetParent 'ExpeditionRewards'
 $sourceManifestPath = Join-Path $PSScriptRoot 'expedition-reward-icon-sources.json'

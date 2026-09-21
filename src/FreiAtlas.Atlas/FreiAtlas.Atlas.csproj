@@ -5,10 +5,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\..\reference-analysis\POE2Radar\src\POE2Radar.Core\Game\atlas_maps.json">
+    <EmbeddedResource Include="Metadata\atlas_maps.json">
       <LogicalName>FreiAtlas.Atlas.Metadata.atlas_maps.json</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\..\reference-analysis\POE2Radar\src\POE2Radar.Core\Game\atlas_content.json">
+    <EmbeddedResource Include="Metadata\atlas_content.json">
       <LogicalName>FreiAtlas.Atlas.Metadata.atlas_content.json</LogicalName>
     </EmbeddedResource>
   </ItemGroup>

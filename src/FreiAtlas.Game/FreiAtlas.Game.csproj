@@ -5,8 +5,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Data\*.json" />
-    <EmbeddedResource Include="..\..\reference-analysis\POE2Radar\src\POE2Radar.Core\Game\expedition2_recipes.json">
+    <EmbeddedResource Include="Data\*.json" Exclude="Data\expedition2_recipes.json" />
+    <EmbeddedResource Include="Data\expedition2_recipes.json">
       <LogicalName>FreiAtlas.Game.Data.expedition2_recipes.json</LogicalName>
     </EmbeddedResource>
   </ItemGroup>

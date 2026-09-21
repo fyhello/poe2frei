@@ -1,6 +1,6 @@
 {
   "sourcePage": "https://poe2db.tw/us/Runeshape_Combinations",
-  "catalog": "reference-analysis\\POE2Radar\\src\\POE2Radar.Core\\Game\\expedition2_recipes.json",
+  "catalog": "src\\FreiAtlas.Game\\Data\\expedition2_recipes.json",
   "conversion": "Official Poe2DB/GGG WebP artwork centered in a 48x48 transparent PNG canvas",
   "exactItems": {
     "Metadata/Items/Currency/CurrencyAddEquipmentSocket": "https://cdn.poe2db.tw/image/Art/2DItems/Currency/CurrencyAddEquipmentSocket.webp",
