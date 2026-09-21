@@ -1,0 +1,16 @@
+.price-selection { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+.price-selection label { display: grid; gap: 9px; flex: 1; min-width: 180px; color: var(--muted); }
+.price-selection select { width: 100%; height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--control); color: var(--text); font: inherit; }
+.price-selection button { min-height: 36px; }
+.price-selection :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.price-hint { margin: 14px 0 0; line-height: 1.8; color: var(--muted); }
+.price-data { margin-top: 18px; }
+#priceStatus { line-height: 1.7; }
+.price-facts { display: grid; gap: 12px; margin: 20px 0; }
+.price-facts > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 16px; }
+.price-facts dt { color: var(--muted); }
+.price-facts dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.price-sources { border-top: 1px solid var(--line); }
+.price-source { display: grid; grid-template-columns: 105px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); line-height: 1.7; }
+.price-source span { color: var(--muted); overflow-wrap: anywhere; }
+.price-warning { color: var(--warning); line-height: 1.7; }

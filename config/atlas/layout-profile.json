@@ -1,0 +1,20 @@
+{
+  "gameBuild": "observed-2026-09-10",
+  "ui": {
+    "relativePositionField": "UiElement.RelativePos",
+    "scaleField": "UiElement.LocalScaleMul",
+    "flagsField": "UiElement.Flags"
+  },
+  "atlas": {
+    "gridPositionField": "AtlasNode.GridPos",
+    "stateField": "AtlasNode.State",
+    "contentField": "AtlasNode.Content",
+    "canvasEdgesField": "AtlasCanvas.Edges"
+  },
+  "validation": {
+    "requiredStableSamples": 3,
+    "expectedNodeSize": 40,
+    "maxNodeCount": 4096,
+    "maxEdgeCount": 4000
+  }
+}

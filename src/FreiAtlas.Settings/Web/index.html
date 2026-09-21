@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreiAtlas 设置</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="prices.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="process-bar">
+      <div class="process-picker">
+        <button id="processSelect" class="process-select" type="button" aria-expanded="false" disabled>
+          <span class="process-summary"><span id="processDot" class="status-dot muted"></span><span id="selectedProcess">正在加载进程</span></span>
+          <i data-lucide="chevron-down"></i>
+        </button>
+        <div id="processMenu" class="process-menu" role="menu"></div>
+      </div>
+      <button id="refreshButton" class="icon-button" type="button" title="刷新进程" disabled><i data-lucide="refresh-cw"></i></button>
+      <button id="overlayButton" class="primary-button" type="button" disabled><i data-lucide="loader-circle"></i><span>正在加载</span></button>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <nav>
+          <button class="nav-button active" type="button" data-page="nodes"><i data-lucide="route"></i><span>地图节点</span></button>
+          <button class="nav-button" type="button" data-page="contents"><i data-lucide="map-pin"></i><span>地图内容</span></button>
+          <button class="nav-button" type="button" data-page="atlasNavigation"><i data-lucide="navigation"></i><span>地图导航</span></button>
+          <button class="nav-button" type="button" data-page="areaMap"><i data-lucide="map"></i><span>区域地图</span></button>
+          <button class="nav-button" type="button" data-page="visuals"><i data-lucide="sliders-horizontal"></i><span>视觉样式</span></button>
+          <button class="nav-button" type="button" data-page="quickAssist"><i data-lucide="keyboard"></i><span>快捷助手</span></button>
+          <button class="nav-button" type="button" data-page="prices"><i data-lucide="coins"></i><span>物价设置</span></button>
+        </nav>
+        <div class="sidebar-bottom">
+          <button id="hotkeyButton" class="sidebar-command hotkey-command" type="button" aria-pressed="false" disabled><i data-lucide="keyboard"></i><span class="command-label">启停快捷键</span><kbd id="hotkeyValue">正在加载</kbd></button>
+          <span id="hotkeyError" class="hotkey-error" aria-live="polite"></span>
+          <div class="alt-mode-setting">
+            <span class="alt-mode-label">Alt 隐藏方式</span>
+            <div class="segmented-control alt-mode-control" role="group" aria-label="Alt 隐藏方式">
+              <button id="altModeHold" type="button" aria-pressed="false">按住隐藏</button>
+              <button id="altModeToggle" type="button" aria-pressed="false">按键切换</button>
+            </div>
+          </div>
+          <button id="resetAllButton" class="sidebar-command" type="button"><i data-lucide="rotate-ccw"></i><span>全部恢复默认</span></button>
+          <div class="sidebar-footer">
+            <span>v0.1.0</span>
+            <button id="themeButton" class="icon-button theme-button" type="button" title="切换主题"><i data-lucide="moon"></i></button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <section id="nodes" class="page active">
+          <div class="page-head"><div><h1>地图节点</h1><span id="nodeCount" class="page-meta">正在加载</span></div><button class="link-button reset-page" type="button" data-reset="nodes">恢复本页默认值</button></div>
+          <div class="table-head"><span>分类</span><span>地图名称</span><span>节点连线</span><span>地图内容</span></div>
+          <div id="nodeRows" class="setting-table"></div>
+        </section>
+
+        <section id="contents" class="page">
+          <div class="page-head"><div><h1>地图内容</h1><span id="contentCount" class="page-meta">正在加载</span></div><button class="link-button reset-page" type="button" data-reset="contents">恢复本页默认值</button></div>
+          <div class="content-toolbar">
+            <label class="search-wrap"><i data-lucide="search"></i><input id="contentSearch" type="search" placeholder="搜索地图内容"></label>
+            <button id="selectAllContent" class="secondary-button" type="button">全选</button>
+            <button id="clearAllContent" class="secondary-button" type="button">全不选</button>
+          </div>
+          <div id="contentList" class="content-list"></div>
+        </section>
+
+        <section id="atlasNavigation" class="page">
+          <div class="page-head"><div><h1>地图导航</h1><span id="navigationStatus" class="page-meta">正在加载目录</span></div><button class="link-button reset-page" type="button" data-reset="atlasNavigation">恢复本页默认值</button></div>
+          <div class="navigation-toolbar">
+            <label class="search-wrap"><i data-lucide="search"></i><input id="navigationSearch" type="search" placeholder="搜索地图名称"></label>
+            <div class="navigation-filter"><span>隐藏已完成地图</span><button id="navigationHideCompletedToggle" class="toggle" type="button" role="switch" aria-label="隐藏已完成地图"></button></div>
+            <div class="segmented-control" role="group" aria-label="导航目标模式">
+              <button id="navigationModeNearest" type="button">最近</button>
+              <button id="navigationModeAll" type="button">全部</button>
+            </div>
+            <button id="clearNavigationRules" class="secondary-button" type="button">清空选择</button>
+          </div>
+          <div class="navigation-table" role="table" aria-label="地图导航规则">
+            <div class="navigation-table-head" role="row"><span>地图名称</span><span>数量</span><span>高亮</span><span>路线</span><span>方向</span></div>
+            <div id="navigationRows" class="navigation-table-body" role="rowgroup"></div>
+          </div>
+        </section>
+
+        <section id="areaMap" class="page">
+          <div class="page-head"><h1>区域地图</h1><button class="link-button reset-page" type="button" data-reset="areaMap">恢复本页默认值</button></div>
+          <div class="visual-stack">
+            <section class="settings-band">
+              <h2>显示内容</h2>
+              <div class="control-grid two-col">
+                <div class="field"><span>先祖秘藏</span><button id="areaMapExpeditionToggle" class="toggle" type="button" role="switch" aria-label="显示先祖秘藏"></button></div>
+                <div class="field"><span>Boss</span><button id="areaMapBossToggle" class="toggle" type="button" role="switch" aria-label="显示 Boss"></button></div>
+                <div class="field"><span>深渊</span><button id="areaMapAbyssToggle" class="toggle" type="button" role="switch" aria-label="显示深渊"></button></div>
+                <div class="field"><span>驱灵仪式</span><button id="areaMapRitualToggle" class="toggle" type="button" role="switch" aria-label="显示驱灵仪式"></button></div>
+                <div class="field"><span>裂隙</span><button id="areaMapBreachToggle" class="toggle" type="button" role="switch" aria-label="显示裂隙"></button></div>
+                <div class="field"><span>精华</span><button id="areaMapEssenceToggle" class="toggle" type="button" role="switch" aria-label="显示精华"></button></div>
+                <div class="field"><span>神庙</span><button id="areaMapIncursionToggle" class="toggle" type="button" role="switch" aria-label="显示神庙"></button></div>
+                <div class="field"><span>保险箱</span><button id="areaMapStrongboxToggle" class="toggle" type="button" role="switch" aria-label="显示保险箱"></button></div>
+                <div class="field"><span>稀有怪物</span><button id="areaMapRareMonsterToggle" class="toggle" type="button" role="switch" aria-label="显示稀有怪物"></button></div>
+                <div class="field"><span>稀有/暗金宝箱</span><button id="areaMapRareChestsToggle" class="toggle" type="button" role="switch" aria-label="显示稀有和暗金宝箱"></button></div>
+              </div>
+            </section>
+            <section class="settings-band">
+              <h2>先祖秘藏配方面板</h2>
+              <div class="control-grid two-col">
+                <label class="field wide"><span>进入地图时默认状态</span><select id="areaMapPanelEntryState" class="panel-entry-select" aria-describedby="panelEntryHint"><option value="expanded">展开</option><option value="collapsed">收起</option></select></label>
+                <div class="field"><span>原生配方面板显示价值</span><button id="areaMapNativeRecipeValuesToggle" class="toggle" type="button" role="switch" aria-label="原生配方面板显示价值"></button></div>
+                <div class="field"><span>打开原生配方面板时自动隐藏独立面板</span><button id="areaMapAutoHideStandalonePanelToggle" class="toggle" type="button" role="switch" aria-label="打开原生配方面板时自动隐藏独立面板"></button></div>
+              </div>
+              <p id="panelEntryHint" class="panel-entry-hint">从下次进入地图生效。收起后保留标题栏，可点击箭头展开。</p>
+            </section>
+          </div>
+        </section>
+
+        <section id="visuals" class="page">
+          <div class="page-head"><h1>视觉样式</h1><button class="link-button reset-page" type="button" data-reset="visuals">恢复本页默认值</button></div>
+          <div class="visual-stack">
+            <section class="settings-band">
+              <h2>普通连线</h2>
+              <div class="control-grid two-col">
+                <label class="field"><span>可达连线</span><span class="color-control"><input id="reachableColor" type="color"><output data-for="reachableColor"></output></span></label>
+                <label class="field"><span>不可达连线</span><span class="color-control"><input id="lockedColor" type="color"><output data-for="lockedColor"></output></span></label>
+                <label class="field slider-field"><span>线宽</span><input id="edgeWidth" type="range" min="0.5" max="6" step="0.25"><input id="edgeWidthNumber" class="number-input" type="number" min="0.5" max="6" step="0.25"></label>
+                <label class="field slider-field"><span>透明度</span><input id="edgeOpacity" type="range" min="0" max="1" step="0.05"><input id="edgeOpacityNumber" class="number-input" type="number" min="0" max="1" step="0.05"></label>
+              </div>
+            </section>
+
+            <section class="settings-band">
+              <h2>区域高亮</h2>
+              <div class="control-grid two-col">
+                <label class="field"><span>高亮颜色</span><span class="color-control"><input id="highlightColor" type="color"><output data-for="highlightColor"></output></span></label>
+                <label class="field slider-field"><span>线宽</span><input id="highlightWidth" type="range" min="0.5" max="8" step="0.25"><input id="highlightWidthNumber" class="number-input" type="number" min="0.5" max="8" step="0.25"></label>
+                <label class="field slider-field wide"><span>透明度</span><input id="highlightOpacity" type="range" min="0" max="1" step="0.05"><input id="highlightOpacityNumber" class="number-input" type="number" min="0" max="1" step="0.05"></label>
+              </div>
+            </section>
+
+            <section class="settings-band">
+              <h2>地图名称</h2>
+              <div class="control-grid two-col">
+                <label class="field slider-field"><span>字号</span><input id="fontSize" type="range" min="9" max="30" step="1"><input id="fontSizeNumber" class="number-input" type="number" min="9" max="30" step="1"></label>
+                <label class="field"><span>文字颜色</span><span class="color-control"><input id="textColor" type="color"><output data-for="textColor"></output></span></label>
+                <div class="field"><span>背景板</span><button id="backgroundToggle" class="toggle" type="button" role="switch"></button></div>
+                <label class="field"><span>背景颜色</span><span class="color-control"><input id="backgroundColor" type="color"><output data-for="backgroundColor"></output></span></label>
+                <label class="field slider-field wide"><span>背景透明度</span><input id="backgroundOpacity" type="range" min="0" max="1" step="0.05"><input id="backgroundOpacityNumber" class="number-input" type="number" min="0" max="1" step="0.05"></label>
+              </div>
+            </section>
+          </div>
+        </section>
+        <section id="quickAssist" class="page">
+          <div class="page-head"><div><h1>快捷助手</h1><span class="page-meta">恢复</span></div><button class="link-button reset-page" type="button" data-reset="quickAssist">恢复本页默认值</button></div>
+          <div class="vitals-grid" aria-label="当前角色数值">
+            <div class="vital-card"><span>生命</span><strong id="healthVital">等待数据</strong><small id="healthVitalDetail"></small></div>
+            <div class="vital-card"><span>魔力</span><strong id="manaVital">等待数据</strong><small id="manaVitalDetail"></small></div>
+            <div class="vital-card"><span>能量护盾</span><strong id="shieldVital">等待数据</strong><small id="shieldVitalDetail"></small></div>
+          </div>
+          <p class="assistant-hint">百分比按扣除保留量后的可恢复上限计算。助手独立运行，关闭地图覆盖层不影响恢复功能。</p>
+          <div id="recoveryRules" class="visual-stack"></div>
+          <p id="quickAssistError" class="assistant-error" role="alert"></p>
+        </section>
+        <section id="prices" class="page">
+          <div class="page-head"><h1>物价设置</h1><button class="link-button reset-page" type="button" data-reset="prices">恢复本页默认值</button></div>
+          <section class="settings-band">
+            <h2>物价区服</h2>
+            <div class="price-selection">
+              <label for="priceLeague">赛季 / 永久区<select id="priceLeague" disabled><option>正在加载</option></select></label>
+              <button id="refreshPrices" class="link-button" type="button" disabled>刷新物价与赛季列表</button>
+            </div>
+            <p class="price-hint">选择会自动保存。大地图估值、独立配方面板和原生配方价格统一使用此区服的物价。</p>
+          </section>
+          <section class="settings-band price-data" aria-live="polite">
+            <h2>价格数据</h2>
+            <p id="priceStatus">等待价格服务</p>
+            <dl class="price-facts"><div><dt>当前物价区服</dt><dd id="priceActiveLeague">—</dd></div><div><dt>更新时间</dt><dd id="priceUpdated">—</dd></div><div><dt>神圣 / 崇高汇率</dt><dd id="priceRate">—</dd></div></dl>
+            <div id="priceSources" class="price-sources"></div>
+            <p class="price-hint">每小时自动更新。断网时仅使用所选区服 24 小时内的缓存；没有有效价格时显示缺价。</p>
+          </section>
+          <p id="priceCatalogError" class="price-warning" role="status"></p>
+          <p id="priceError" class="assistant-error" role="alert"></p>
+        </section>
+      </main>
+    </div>
+
+    <footer class="save-bar"><span id="saveStatus">正在加载设置</span><span id="overlayStatus">正在加载运行状态</span></footer>
+  </div>
+
+  <script src="lucide.min.js"></script>
+  <script src="quick-assist.js"></script>
+  <script src="prices.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

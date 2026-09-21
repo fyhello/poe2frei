@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FreiAtlas.Core\FreiAtlas.Core.csproj" />
+    <ProjectReference Include="..\FreiAtlas.QuickAssist\FreiAtlas.QuickAssist.csproj" />
+    <ProjectReference Include="..\FreiAtlas.Platform.Windows\FreiAtlas.Platform.Windows.csproj" />
+    <ProjectReference Include="..\FreiAtlas.Atlas\FreiAtlas.Atlas.csproj" />
+    <ProjectReference Include="..\FreiAtlas.Game\FreiAtlas.Game.csproj" />
+    <ProjectReference Include="..\FreiAtlas.Expedition\FreiAtlas.Expedition.csproj" />
+    <ProjectReference Include="..\FreiAtlas.Plugin.AreaMap\FreiAtlas.Plugin.AreaMap.csproj" />
+    <ProjectReference Include="..\FreiAtlas.Plugin.ExpeditionPanel\FreiAtlas.Plugin.ExpeditionPanel.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\FreiAtlas.Host\**\*.cs"
+             Exclude="..\FreiAtlas.Host\Program.cs;..\FreiAtlas.Host\bin\**\*.cs;..\FreiAtlas.Host\obj\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FreiAtlas.Host.Tests" />
+  </ItemGroup>
+
+</Project>

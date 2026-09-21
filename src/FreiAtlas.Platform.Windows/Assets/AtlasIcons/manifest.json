@@ -1,0 +1,534 @@
+{
+  "sourcePage": "https://poe2db.tw/cn/Waystones#%E5%9C%B0%E5%9B%BE%E5%86%85%E5%AE%B9",
+  "retrievedOn": "2026-07-31",
+  "entries": [
+    {
+      "id": "AtlasIconContentMapBoss",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentMapBoss.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentMapBoss.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentMapBoss.png",
+      "sourceSha256": "6b37ed2a17385f0a32068d47fa7e925a40c82841f55ed9c21daeb16735759ba2",
+      "runtimeSha256": "37cb599d55eb51fde3793353403d0c973b2233afcb0b1107e8b225277ad27e76"
+    },
+    {
+      "id": "AtlasIconContentBreach",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentBreach.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentBreach.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentBreach.png",
+      "sourceSha256": "b1daf40211b77b36ba4b503ea745ed6e289c6016c6011db83833c295996f1ad5",
+      "runtimeSha256": "943f368d01fa6e79eac9e2e6449648ac0651b3a2bba46d0eaabeb164edf41997"
+    },
+    {
+      "id": "AtlasIconContentExpedition",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentExpedition.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentExpedition.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentExpedition.png",
+      "sourceSha256": "e6a192e28dae4575969b5e87773b1231dcb58f0f35d7ce832171df7dd212fcf6",
+      "runtimeSha256": "2456c326131b23572ed2e127c453e54c92d18d073cbd64b6312525866290a694"
+    },
+    {
+      "id": "AtlasIconContentDelirium",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentDelirium.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentDelirium.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentDelirium.png",
+      "sourceSha256": "d13baafc78e68956891d96582689bac9ede4b1567de2d1f22626d64bd9d8e6ac",
+      "runtimeSha256": "02f90e2eb085ea1af0febab14239b649cc76007112c81f091a6d196c8e4e8fa5"
+    },
+    {
+      "id": "AtlasIconContentRitual",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentRitual.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentRitual.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentRitual.png",
+      "sourceSha256": "8f23ee6a40710bf3569faf8ed8fa76e3856b1508182e9a0aa07bf0cf57c7eadf",
+      "runtimeSha256": "5bdccf43d1a6f047f6500538fb68568377f7a8b3415ad639093b7eb5a524a8e9"
+    },
+    {
+      "id": "AtlasIconContentIrradiated",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentIrradiated.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentIrradiated.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentIrradiated.png",
+      "sourceSha256": "bc6b1ab7902c74c9468987feb2ded8e7b5eff4001a5638753109632d495f12ca",
+      "runtimeSha256": "87d4c3d515cba249727496cff586e13cc1e723fc1bd274acef1fdb14497609fb"
+    },
+    {
+      "id": "AtlasIconContentAbyssOverrun",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentAbyssOverrun.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentAbyssOverrun.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentAbyssOverrun.png",
+      "sourceSha256": "a38ad41d011016c55b4a7d5a48377279ec43e38bc3f286abef6dbf1d8cd46500",
+      "runtimeSha256": "296d2d4d50fb2ea6172cbb9b0ec4cd51ebdaa2763de8db51b91da9b70c4f8eb8"
+    },
+    {
+      "id": "AtlasIconContentIncursion",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentIncursion.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentIncursion.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentIncursion.png",
+      "sourceSha256": "005a4b7fd383bf1aa854f5c1ae18e95f497986f3f3788b1415c7f8757a03871d",
+      "runtimeSha256": "d856736433364455804fb4b4cf36e6d8dc2f3079ffa4213cf81ff3a594fde6c4"
+    },
+    {
+      "id": "AtlasIconContentAbyss",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentAbyss.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentAbyss.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentAbyss.png",
+      "sourceSha256": "291cf4e4f2a6982b76099333dcf922a4eb4c5d73a4aace19fa84910ed76499b0",
+      "runtimeSha256": "fb5ef67a571d14f527353bf751b81a53bcbb09a5e004f993d087c403f669fe29"
+    },
+    {
+      "id": "AtlasMasteryBiome",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/AtlasMasteryBiome.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasMasteryBiome.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasMasteryBiome.png",
+      "sourceSha256": "7f4a3d97d951b8f4e63846a865835605d3f56ca3c089d2b6da742413d9074fc7",
+      "runtimeSha256": "bc29fbb224ee7ecdc82454ff4dce4153de44a2dba5c17f8239be25c96edb8de3"
+    },
+    {
+      "id": "CompanionsNotable1",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/CompanionsNotable1.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/CompanionsNotable1.webp",
+      "runtimePng": "Assets/AtlasIcons/CompanionsNotable1.png",
+      "sourceSha256": "a00ee48c2ee0196e12e96c48c8f62ad965e0e311c0b37307daafd00911b0f117",
+      "runtimeSha256": "338bbab4e1e242b3191a6cd846574d8bfd67fe8b723dff37ebeb6211b17d19de"
+    },
+    {
+      "id": "AtlasIconContentEssence",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentEssence.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentEssence.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentEssence.png",
+      "sourceSha256": "fc3dd34dd68528c43f819ee02a3e7a0afccd53fe36d5be2168f71123727074d8",
+      "runtimeSha256": "c92c21e8ccc9053ca20a6bcb37afa58b4236ed009b5796017288970b2dd5665e"
+    },
+    {
+      "id": "AtlasIconContentStrongBox",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentStrongBox.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentStrongBox.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentStrongBox.png",
+      "sourceSha256": "412976cd3e6209a0f985787038a3627544df4d35eb1a1a6418fd41ffa089b4f6",
+      "runtimeSha256": "f293f6735980a7d1ca674685b2df017e6624cd16fb68f5138c22b5fe311b8855"
+    },
+    {
+      "id": "AtlasIconContentAzmeriSpirit",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentAzmeriSpirit.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentAzmeriSpirit.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentAzmeriSpirit.png",
+      "sourceSha256": "e95d3c8e0010e1f9626780f2497f8ece1a37039a56725e72f3a42d7e8fbd4662",
+      "runtimeSha256": "ac597ccc84a7805c065e17eb028ea5567835792c29e8f7be287b4c81685ec083"
+    },
+    {
+      "id": "ItemQuantityandRarity",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ItemQuantityandRarity.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/ItemQuantityandRarity.webp",
+      "runtimePng": "Assets/AtlasIcons/ItemQuantityandRarity.png",
+      "sourceSha256": "e67b4eec5d096b0bbc919dea4c80c0429033397e11a6075d1caba0f4697cac1e",
+      "runtimeSha256": "0fc8954b25f002ec3be20e5cbd76139c41a6cab7e9b36f17f621d91c03206b93"
+    },
+    {
+      "id": "Hunter",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/Hunter.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/Hunter.webp",
+      "runtimePng": "Assets/AtlasIcons/Hunter.png",
+      "sourceSha256": "29c1311629fa5758b4685a1e86aa958c12b46857c90e2a2b205c30218ebef49d",
+      "runtimeSha256": "3c3c7e33bb7345e0af405b715995294818e11b9d7a0466e6685537007f4e325c"
+    },
+    {
+      "id": "HybridShrineAzmeriSpirit",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/HybridShrineAzmeriSpirit.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/HybridShrineAzmeriSpirit.webp",
+      "runtimePng": "Assets/AtlasIcons/HybridShrineAzmeriSpirit.png",
+      "sourceSha256": "751d184635a2ac83ff6777c7e7e3268df88a2072c80a9b42270415e8849afb9c",
+      "runtimeSha256": "7ddae8b982cd40b86b6c0ae53afb82fcef2af33baddd4fee29354671516090e0"
+    },
+    {
+      "id": "EssenceNotable1",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/EssenceNotable1.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/EssenceNotable1.webp",
+      "runtimePng": "Assets/AtlasIcons/EssenceNotable1.png",
+      "sourceSha256": "cf0b3655b158cad7ea0fbff7149329bebeff278f92e7134271acfb50631da79a",
+      "runtimeSha256": "b8467628504df39a22e38c32bf68f811b53889c431d6fd05e1c1e0f580a4faad"
+    },
+    {
+      "id": "EssenceNotable2",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/EssenceNotable2.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/EssenceNotable2.webp",
+      "runtimePng": "Assets/AtlasIcons/EssenceNotable2.png",
+      "sourceSha256": "ed6d323eeabe97272f605ff88e080a8dedec9481a04285c9ef21b003f3e066cf",
+      "runtimeSha256": "9ca4188e37e554cc94ff13502e4a35e1f2bd26cc0b249a9d30d34415e72668e2"
+    },
+    {
+      "id": "MoreWildWisps",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/MoreWildWisps.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/MoreWildWisps.webp",
+      "runtimePng": "Assets/AtlasIcons/MoreWildWisps.png",
+      "sourceSha256": "9b16d9ae498876f41f59f29b1b918455e97141f1c513365f879817612f78f362",
+      "runtimeSha256": "95e6b69c29f01b8202ce011c17fc46b182e73d3ffd8455b9a9fd62549a672cf8"
+    },
+    {
+      "id": "VividPrimalWildWisps",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/VividPrimalWildWisps.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/VividPrimalWildWisps.webp",
+      "runtimePng": "Assets/AtlasIcons/VividPrimalWildWisps.png",
+      "sourceSha256": "6e725ef1cf58e1f0f03ba094e21657c4aac1b76fbb4e090a1f976e57299425b1",
+      "runtimeSha256": "8a4921fdc97ac81170f2be573c056662066df9126610b487d2e34cc0813589fa"
+    },
+    {
+      "id": "moresacredwisps",
+      "sourceUrl": "https://cdn.poe2db.tw/image/art/2dart/skillicons/passives/atlastrees/moresacredwisps.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/moresacredwisps.webp",
+      "runtimePng": "Assets/AtlasIcons/moresacredwisps.png",
+      "sourceSha256": "28928ccf9ad3d01439b571b0b07b1b7fa44a3fc4afd26937a29033b3bba07a8e",
+      "runtimeSha256": "86ae1f2353b185b90a7e90e59b61163d7702b0b0bbf8fe42a9f821c8474c42fd"
+    },
+    {
+      "id": "StrongboxNotable2",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/StrongboxNotable2.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/StrongboxNotable2.webp",
+      "runtimePng": "Assets/AtlasIcons/StrongboxNotable2.png",
+      "sourceSha256": "e45441dea4b75081580382c89fd28b644f0d1141bbea54360a478ea25caedd0b",
+      "runtimeSha256": "ee0831bd6272ddcff2d8e90d91ccb3d6fc9ae0f34c9e19746cee3153025ae680"
+    },
+    {
+      "id": "StrongboxNotable1",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/StrongboxNotable1.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/StrongboxNotable1.webp",
+      "runtimePng": "Assets/AtlasIcons/StrongboxNotable1.png",
+      "sourceSha256": "f021da842752fdf1f7174b6682eb3f0ddf5cd7656d66a96ca51c9a5d8fa8a6a6",
+      "runtimeSha256": "95817668124f60be7e623fcb202d9476a75bd0b9dfa9de8c463ca58d5a1f6b98"
+    },
+    {
+      "id": "Shrines",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/Shrines.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/Shrines.webp",
+      "runtimePng": "Assets/AtlasIcons/Shrines.png",
+      "sourceSha256": "ef04910bcb1f747ee3bad10eed467bdf625a6cc0eb7d68f747da971e4a5739db",
+      "runtimeSha256": "a03314e1a1d6b14fd42c2e59df5bd6c86ef33ee37455279bd89ae0eb9033556d"
+    },
+    {
+      "id": "ShrinesNode",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ShrinesNode.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/ShrinesNode.webp",
+      "runtimePng": "Assets/AtlasIcons/ShrinesNode.png",
+      "sourceSha256": "91cd6c34604a6f3e38ea5eda0ed9f88208bf42d29d5e0a977df873618d475a34",
+      "runtimeSha256": "1028e89b930337baf4e9bca2d8f3134467c283f33db7557fc44e4ac75f02f1b4"
+    },
+    {
+      "id": "BossNotableSpawnAdditionalShrine",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BossNotableSpawnAdditionalShrine.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/BossNotableSpawnAdditionalShrine.webp",
+      "runtimePng": "Assets/AtlasIcons/BossNotableSpawnAdditionalShrine.png",
+      "sourceSha256": "8f4f84e3c12715a479e5a39bd81e1425c808ced6558a8ee73222a51f7797e199",
+      "runtimeSha256": "b6fbafb22c91a5c784d6f5be3f991498586d4378deab9fec4f4a8d4244d3e897"
+    },
+    {
+      "id": "GreedShrinenoteble",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/GreedShrinenoteble.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/GreedShrinenoteble.webp",
+      "runtimePng": "Assets/AtlasIcons/GreedShrinenoteble.png",
+      "sourceSha256": "b03aa8bf92420d6e722c07ee5037359a5561db13fe038e45363b8439ad73bd18",
+      "runtimeSha256": "f7ae8651d8f378649ae53b37fe322d156db414f2b327f288a56c2002beec753f"
+    },
+    {
+      "id": "Anarchy5",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/Anarchy5.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/Anarchy5.webp",
+      "runtimePng": "Assets/AtlasIcons/Anarchy5.png",
+      "sourceSha256": "e1da364ccd95b10089474d5c9e1464f65d9502491054959baaf64af3f28beebb",
+      "runtimeSha256": "bd9d147bc98b179da269d5db983f082368039510e1d4a5b12791bdd31eab05c1"
+    },
+    {
+      "id": "AnarchyNode1",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/AnarchyNode1.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AnarchyNode1.webp",
+      "runtimePng": "Assets/AtlasIcons/AnarchyNode1.png",
+      "sourceSha256": "4ed58e8a8b9ec4ace974fb4461691a61d849249a1755aa0b9746be4b9f4826da",
+      "runtimeSha256": "e1678c07961854fbde4e8e493a38b97ac1731085b7ca501c6c849574fecd4243"
+    },
+    {
+      "id": "Anarchy4",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/Anarchy4.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/Anarchy4.webp",
+      "runtimePng": "Assets/AtlasIcons/Anarchy4.png",
+      "sourceSha256": "159d6bdf478c00b436a8f6a5fdfcd7168092626b5ca3101bbf934bb048be2277",
+      "runtimeSha256": "da4c1e55d558ad5e8140623f912e940f4c584bd63430521edc875e4f3a30df61"
+    },
+    {
+      "id": "StoneCircles",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/StoneCircles.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/StoneCircles.webp",
+      "runtimePng": "Assets/AtlasIcons/StoneCircles.png",
+      "sourceSha256": "c73bd5ead06cd92606dfb05526709e266da84a85284e108668a3e5a71016b470",
+      "runtimeSha256": "b8ec9c1e940392fb6fd0a73954f71458ee3cde30afe1e9d8ec8184213f1859e5"
+    },
+    {
+      "id": "StoneCirclesNode",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/StoneCirclesNode.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/StoneCirclesNode.webp",
+      "runtimePng": "Assets/AtlasIcons/StoneCirclesNode.png",
+      "sourceSha256": "1c3833bdff16dca146793aaf03bde8b0df10b56bccf61d794e27d0ccf6dc9597",
+      "runtimeSha256": "bdc98f631673b0344e680cbf13ca0bdd346bf43efdb092882af2e961e9f6d25e"
+    },
+    {
+      "id": "Mapnode",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/Mapnode.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/Mapnode.webp",
+      "runtimePng": "Assets/AtlasIcons/Mapnode.png",
+      "sourceSha256": "332665ca71632fbddb59c1306ea42f8d35380d078ff6eca0d63e5bb2ea5d0ea0",
+      "runtimeSha256": "0960bd8ba09a618fdbb91e1b934cd5ae5f19485074a60bb1f3c00ddf7706291d"
+    },
+    {
+      "id": "AnarchyNotable2",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/AnarchyNotable2.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AnarchyNotable2.webp",
+      "runtimePng": "Assets/AtlasIcons/AnarchyNotable2.png",
+      "sourceSha256": "db5915aec3232d8f8ed6e3b9c9018034847f2fe3086a280de495f1c0db539386",
+      "runtimeSha256": "5dc94f65b4507ca2e35fd164b2f016ac40122e6bcea23004f9950d47afa34f88"
+    },
+    {
+      "id": "BreachNotable4",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BreachNotable4.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/BreachNotable4.webp",
+      "runtimePng": "Assets/AtlasIcons/BreachNotable4.png",
+      "sourceSha256": "c44b4172304bf4b526e2045c1083e46c2002c501a44e9923b9e172e50acee963",
+      "runtimeSha256": "940bcb1c696171fcd45b093ee4e1ed42f2768310d5c6283550e3f8878075be82"
+    },
+    {
+      "id": "DeliriumNotable7",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/DeliriumNotable7.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/DeliriumNotable7.webp",
+      "runtimePng": "Assets/AtlasIcons/DeliriumNotable7.png",
+      "sourceSha256": "eafb0359206df36a0e02fb23ed44553cd9bc8928e782bb17d7c7a5866da6fdd1",
+      "runtimeSha256": "a939daffd433132daa2b17f4cd4f048db2b00fc4bd98d44188466900fd071959"
+    },
+    {
+      "id": "ElderShaperNotable1",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ElderShaperNotable1.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/ElderShaperNotable1.webp",
+      "runtimePng": "Assets/AtlasIcons/ElderShaperNotable1.png",
+      "sourceSha256": "7db140cf477eb11af6f2cff6b5cbc5926388a52e18cc02a89b833932a583d129",
+      "runtimeSha256": "62a6c5ae3b1ac97b6df4289398143ff38fb4051d31cacfccd9ce49c1686ec8f0"
+    },
+    {
+      "id": "BossMapDrops",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BossMapDrops.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/BossMapDrops.webp",
+      "runtimePng": "Assets/AtlasIcons/BossMapDrops.png",
+      "sourceSha256": "eaeac60231532a0c6b3dd620dad1b9934d817cdc93e44df23cca463404cbee6a",
+      "runtimeSha256": "0630453aa4869cc3ed7fcd593e0ebf5a0a17cb9633790e98acaec69e25bc47dc"
+    },
+    {
+      "id": "ExceptionalItemsWeaponsShields",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ExceptionalItemsWeaponsShields.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/ExceptionalItemsWeaponsShields.webp",
+      "runtimePng": "Assets/AtlasIcons/ExceptionalItemsWeaponsShields.png",
+      "sourceSha256": "cde8a6212ec5d8ba9296cacb16d607fddf8b4fc8b4242516d8bc65ccef94d4a5",
+      "runtimeSha256": "203fcf20f41a8f7b2d957cd2687065444726e9ec4b7828a945cafc7602c11479"
+    },
+    {
+      "id": "VaalNotable1",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/VaalNotable1.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/VaalNotable1.webp",
+      "runtimePng": "Assets/AtlasIcons/VaalNotable1.png",
+      "sourceSha256": "d854fe7bd0f6c66d98e6272f5c5410c2de10bb25bfd3a3eebbb316281a2d6040",
+      "runtimeSha256": "a34e2f1f4421a2959594db535addcabd2f04cd2982630666e61904a122c32b12"
+    },
+    {
+      "id": "SorceressSandDjinnCorpseBeetles",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/SorceressSandDjinnCorpseBeetles.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/SorceressSandDjinnCorpseBeetles.webp",
+      "runtimePng": "Assets/AtlasIcons/SorceressSandDjinnCorpseBeetles.png",
+      "sourceSha256": "3f7dbbefafacdf74af9bc64b3f13977acec8c157459ed5adba6d0762f6c8cf09",
+      "runtimeSha256": "3d712545d4c96c7e399e5d97386cea747b867321fabf5b994a2b06028f94be92"
+    },
+    {
+      "id": "BossNotableAzmeriSpirit",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BossNotableAzmeriSpirit.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/BossNotableAzmeriSpirit.webp",
+      "runtimePng": "Assets/AtlasIcons/BossNotableAzmeriSpirit.png",
+      "sourceSha256": "f4e19129f10873de9c32535174f3da31e5584a3aa186ad9d2a6b2eccbcd68fb2",
+      "runtimeSha256": "f0c78a1a71c3864f7b8ab2162a558167538bea82afb3b671b7d6d8edb376a6ad"
+    },
+    {
+      "id": "MinionsandManaNotable",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/MinionsandManaNotable.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/MinionsandManaNotable.webp",
+      "runtimePng": "Assets/AtlasIcons/MinionsandManaNotable.png",
+      "sourceSha256": "73e075e4254b6abf798ab3ff11078ad9fc783a7ca19e51a8a65f1ed7acb3eddb",
+      "runtimeSha256": "7c31791ab576cc6b8f5402698cbb0529f1c83479c23ba5077dca33c26f8f014d"
+    },
+    {
+      "id": "CurrencyNode",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/CurrencyNode.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/CurrencyNode.webp",
+      "runtimePng": "Assets/AtlasIcons/CurrencyNode.png",
+      "sourceSha256": "1fe61a6c6d091bbac2e04f7d61c845d54852a947a1039936fde065e70aa1ac13",
+      "runtimeSha256": "264e7d52599d3daeafdb63f3a11708143130b41f9b1e25a183129683ce44c609"
+    },
+    {
+      "id": "ScorchTheEarth",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/Infernalist/ScorchTheEarth.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/ScorchTheEarth.webp",
+      "runtimePng": "Assets/AtlasIcons/ScorchTheEarth.png",
+      "sourceSha256": "fbfdfeb489d75f401c7cf262dfbe5cdd76409cb9aacc8d66721b40b4f5f79663",
+      "runtimeSha256": "2fa62b2954d34bdb7ed035db96d115371b8b011e6ffaa373ca250bba52ad8b64"
+    },
+    {
+      "id": "skullcracking",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/skullcracking.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/skullcracking.webp",
+      "runtimePng": "Assets/AtlasIcons/skullcracking.png",
+      "sourceSha256": "a38f2f1b1b2eb4da9a5e0e24632bb646a4871000b1806d1145b09c1bcb12f78d",
+      "runtimeSha256": "6298afebff4e2f1021ca690cf7c2c64912a17ef729be2520464afb27550f8d0f"
+    },
+    {
+      "id": "EnduranceFrenzyPowerChargeNode",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/EnduranceFrenzyPowerChargeNode.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/EnduranceFrenzyPowerChargeNode.webp",
+      "runtimePng": "Assets/AtlasIcons/EnduranceFrenzyPowerChargeNode.png",
+      "sourceSha256": "75f95d389efc40caa969b4ce3c57a13a7125472e45f8d9a2291fc7b1236ea7a2",
+      "runtimeSha256": "6c453cb97ef209e5dabb35fa5fa05b28349d60b2d6107736804e422d1143e87e"
+    },
+    {
+      "id": "BossNotableSpawnBeyondMonsters",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BossNotableSpawnBeyondMonsters.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/BossNotableSpawnBeyondMonsters.webp",
+      "runtimePng": "Assets/AtlasIcons/BossNotableSpawnBeyondMonsters.png",
+      "sourceSha256": "8389ae2be054ffb3edcbbc3dd90502bc4ac6c038b128deddae33d19d5d70e271",
+      "runtimeSha256": "65d20b07633abacc76aaaa7ed004d6aff86f63ee53f06c7e60cbc56ab3a96d28"
+    },
+    {
+      "id": "CorruptedDefences",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/CorruptedDefences.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/CorruptedDefences.webp",
+      "runtimePng": "Assets/AtlasIcons/CorruptedDefences.png",
+      "sourceSha256": "7bb3118538b9629214571ed03436b591ec22c0bea3730ef7302ccc5563699e67",
+      "runtimeSha256": "9c388701af8f959d11b577c825c0c4f0b3d6d1cb87fa21d64f51ec3b3ad285fd"
+    },
+    {
+      "id": "CaptivatedInterestKeystone",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/CaptivatedInterestKeystone.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/CaptivatedInterestKeystone.webp",
+      "runtimePng": "Assets/AtlasIcons/CaptivatedInterestKeystone.png",
+      "sourceSha256": "c78652e292037dd2980062b96bbcd315d5085cfd65093a612d7d41f0dd753db7",
+      "runtimeSha256": "167c92aca2a111e60cecc1901b8590e83e05c726973a09ea949eac8441111ff5"
+    },
+    {
+      "id": "ExceptionalItemsBodyArmour",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ExceptionalItemsBodyArmour.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/ExceptionalItemsBodyArmour.webp",
+      "runtimePng": "Assets/AtlasIcons/ExceptionalItemsBodyArmour.png",
+      "sourceSha256": "01a58bac672b23dd10d570f2ec966ab18c5e6571e0b677cb7981a3aaad3464f8",
+      "runtimeSha256": "6f7b707189ac790b54c617b262eb6c21b10c8fdade0db01dfa97df30cd4c5338"
+    },
+    {
+      "id": "WaterBiome",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/WaterBiome.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/WaterBiome.webp",
+      "runtimePng": "Assets/AtlasIcons/WaterBiome.png",
+      "sourceSha256": "13d69054aeca3207de1b77adfbd2ddfe64596362a997eb1dfca3204cd8c5e5c0",
+      "runtimeSha256": "84ea3f51dd3b2979af504a7fb18607e93856db49cb2fe24cfee6c5901020d74d"
+    },
+    {
+      "id": "MountainBiome",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/MountainBiome.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/MountainBiome.webp",
+      "runtimePng": "Assets/AtlasIcons/MountainBiome.png",
+      "sourceSha256": "65435113e654954590e438797a587121999d62a1c6f7805ecf83837b03ffd26e",
+      "runtimeSha256": "1257de022e24ce8dd192bde971a2e9c9c3a8f515e02a49702a65387f02a4831b"
+    },
+    {
+      "id": "GrassBiome",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/GrassBiome.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/GrassBiome.webp",
+      "runtimePng": "Assets/AtlasIcons/GrassBiome.png",
+      "sourceSha256": "7a705fde44062e38e3587938694d52fe7e50c30ce149b543e53bf28e3035d90d",
+      "runtimeSha256": "6dce7f4afb2be60051679d61553a04e25a3f9e4cdad1e4a8f2dc3dedf68acf4f"
+    },
+    {
+      "id": "ForestBiome",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ForestBiome.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/ForestBiome.webp",
+      "runtimePng": "Assets/AtlasIcons/ForestBiome.png",
+      "sourceSha256": "949286a5cc6b119a2965a417395cdfff396406606e87a8e27bcfcef5817d066e",
+      "runtimeSha256": "560d437961245dfd6d463458d7ca3cb3b97d8b69656f554585d402a3700b3741"
+    },
+    {
+      "id": "SwampBiome",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/SwampBiome.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/SwampBiome.webp",
+      "runtimePng": "Assets/AtlasIcons/SwampBiome.png",
+      "sourceSha256": "0c5be1eae28c5dc6536bb6727b240c364fc7a82a61ff2b6074d37bc803487578",
+      "runtimeSha256": "9f1771daa35add8acea65d2eb51d89de3cb92342dfbddc926a6d3d9fa3254025"
+    },
+    {
+      "id": "DesertBiome",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/DesertBiome.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/DesertBiome.webp",
+      "runtimePng": "Assets/AtlasIcons/DesertBiome.png",
+      "sourceSha256": "b84dcf58792aec8e7f2fb31586b6a766fa58af38a0d01c8df3efc595885dde7f",
+      "runtimeSha256": "19624837178b97243b2091c0ce6f57238bc8e2e3c269443d883fd6899e55df08"
+    },
+    {
+      "id": "AtlasIconContentSanctificationBoss",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/UIImages/InGame/AtlasScreen/AtlasIconContent/AtlasIconContentSanctificationBoss.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/AtlasIconContentSanctificationBoss.webp",
+      "runtimePng": "Assets/AtlasIcons/AtlasIconContentSanctificationBoss.png",
+      "sourceSha256": "85aa7248967bd622238fd627010017931f1efe1d7cf1fa08b59f8a5cd2411aaf",
+      "runtimeSha256": "a3d27fc4aee518e37b599f98755e9c8e713c7c7bf79e14fbd08618e1d0bbae66"
+    },
+    {
+      "id": "Currency2",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/Currency2.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/Currency2.webp",
+      "runtimePng": "Assets/AtlasIcons/Currency2.png",
+      "sourceSha256": "68d9412c93edde7592145fc3f4ef3e50945275fd67517b4aaaf5fa0818677950",
+      "runtimeSha256": "fb5941dd8a72681ddcd307e2b42ef307293613d8c62c683939ca229660fbb424"
+    },
+    {
+      "id": "BossNotableGrantMoreExperience",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BossNotableGrantMoreExperience.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/BossNotableGrantMoreExperience.webp",
+      "runtimePng": "Assets/AtlasIcons/BossNotableGrantMoreExperience.png",
+      "sourceSha256": "3adea77f299082f599b7ac96e165510a2a014b410494c63d3a9f77f592708f50",
+      "runtimeSha256": "5463afb309587a3bb83959e0a5436d233c03226619da1fc972e21d7fe8631f2d"
+    },
+    {
+      "id": "BossNotableDropMoreItems",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BossNotableDropMoreItems.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/BossNotableDropMoreItems.webp",
+      "runtimePng": "Assets/AtlasIcons/BossNotableDropMoreItems.png",
+      "sourceSha256": "10803f114e2aab88f7ea4eb0e19189d7a4fbdbacbb807b47ca23053c87cda0e8",
+      "runtimeSha256": "d54b983cf7f5b88d0a65120ab63ec03b77684136ac76cdb9cfd78abdc9f050d8"
+    },
+    {
+      "id": "IncreaseMinionLifeNode",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/IncreaseMinionLifeNode.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/IncreaseMinionLifeNode.webp",
+      "runtimePng": "Assets/AtlasIcons/IncreaseMinionLifeNode.png",
+      "sourceSha256": "fc0379e7391f070ab9b35ea610bfc137566244952b75c445d833d4ef40212148",
+      "runtimeSha256": "79f4561ae7bea69b3a6a6d3048dfe298247e79da6c22b3632478e3b74d36e1cb"
+    },
+    {
+      "id": "ItemQuantity",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ItemQuantity.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/ItemQuantity.webp",
+      "runtimePng": "Assets/AtlasIcons/ItemQuantity.png",
+      "sourceSha256": "d002300e11cac4d7f760d8c270c9ebf466be5f9c096c489b4a8757a3d8100a16",
+      "runtimeSha256": "a8033fedae46a400419b66c9fc86e441a1badb0237abefcd996f5415c1c8c654"
+    },
+    {
+      "id": "GenericMinionNotable",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/Necromancer/GenericMinionNotable.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/GenericMinionNotable.webp",
+      "runtimePng": "Assets/AtlasIcons/GenericMinionNotable.png",
+      "sourceSha256": "09a8b96b38a7e837aab197fef7ac9906447b61f95225cb823f3f41fa40da9ef7",
+      "runtimeSha256": "433aabe02459cba992184c025f2e7382465221656579a3fb4a4a740827ac0e1e"
+    },
+    {
+      "id": "ExpeditionNode1",
+      "sourceUrl": "https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ExpeditionNode1.webp",
+      "sourceWebp": "data/atlas-icons/poe2db/ExpeditionNode1.webp",
+      "runtimePng": "Assets/AtlasIcons/ExpeditionNode1.png",
+      "sourceSha256": "be9dfb4db8ef7b5d99f3617dcba35d97ca6526ddd327286e1d776a18b053c84b",
+      "runtimeSha256": "e7576735212514615ccb6e735e5b9902e73b8f65b3640719940d0a946bb7f499"
+    }
+  ]
+}

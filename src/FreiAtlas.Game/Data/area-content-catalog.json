@@ -1,0 +1,39 @@
+{
+  "expedition": {
+    "exactMetadata": [
+      "Metadata/MiscellaneousObjects/Expedition2/Expedition2Encounter"
+    ]
+  },
+  "mechanics": {
+    "abyss": {
+      "metadataFragments": [
+        "Metadata/MiscellaneousObjects/Abyss/AbyssFinalNodeBase"
+      ]
+    },
+    "ritual": {
+      "metadataFragments": ["Metadata/Terrain/Leagues/Ritual/RitualRuneObject"]
+    },
+    "breach": {
+      "metadataFragments": [
+        "Metadata/MiscellaneousObjects/Brequel/BrequelInitiator"
+      ]
+    },
+    "essence": {
+      "metadataFragments": [
+        "Metadata/MiscellaneousObjects/Monolith"
+      ]
+    },
+    "strongbox": {
+      "metadataFragments": ["/StrongBoxes/"]
+    }
+  },
+  "bosses": {
+    "exactMetadata": [],
+    "metadataPrefixes": [
+      "Metadata/Monsters/HusbandMonster/BloodKnightBossMAP2_",
+      "Metadata/Monsters/SirenMonster/SirenBossMAP_"
+    ],
+    "displayNames": [],
+    "bossTilePatternsByArea": {}
+  }
+}

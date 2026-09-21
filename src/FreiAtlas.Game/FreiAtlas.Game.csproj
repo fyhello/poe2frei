@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FreiAtlas.Core\FreiAtlas.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Data\*.json" />
+    <EmbeddedResource Include="..\..\reference-analysis\POE2Radar\src\POE2Radar.Core\Game\expedition2_recipes.json">
+      <LogicalName>FreiAtlas.Game.Data.expedition2_recipes.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FreiAtlas.Game.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

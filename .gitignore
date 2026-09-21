@@ -1,0 +1,37 @@
+# .NET/IDE 构建产物
+**/[Bb]in/
+**/[Oo]bj/
+**/TestResults/
+**/artifacts/
+**/.vs/
+**/.idea/
+*.user
+*.suo
+
+# 运行时日志、回放和临时输出
+/data/area-map/
+/artifacts/
+/output/
+/outputs/
+/runtime-analysis/
+/.superpowers/
+/.playwright-cli/
+/docs/
+
+# 外部参考仓库与逆向资料
+/reference-analysis/
+/a94fbc792c44897f-PoeFixer/
+
+# 本地工具和索引缓存
+**/.gitnexus/
+**/.cache/
+**/.codex/
+**/.agy-mcp/
+
+# 本地发布/审计生成物
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.GlobalUsings.g.cs
+*.csproj.FileListAbsolute.txt

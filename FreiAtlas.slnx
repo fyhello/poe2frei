@@ -1,0 +1,52 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FreiAtlas.App/FreiAtlas.App.csproj" />
+    <Project Path="src/FreiAtlas.Atlas/FreiAtlas.Atlas.csproj" />
+    <Project Path="src/FreiAtlas.Core/FreiAtlas.Core.csproj" />
+    <Project Path="src/FreiAtlas.Expedition/FreiAtlas.Expedition.csproj" />
+    <Project Path="src/FreiAtlas.Game/FreiAtlas.Game.csproj" />
+    <Project Path="src/FreiAtlas.Host/FreiAtlas.Host.csproj" />
+    <Project Path="src/FreiAtlas.Host.Runtime/FreiAtlas.Host.Runtime.csproj" />
+    <Project Path="src/FreiAtlas.Launcher/FreiAtlas.Launcher.csproj" />
+    <Project Path="src/FreiAtlas.Platform.Windows/FreiAtlas.Platform.Windows.csproj" />
+    <Project Path="src/FreiAtlas.Plugin.AreaMap/FreiAtlas.Plugin.AreaMap.csproj" />
+    <Project Path="src/FreiAtlas.Plugin.ExpeditionPanel/FreiAtlas.Plugin.ExpeditionPanel.csproj" />
+    <Project Path="src/FreiAtlas.Settings/FreiAtlas.Settings.csproj" />
+    <Project Path="src/FreiAtlas.QuickAssist/FreiAtlas.QuickAssist.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FreiAtlas.QuickAssist.Tests/FreiAtlas.QuickAssist.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.App.Tests/FreiAtlas.App.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Atlas.Tests/FreiAtlas.Atlas.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Core.Tests/FreiAtlas.Core.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Expedition.Tests/FreiAtlas.Expedition.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Game.Tests/FreiAtlas.Game.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Host.Tests/FreiAtlas.Host.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Launcher.Tests/FreiAtlas.Launcher.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Plugin.AreaMap.Tests/FreiAtlas.Plugin.AreaMap.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Plugin.ExpeditionPanel.Tests/FreiAtlas.Plugin.ExpeditionPanel.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Settings.Tests/FreiAtlas.Settings.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+  </Folder>
+</Solution>

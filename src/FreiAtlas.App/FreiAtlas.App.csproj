@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FreiAtlas.Core\FreiAtlas.Core.csproj" />
+    <ProjectReference Include="..\FreiAtlas.Host.Runtime\FreiAtlas.Host.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Content\content-catalog.json"
+                      LogicalName="FreiAtlas.App.Content.content-catalog.json" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FreiAtlas.App.Tests" />
+  </ItemGroup>
+
+</Project>
