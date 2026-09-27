@@ -118,6 +118,10 @@ internal sealed class AreaMapDisplaySettingsDocument
 
     public bool? ShowRareChests { get; set; }
 
+    public bool? ShowPollen { get; set; }
+
+    public bool? ShowOmenAltar { get; set; }
+
     public float? LargeMapLabelFontSize { get; set; }
 
     public AreaMapExpeditionTagStyleDocument? ExpeditionTag { get; set; }

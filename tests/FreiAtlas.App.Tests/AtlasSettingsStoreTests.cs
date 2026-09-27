@@ -337,6 +337,7 @@ public sealed class AtlasSettingsStoreTests
             ShowStrongbox = false,
             ShowRareMonster = false,
             ShowRareChests = false,
+            ShowPollen = false,
             ExpeditionTag = new AreaMapExpeditionTagStyle(
                 "#123456",
                 0.42f,
@@ -373,6 +374,7 @@ public sealed class AtlasSettingsStoreTests
             Assert.False(areaMap.GetProperty("showStrongbox").GetBoolean());
             Assert.False(areaMap.GetProperty("showRareMonster").GetBoolean());
             Assert.False(areaMap.GetProperty("showRareChests").GetBoolean());
+            Assert.False(areaMap.GetProperty("showPollen").GetBoolean());
             Assert.Equal(21f, areaMap.GetProperty("largeMapLabelFontSize").GetSingle());
             var expeditionTag = areaMap.GetProperty("expeditionTag");
             Assert.Equal(
@@ -440,6 +442,7 @@ public sealed class AtlasSettingsStoreTests
         Assert.True(store.Current.AreaMap.ShowStrongbox);
         Assert.True(store.Current.AreaMap.ShowRareMonster);
         Assert.True(store.Current.AreaMap.ShowRareChests);
+        Assert.True(store.Current.AreaMap.ShowPollen);
         Assert.True(store.Current.AreaMap.ExpeditionPanel.ShowNativeRecipeValues);
         Assert.True(store.Current.AreaMap.ExpeditionPanel.AutoHideStandalonePanel);
         Assert.True(store.Current.AreaMap.ExpeditionPanel.ExpandOnAreaEntry);

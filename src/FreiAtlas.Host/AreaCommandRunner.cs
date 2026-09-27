@@ -528,6 +528,15 @@ public static class AreaCommandFormatter
             $"playerGrid={FormatVector(snapshot.Player?.GridPosition)}",
             $"entities={snapshot.Entities.Count}",
             $"contents={snapshot.Contents.Count}",
+            $"pollen={snapshot.Contents.Count(item => item.Kind == AreaContentKind.Pollen)}",
+            $"pollenWild={CountPollen(snapshot, AreaPollenKind.Wild)}",
+            $"pollenSoul={CountPollen(snapshot, AreaPollenKind.Soul)}",
+            $"pollenPrimal={CountPollen(snapshot, AreaPollenKind.Primal)}",
+            $"pollenSacred={CountPollen(snapshot, AreaPollenKind.Sacred)}",
+            $"pollenUnknown={CountPollen(snapshot, AreaPollenKind.Unknown)}",
+            $"pollenModelLayoutSource={FormatPollenEvidence(snapshot, "ModelLayoutSource")}",
+            $"pollenModelLayout={FormatPollenEvidence(snapshot, "ModelLayout")}",
+            $"omenAltar={snapshot.Contents.Count(item => item.Kind == AreaContentKind.OmenAltar)}",
             $"boss={snapshot.Contents.Count(item => item.Kind == AreaContentKind.Boss)}",
             $"bossCandidate={snapshot.Contents.Count(item => item.Kind == AreaContentKind.BossCandidate)}",
             $"expedition={snapshot.Contents.Count(item => item.Kind == AreaContentKind.Expedition)}",
@@ -538,7 +547,6 @@ public static class AreaCommandFormatter
             $"miniMap={FormatView(snapshot.MapViews.MiniMap)}",
             $"diagnostics={string.Join(',', snapshot.Diagnostics.Select(item => item.Code).Distinct(StringComparer.Ordinal))}"
         };
-
         foreach (var category in Enum.GetValues<AreaEntityCategory>())
         {
             lines.Add(
@@ -618,6 +626,27 @@ public static class AreaCommandFormatter
            && left.Contents.Select(content => (content.InstanceId, content.Phase)).SequenceEqual(
                right.Contents.Select(content => (content.InstanceId, content.Phase)))
            && left.MapViews == right.MapViews;
+
+    private static int CountPollen(AreaMapSnapshot snapshot, AreaPollenKind kind)
+        => snapshot.Contents.Count(content => content.Kind == AreaContentKind.Pollen
+                                              && (content.PollenDetails?.Kind
+                                                  ?? AreaPollenKind.Unknown) == kind);
+
+    private static string FormatPollenEvidence(
+        AreaMapSnapshot snapshot,
+        string key)
+    {
+        var values = snapshot.Contents
+            .Where(content => content.Kind == AreaContentKind.Pollen)
+            .SelectMany(content => content.Evidence)
+            .Where(evidence => evidence.Source == "Pollen" && evidence.Key == key)
+            .Select(evidence => evidence.Value)
+            .GroupBy(value => value, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => $"{group.Key}:{group.Count()}")
+            .ToArray();
+        return values.Length == 0 ? "none" : string.Join(',', values);
+    }
 
     private static string FormatView(AreaMapViewSnapshot view)
         => $"{view.Availability}/{(view.IsVisible ? "visible" : "hidden")}/"

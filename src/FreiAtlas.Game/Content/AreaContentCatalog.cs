@@ -28,7 +28,9 @@ internal sealed class AreaContentCatalog
             CreateMechanicRule(AreaContentKind.Ritual, document.Mechanics.Ritual),
             CreateMechanicRule(AreaContentKind.Breach, document.Mechanics.Breach),
             CreateMechanicRule(AreaContentKind.Essence, document.Mechanics.Essence),
-            CreateMechanicRule(AreaContentKind.Strongbox, document.Mechanics.Strongbox)
+            CreateMechanicRule(AreaContentKind.Strongbox, document.Mechanics.Strongbox),
+            CreateMechanicRule(AreaContentKind.Pollen, document.Mechanics.Pollen),
+            CreateMechanicRule(AreaContentKind.OmenAltar, document.Mechanics.OmenAltar)
         ];
         IsAvailable = isAvailable;
     }
@@ -225,7 +227,7 @@ internal sealed class AreaContentCatalog
     private static bool IsEligibleMechanicEntity(
         AreaEntitySnapshot entity,
         AreaContentKind kind)
-        => kind == AreaContentKind.Strongbox
+        => kind is AreaContentKind.Strongbox or AreaContentKind.OmenAltar
             ? entity.Category == AreaEntityCategory.Chest
               && entity.ChestState == AreaChestState.Closed
             : entity.Category is AreaEntityCategory.Object or AreaEntityCategory.Other;
@@ -254,6 +256,8 @@ internal sealed class AreaContentCatalog
         public MechanicRuleCatalog Breach { get; init; } = new();
         public MechanicRuleCatalog Essence { get; init; } = new();
         public MechanicRuleCatalog Strongbox { get; init; } = new();
+        public MechanicRuleCatalog Pollen { get; init; } = new();
+        public MechanicRuleCatalog OmenAltar { get; init; } = new();
     }
 
     private sealed class MechanicRuleCatalog

@@ -25,6 +25,14 @@
     },
     "strongbox": {
       "metadataFragments": ["/StrongBoxes/"]
+    },
+    "pollen": {
+      "metadataFragments": [
+        "Metadata/MiscellaneousObjects/Azmeri/AzmeriResourceBase"
+      ]
+    },
+    "omenAltar": {
+      "metadataFragments": ["Metadata/Chests/LeagueAzmeri/OmenChest"]
     }
   },
   "bosses": {

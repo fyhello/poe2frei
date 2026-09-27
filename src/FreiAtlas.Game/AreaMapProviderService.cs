@@ -664,7 +664,8 @@ public sealed class AreaMapProviderService : IAreaMapApi
 
 internal sealed record AreaContentReadBatch(
     IReadOnlyDictionary<uint, IReadOnlyList<AreaContentEvidence>> EvidenceByEntity,
-    IReadOnlyDictionary<uint, AreaExpeditionDetails> ExpeditionDetailsByEntity);
+    IReadOnlyDictionary<uint, AreaExpeditionDetails> ExpeditionDetailsByEntity,
+    IReadOnlyDictionary<uint, AreaPollenDetails> PollenDetailsByEntity);
 
 internal sealed class MemoryAreaMapReadSource : IAreaMapReadSource
 {
@@ -679,6 +680,7 @@ internal sealed class MemoryAreaMapReadSource : IAreaMapReadSource
     private readonly AreaLandmarkReader _landmarkReader;
     private readonly ExpeditionStateEvidenceReader _evidenceReader;
     private readonly MechanicStateEvidenceReader _mechanicEvidenceReader;
+    private readonly PollenStateEvidenceReader _pollenEvidenceReader;
     private readonly AreaContentNormalizer _contentNormalizer;
     private readonly MapUiCandidateProbe _mapUiProbe;
     private readonly AreaMapViewReader _mapViewReader;
@@ -725,6 +727,10 @@ internal sealed class MemoryAreaMapReadSource : IAreaMapReadSource
             memory,
             _components,
             profile);
+        _pollenEvidenceReader = new PollenStateEvidenceReader(
+            memory,
+            _components,
+            profile);
         _contentNormalizer = new AreaContentNormalizer(
             AreaContentCatalog.LoadEmbedded());
         _mapUiProbe = new MapUiCandidateProbe(memory, profile);
@@ -746,6 +752,7 @@ internal sealed class MemoryAreaMapReadSource : IAreaMapReadSource
     public void ResetAreaCaches()
     {
         _components.Reset();
+        _pollenEvidenceReader.Reset();
         _mapUiProbe.Reset();
         _mapViewReader.Reset();
         _recipeUiProbe.Reset();
@@ -868,7 +875,8 @@ internal sealed class MemoryAreaMapReadSource : IAreaMapReadSource
             player: GetContentNormalizationPlayer(world.Diagnostics, world.Player),
             rawObservedEntityIds: rawEntities
                 .Select(entity => entity.EntityId)
-                .ToHashSet());
+                .ToHashSet(),
+            pollenDetailsByEntity: contentData.PollenDetailsByEntity);
         _latestWorldContents = contents;
         return new AreaMapReadResult(
             area,
@@ -944,9 +952,11 @@ internal sealed class MemoryAreaMapReadSource : IAreaMapReadSource
         int areaLevel)
     {
         _components.BeginSample(sessionSequence);
+        _pollenEvidenceReader.BeginSample(sessionSequence);
         var byId = rawEntities.ToDictionary(entity => entity.EntityId);
         var evidence = new Dictionary<uint, IReadOnlyList<AreaContentEvidence>>();
         var details = new Dictionary<uint, AreaExpeditionDetails>();
+        var pollenDetails = new Dictionary<uint, AreaPollenDetails>();
         foreach (var entity in entities)
         {
             if (!byId.TryGetValue(entity.EntityId, out var raw))
@@ -956,8 +966,10 @@ internal sealed class MemoryAreaMapReadSource : IAreaMapReadSource
 
             var result = _evidenceReader.Read(raw, entity, areaLevel);
             var mechanicResult = _mechanicEvidenceReader.Read(raw, entity);
+            var pollenResult = _pollenEvidenceReader.Read(raw, entity);
             var entityEvidence = result.Evidence
                 .Concat(mechanicResult.Evidence)
+                .Concat(pollenResult.Evidence)
                 .ToArray();
             if (entityEvidence.Length > 0)
             {
@@ -970,8 +982,13 @@ internal sealed class MemoryAreaMapReadSource : IAreaMapReadSource
                     result.HoleCount,
                     result.Recipes.IsDefault ? [] : result.Recipes);
             }
+
+            if (pollenResult.Matched)
+            {
+                pollenDetails[entity.EntityId] = pollenResult.Details;
+            }
         }
 
-        return new AreaContentReadBatch(evidence, details);
+        return new AreaContentReadBatch(evidence, details, pollenDetails);
     }
 }

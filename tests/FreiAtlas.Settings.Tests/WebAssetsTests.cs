@@ -181,6 +181,8 @@ public sealed class WebAssetsTests
         Assert.Contains("id=\"areaMapStrongboxToggle\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"areaMapRareMonsterToggle\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"areaMapRareChestsToggle\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"areaMapPollenToggle\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"areaMapOmenAltarToggle\"", html, StringComparison.Ordinal);
         AssertTagContains(
             html,
             "button",
@@ -191,6 +193,16 @@ public sealed class WebAssetsTests
             "button",
             "areaMapBossToggle",
             "aria-label=\"显示 Boss\"");
+        AssertTagContains(
+            html,
+            "button",
+            "areaMapPollenToggle",
+            "aria-label=\"显示灵火\"");
+        AssertTagContains(
+            html,
+            "button",
+            "areaMapOmenAltarToggle",
+            "aria-label=\"显示预兆祭坛\"");
         Assert.Contains("settings.areaMap.showExpedition", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showBoss", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showAbyss", script, StringComparison.Ordinal);
@@ -201,6 +213,8 @@ public sealed class WebAssetsTests
         Assert.Contains("settings.areaMap.showStrongbox", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showRareMonster", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showRareChests", script, StringComparison.Ordinal);
+        Assert.Contains("settings.areaMap.showPollen", script, StringComparison.Ordinal);
+        Assert.Contains("settings.areaMap.showOmenAltar", script, StringComparison.Ordinal);
         Assert.DoesNotContain("areaMapLabelFontSize", html, StringComparison.Ordinal);
         Assert.DoesNotContain("areaMapExpeditionBackgroundColor", html, StringComparison.Ordinal);
         Assert.DoesNotContain("areaMapExpeditionBackgroundOpacity", html, StringComparison.Ordinal);

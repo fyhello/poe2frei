@@ -2,6 +2,7 @@ using FreiAtlas.Atlas;
 using FreiAtlas.Atlas.Memory;
 using FreiAtlas.Atlas.Replay;
 using FreiAtlas.Core.Atlas;
+using FreiAtlas.Game.Content;
 using FreiAtlas.Platform.Windows.Process;
 using FreiAtlas.Platform.Windows.Windows;
 
@@ -12,7 +13,7 @@ public sealed class HostRuntime
     internal const string Usage =
         "usage=--pid <pid> --atlas-overlay | --pid <pid> --atlas-probe | "
         + "--pid <pid> --area-probe | --pid <pid> --area-watch | "
-        + "--pid <pid> --area-expedition-probe | "
+        + "--pid <pid> --area-expedition-probe | --pid <pid> --pollen-probe | "
         + "--pid <pid> --area-record <directory> | --area-replay <directory> | "
         + "--pid <pid> --area-projection-probe <viewport|targets> "
         + "--projection-log <directory> | --replay <path>";
@@ -77,6 +78,19 @@ public sealed class HostRuntime
                 projectionMode,
                 options.ProjectionLogPath,
                 cancellationToken);
+        }
+
+        if (options.PollenProbe)
+        {
+            if (options.ProcessId is null)
+            {
+                Console.WriteLine("pid=required");
+                Console.WriteLine("pollen=unavailable");
+                Console.WriteLine("reason=--pid-is-required");
+                return 2;
+            }
+
+            return RunPollenProbe(options.ProcessId.Value);
         }
 
         if (options.AreaProbe
@@ -163,6 +177,46 @@ public sealed class HostRuntime
     {
         ArgumentNullException.ThrowIfNull(areaRunner);
         return areaRunner.RunProjectionProbe;
+    }
+
+    private static int RunPollenProbe(int processId)
+    {
+        if (!ProcessAttachment.TryAttach(processId, out var attachment)
+            || attachment is null)
+        {
+            Console.WriteLine($"pid={processId}");
+            Console.WriteLine("pollen=unavailable");
+            Console.WriteLine("reason=read-only-process-attach-failed");
+            return 2;
+        }
+
+        using (attachment)
+        {
+            var result = new PollenResearchProbe(attachment.Memory).Capture();
+            Console.WriteLine($"pid={result.ProcessId}");
+            Console.WriteLine($"profile={result.ProfileId}");
+            Console.WriteLine($"area={result.Area?.AreaCode ?? "unavailable"}");
+            Console.WriteLine($"pollen=count:{result.Entities.Count}");
+            foreach (var entity in result.Entities)
+            {
+                Console.WriteLine($"pollen={entity.FormatSummary()}");
+                Console.WriteLine($"metadata={entity.MetadataPath}");
+                Console.WriteLine($"components={string.Join(',', entity.Components)}");
+                Console.WriteLine($"animatedModelPath={entity.AnimatedModelPath ?? "unavailable"}");
+                Console.WriteLine($"renderPaths={string.Join('|', entity.RenderPaths)}");
+                Console.WriteLine($"signaturePaths={string.Join('|', entity.SignaturePaths)}");
+                Console.WriteLine($"limitedLifespanHex={entity.LimitedLifespanHex ?? "unavailable"}");
+            }
+
+            foreach (var diagnostic in result.Diagnostics)
+            {
+                Console.WriteLine(
+                    $"diagnostic={diagnostic.Code};severity:{diagnostic.Severity};"
+                    + $"message:{diagnostic.Message}");
+            }
+
+            return result.Area is null ? 2 : 0;
+        }
     }
 
     private static int RunAtlasProbe(int processId)

@@ -22,9 +22,15 @@ public sealed class AreaMapOverlaySurfaceTests
     [InlineData(AreaMapOverlayVisualState.EssenceAvailable, "#59D18C")]
     [InlineData(AreaMapOverlayVisualState.IncursionAvailable, "#F2D45C")]
     [InlineData(AreaMapOverlayVisualState.StrongboxAvailable, "#F29A4A")]
+    [InlineData(AreaMapOverlayVisualState.OmenAltarAvailable, "#F2C14E")]
     [InlineData(AreaMapOverlayVisualState.RareMonster, "#F2D45C")]
     [InlineData(AreaMapOverlayVisualState.RareChest, "#E8C44F")]
     [InlineData(AreaMapOverlayVisualState.UniqueChest, "#D9822B")]
+    [InlineData(AreaMapOverlayVisualState.PollenWild, "#E1C14C")]
+    [InlineData(AreaMapOverlayVisualState.PollenSoul, "#B14CE1")]
+    [InlineData(AreaMapOverlayVisualState.PollenPrimal, "#35C9C9")]
+    [InlineData(AreaMapOverlayVisualState.PollenSacred, "#E17C3D")]
+    [InlineData(AreaMapOverlayVisualState.PollenAvailable, "#D8D8D8")]
     public void ResolveVisualStyle_UsesMarkerColorsWithoutLabels(
         AreaMapOverlayVisualState state,
         string expectedHex)
@@ -47,6 +53,8 @@ public sealed class AreaMapOverlaySurfaceTests
     [InlineData(AreaMapOverlayMarkerKind.RareMonster, "RareMonster")]
     [InlineData(AreaMapOverlayMarkerKind.RareChest, "RareChest")]
     [InlineData(AreaMapOverlayMarkerKind.UniqueChest, "UniqueChest")]
+    [InlineData(AreaMapOverlayMarkerKind.Pollen, "Pollen")]
+    [InlineData(AreaMapOverlayMarkerKind.OmenAltar, "OmenAltar")]
     public void ResolveGlyph_UsesDedicatedGlyphForEveryMarker(
         AreaMapOverlayMarkerKind kind,
         string expected)
@@ -69,9 +77,11 @@ public sealed class AreaMapOverlaySurfaceTests
 
     [Theory]
     [InlineData(AreaMapOverlayMarkerKind.Expedition)]
+    [InlineData(AreaMapOverlayMarkerKind.OmenAltar)]
     [InlineData(AreaMapOverlayMarkerKind.RareMonster)]
     [InlineData(AreaMapOverlayMarkerKind.RareChest)]
     [InlineData(AreaMapOverlayMarkerKind.UniqueChest)]
+    [InlineData(AreaMapOverlayMarkerKind.Pollen)]
     public void ResolveReferenceIconId_LeavesNonBitmapMarkersUnmapped(
         AreaMapOverlayMarkerKind kind)
         => Assert.Null(AreaMapOverlaySurface.ResolveReferenceIconId(kind));
@@ -85,9 +95,11 @@ public sealed class AreaMapOverlaySurfaceTests
     [InlineData(AreaMapOverlayMarkerKind.Incursion, "Bitmap")]
     [InlineData(AreaMapOverlayMarkerKind.Strongbox, "Bitmap")]
     [InlineData(AreaMapOverlayMarkerKind.Expedition, "ExpeditionTag")]
+    [InlineData(AreaMapOverlayMarkerKind.OmenAltar, "Vector")]
     [InlineData(AreaMapOverlayMarkerKind.RareMonster, "Vector")]
     [InlineData(AreaMapOverlayMarkerKind.RareChest, "Vector")]
     [InlineData(AreaMapOverlayMarkerKind.UniqueChest, "Vector")]
+    [InlineData(AreaMapOverlayMarkerKind.Pollen, "Vector")]
     public void ResolveRenderMode_UsesExactlyOnePrimaryMode(
         AreaMapOverlayMarkerKind kind,
         string expected)
@@ -168,7 +180,7 @@ public sealed class AreaMapOverlaySurfaceTests
         var vectorCommands = commands
             .Where(command => command.RenderMode == AreaMapOverlayRenderMode.Vector)
             .ToArray();
-        Assert.Equal(3, vectorCommands.Length);
+        Assert.Equal(5, vectorCommands.Length);
         Assert.All(vectorCommands, command =>
         {
             Assert.Null(command.ReferenceIconId);
@@ -359,12 +371,16 @@ public sealed class AreaMapOverlaySurfaceTests
                 (AreaContentKind.Incursion, AreaMapOverlayVisualState.IncursionAvailable),
             AreaMapOverlayMarkerKind.Strongbox =>
                 (AreaContentKind.Strongbox, AreaMapOverlayVisualState.StrongboxAvailable),
+            AreaMapOverlayMarkerKind.OmenAltar =>
+                (AreaContentKind.OmenAltar, AreaMapOverlayVisualState.OmenAltarAvailable),
             AreaMapOverlayMarkerKind.RareMonster =>
                 (AreaContentKind.Unknown, AreaMapOverlayVisualState.RareMonster),
             AreaMapOverlayMarkerKind.RareChest =>
                 (AreaContentKind.Unknown, AreaMapOverlayVisualState.RareChest),
             AreaMapOverlayMarkerKind.UniqueChest =>
                 (AreaContentKind.Unknown, AreaMapOverlayVisualState.UniqueChest),
+            AreaMapOverlayMarkerKind.Pollen =>
+                (AreaContentKind.Pollen, AreaMapOverlayVisualState.PollenAvailable),
             _ => throw new ArgumentOutOfRangeException(nameof(markerKind), markerKind, null)
         };
         return new AreaMapOverlayPlacement(

@@ -15,6 +15,7 @@ public sealed class AreaContentNormalizerTests
     [InlineData(AreaContentKind.Breach, "Metadata/MiscellaneousObjects/Brequel/BrequelInitiator", AreaEntityCategory.Object, AreaChestState.NotApplicable)]
     [InlineData(AreaContentKind.Essence, "Metadata/MiscellaneousObjects/Monolith", AreaEntityCategory.Other, AreaChestState.NotApplicable)]
     [InlineData(AreaContentKind.Strongbox, "Metadata/Chests/StrongBoxes/Strongbox1", AreaEntityCategory.Chest, AreaChestState.Closed)]
+    [InlineData(AreaContentKind.OmenAltar, "Metadata/Chests/LeagueAzmeri/OmenChest", AreaEntityCategory.Chest, AreaChestState.Closed)]
     public void Normalize_EmitsAvailableTypedMechanicContent(
         AreaContentKind expectedKind,
         string metadata,
@@ -853,6 +854,55 @@ public sealed class AreaContentNormalizerTests
     }
 
     [Fact]
+    public void Normalize_EmitsPollenContentWithPollenDetails()
+    {
+        var pollen = CreateEntity(
+            901,
+            "Metadata/MiscellaneousObjects/Azmeri/AzmeriResourceBase",
+            "Wild Wisp",
+            AreaEntityCategory.Object,
+            AreaEntityDisposition.Neutral,
+            AreaEntityRarity.NonMonster);
+        var details = new Dictionary<uint, AreaPollenDetails>
+        {
+            [pollen.EntityId] = new(AreaPollenKind.Sacred)
+        };
+
+        var content = Assert.Single(CreateNormalizer().Normalize(
+            CreateArea(11),
+            [pollen],
+            [],
+            pollenDetailsByEntity: details));
+
+        Assert.Equal(AreaContentKind.Pollen, content.Kind);
+        Assert.Equal(AreaContentPhase.Available, content.Phase);
+        Assert.Equal(pollen.EntityId, content.SourceEntityId);
+        Assert.Equal("pollen:11:901", content.InstanceId);
+        Assert.Equal(AreaPollenKind.Sacred, content.PollenDetails!.Kind);
+    }
+
+    [Fact]
+    public void Normalize_DoesNotRetainPollenWhenEntityUnloads()
+    {
+        var normalizer = CreateNormalizer();
+        var area = CreateArea(11);
+        var pollen = CreateEntity(
+            901,
+            "Metadata/MiscellaneousObjects/Azmeri/AzmeriResourceBase",
+            "Wild Wisp",
+            AreaEntityCategory.Object,
+            AreaEntityDisposition.Neutral,
+            AreaEntityRarity.NonMonster);
+        Assert.Contains(
+            normalizer.Normalize(area, [pollen], []),
+            item => item.Kind == AreaContentKind.Pollen);
+
+        Assert.DoesNotContain(
+            normalizer.Normalize(area, [], []),
+            item => item.Kind == AreaContentKind.Pollen);
+    }
+
+    [Fact]
     public void Normalize_DropsRetainedStaticMechanicWhenEntityRemainsButNoLongerMatches()
     {
         var normalizer = CreateNormalizer();
@@ -1253,7 +1303,11 @@ public sealed class AreaContentNormalizerTests
                 "essence": {
                   "metadataFragments": ["Metadata/MiscellaneousObjects/Monolith"]
                 },
-                "strongbox": { "metadataFragments": ["/StrongBoxes/"] }
+                "strongbox": { "metadataFragments": ["/StrongBoxes/"] },
+                "omenAltar": { "metadataFragments": ["Metadata/Chests/LeagueAzmeri/OmenChest"] },
+                "pollen": {
+                  "metadataFragments": ["Metadata/MiscellaneousObjects/Azmeri/AzmeriResourceBase"]
+                }
               },
               "bosses": {
                 "exactMetadata": ["Metadata/Monsters/Test/ConfirmedBoss"],
