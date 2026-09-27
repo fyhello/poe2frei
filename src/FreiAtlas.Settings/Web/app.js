@@ -543,6 +543,8 @@ function configureAreaMapControls() {
   bindAreaMapToggle('areaMapBossToggle', 'showBoss');
   bindAreaMapToggle('areaMapAbyssToggle', 'showAbyss');
   bindAreaMapToggle('areaMapRitualToggle', 'showRitual');
+  bindAreaMapToggle('areaMapPollenToggle', 'showPollen');
+  bindAreaMapToggle('areaMapOmenAltarToggle', 'showOmenAltar');
   bindAreaMapToggle('areaMapBreachToggle', 'showBreach');
   bindAreaMapToggle('areaMapEssenceToggle', 'showEssence');
   bindAreaMapToggle('areaMapIncursionToggle', 'showIncursion');
@@ -574,6 +576,8 @@ function renderAreaMap() {
   setToggle($('areaMapBossToggle'), settings.areaMap.showBoss);
   setToggle($('areaMapAbyssToggle'), settings.areaMap.showAbyss);
   setToggle($('areaMapRitualToggle'), settings.areaMap.showRitual);
+  setToggle($('areaMapPollenToggle'), settings.areaMap.showPollen);
+  setToggle($('areaMapOmenAltarToggle'), settings.areaMap.showOmenAltar);
   setToggle($('areaMapBreachToggle'), settings.areaMap.showBreach);
   setToggle($('areaMapEssenceToggle'), settings.areaMap.showEssence);
   setToggle($('areaMapIncursionToggle'), settings.areaMap.showIncursion);

@@ -12,6 +12,8 @@ public sealed class AreaContentCatalogTests
     [InlineData("Metadata/MiscellaneousObjects/Brequel/BrequelInitiator", AreaEntityCategory.Object, AreaChestState.NotApplicable, AreaContentKind.Breach)]
     [InlineData("Metadata/MiscellaneousObjects/Monolith", AreaEntityCategory.Other, AreaChestState.NotApplicable, AreaContentKind.Essence)]
     [InlineData("Metadata/Chests/StrongBoxes/Strongbox1", AreaEntityCategory.Chest, AreaChestState.Closed, AreaContentKind.Strongbox)]
+    [InlineData("Metadata/Chests/LeagueAzmeri/OmenChest", AreaEntityCategory.Chest, AreaChestState.Closed, AreaContentKind.OmenAltar)]
+    [InlineData("Metadata/MiscellaneousObjects/Azmeri/AzmeriResourceBase", AreaEntityCategory.Object, AreaChestState.NotApplicable, AreaContentKind.Pollen)]
     public void MechanicCatalog_MatchesApprovedEntityRules(
         string metadata,
         AreaEntityCategory category,
@@ -39,6 +41,9 @@ public sealed class AreaContentCatalogTests
     [InlineData("Metadata/Monsters/Daemon/EssenceModDaemons/EssenceDaemon", AreaEntityCategory.Other, AreaChestState.NotApplicable)]
     [InlineData("Metadata/Chests/StrongBoxes/Strongbox1", AreaEntityCategory.Chest, AreaChestState.Opened)]
     [InlineData("Metadata/Chests/StrongBoxes/Strongbox1", AreaEntityCategory.Chest, AreaChestState.Unknown)]
+    [InlineData("Metadata/Chests/LeagueAzmeri/OmenChest", AreaEntityCategory.Chest, AreaChestState.Opened)]
+    [InlineData("Metadata/Chests/LeagueAzmeri/OmenChest", AreaEntityCategory.Chest, AreaChestState.Unknown)]
+    [InlineData("Metadata/MiscellaneousObjects/Azmeri/AzmeriResourceCore", AreaEntityCategory.Object, AreaChestState.NotApplicable)]
     public void MechanicCatalog_RejectsExcludedOrInactiveEntities(
         string metadata,
         AreaEntityCategory category,
@@ -86,21 +91,27 @@ public sealed class AreaContentCatalogTests
             out _,
             out _));
     }
-
     [Theory]
+
     [InlineData("Metadata/MiscellaneousObjects/Abyss/AbyssFinalNodeBase", AreaEntityCategory.Object, AreaContentKind.Abyss)]
     [InlineData("Metadata/MiscellaneousObjects/Brequel/BrequelInitiator", AreaEntityCategory.Object, AreaContentKind.Breach)]
     [InlineData("Metadata/MiscellaneousObjects/Monolith", AreaEntityCategory.Other, AreaContentKind.Essence)]
+    [InlineData("Metadata/Chests/LeagueAzmeri/OmenChest", AreaEntityCategory.Chest, AreaContentKind.OmenAltar)]
+    [InlineData("Metadata/MiscellaneousObjects/Azmeri/AzmeriResourceBase", AreaEntityCategory.Object, AreaContentKind.Pollen)]
     public void EmbeddedCatalog_MatchesObservedLiveMechanicEntities(
         string metadata,
         AreaEntityCategory category,
         AreaContentKind expected)
     {
         var catalog = AreaContentCatalog.LoadEmbedded();
-
         Assert.True(catalog.IsAvailable);
         Assert.True(catalog.TryMatchMechanicEntity(
-            CreateEntity(metadata: metadata, category: category),
+            CreateEntity(
+                metadata: metadata,
+                category: category,
+                chestState: category == AreaEntityCategory.Chest
+                    ? AreaChestState.Closed
+                    : AreaChestState.NotApplicable),
             out var kind,
             out _));
         Assert.Equal(expected, kind);
@@ -220,6 +231,14 @@ public sealed class AreaContentCatalogTests
               },
             "strongbox": {
               "metadataFragments": ["/StrongBoxes/"]
+            },
+            "omenAltar": {
+              "metadataFragments": ["Metadata/Chests/LeagueAzmeri/OmenChest"]
+            },
+            "pollen": {
+              "metadataFragments": [
+                "Metadata/MiscellaneousObjects/Azmeri/AzmeriResourceBase"
+              ]
             }
           },
           "bosses": {

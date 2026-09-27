@@ -20,6 +20,8 @@ public sealed record HostOptions(
 
     public string? ProjectionLogPath { get; init; }
 
+    public bool PollenProbe { get; init; }
+
     public bool RequiresCancellationHandling
         => AreaWatch
            || AreaRecordPath is not null
@@ -40,6 +42,7 @@ public sealed record HostOptions(
         var areaProbe = false;
         var areaWatch = false;
         var areaExpeditionProbe = false;
+        var pollenProbe = false;
 
         for (var index = 0; index < args.Count; index++)
         {
@@ -65,6 +68,9 @@ public sealed record HostOptions(
                     break;
                 case "--area-expedition-probe":
                     areaExpeditionProbe = true;
+                    break;
+                case "--pollen-probe":
+                    pollenProbe = true;
                     break;
                 case "--area-record":
                     areaRecordPath = RequireValue(args, ref index, "--area-record");
@@ -94,6 +100,7 @@ public sealed record HostOptions(
                              || areaProbe
                              || areaWatch
                              || areaExpeditionProbe
+                             || pollenProbe
                              || areaRecordPath is not null
                              || areaProjectionProbeMode is not null;
         if (hasProcessMode && processId is null)
@@ -109,6 +116,7 @@ public sealed record HostOptions(
             + (areaProbe ? 1 : 0)
             + (areaWatch ? 1 : 0)
             + (areaExpeditionProbe ? 1 : 0)
+            + (pollenProbe ? 1 : 0)
             + (areaRecordPath is not null ? 1 : 0)
             + (areaReplayPath is not null ? 1 : 0)
             + (replayPath is not null ? 1 : 0)
@@ -157,6 +165,7 @@ public sealed record HostOptions(
             AreaProbe = areaProbe,
             AreaWatch = areaWatch,
             AreaExpeditionProbe = areaExpeditionProbe,
+            PollenProbe = pollenProbe,
             AreaRecordPath = areaRecordPath,
             AreaReplayPath = areaReplayPath,
             AreaProjectionProbeMode = areaProjectionProbeMode,

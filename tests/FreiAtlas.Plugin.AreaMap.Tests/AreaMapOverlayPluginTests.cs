@@ -189,13 +189,14 @@ public sealed class AreaMapOverlayPluginTests
             Content("essence", AreaContentKind.Essence, AreaContentPhase.Available, Vector2.Zero),
             Content("incursion", AreaContentKind.Incursion, AreaContentPhase.Available, Vector2.Zero),
             Content("strongbox", AreaContentKind.Strongbox, AreaContentPhase.Available, Vector2.Zero),
+            Content("pollen", AreaContentKind.Pollen, AreaContentPhase.Available, Vector2.Zero, pollenKind: AreaPollenKind.Soul),
             Content("unknown", AreaContentKind.Unknown, AreaContentPhase.Available, Vector2.Zero)
         ];
 
         var scene = Assert.IsType<AreaMapOverlayScene>(Build(Snapshot(contents: contents)));
 
         Assert.Equal(
-            ["candidate", "boss", "expedition", "ritual", "abyss", "breach", "essence", "incursion", "strongbox"],
+            ["candidate", "boss", "expedition", "ritual", "abyss", "breach", "essence", "incursion", "strongbox", "pollen"],
             scene.Placements.Select(placement => placement.InstanceId));
     }
 
@@ -319,14 +320,21 @@ public sealed class AreaMapOverlayPluginTests
     [InlineData(AreaContentKind.Essence, AreaContentPhase.Completed, AreaMapOverlayVisualState.EssenceCompleted)]
     [InlineData(AreaContentKind.Incursion, AreaContentPhase.Available, AreaMapOverlayVisualState.IncursionAvailable)]
     [InlineData(AreaContentKind.Strongbox, AreaContentPhase.Available, AreaMapOverlayVisualState.StrongboxAvailable)]
+    [InlineData(AreaContentKind.OmenAltar, AreaContentPhase.Available, AreaMapOverlayVisualState.OmenAltarAvailable)]
+    [InlineData(AreaContentKind.Pollen, AreaContentPhase.Available, AreaMapOverlayVisualState.PollenWild, AreaPollenKind.Wild)]
+    [InlineData(AreaContentKind.Pollen, AreaContentPhase.Available, AreaMapOverlayVisualState.PollenSoul, AreaPollenKind.Soul)]
+    [InlineData(AreaContentKind.Pollen, AreaContentPhase.Available, AreaMapOverlayVisualState.PollenPrimal, AreaPollenKind.Primal)]
+    [InlineData(AreaContentKind.Pollen, AreaContentPhase.Available, AreaMapOverlayVisualState.PollenSacred, AreaPollenKind.Sacred)]
+    [InlineData(AreaContentKind.Pollen, AreaContentPhase.Available, AreaMapOverlayVisualState.PollenAvailable, AreaPollenKind.Unknown)]
     public void Build_MapsSupportedContentToSemanticVisualState(
         AreaContentKind kind,
         AreaContentPhase phase,
-        AreaMapOverlayVisualState expected)
+        AreaMapOverlayVisualState expected,
+        AreaPollenKind pollenKind = AreaPollenKind.Wild)
     {
         var scene = Assert.IsType<AreaMapOverlayScene>(Build(Snapshot(contents:
         [
-            Content("mapped", kind, phase, Vector2.Zero)
+            Content("mapped", kind, phase, Vector2.Zero, pollenKind: pollenKind)
         ])));
 
         var placement = Assert.Single(scene.Placements);
@@ -412,6 +420,8 @@ public sealed class AreaMapOverlayPluginTests
     [InlineData(nameof(AreaMapDisplaySettings.ShowEssence), AreaContentKind.Essence)]
     [InlineData(nameof(AreaMapDisplaySettings.ShowIncursion), AreaContentKind.Incursion)]
     [InlineData(nameof(AreaMapDisplaySettings.ShowStrongbox), AreaContentKind.Strongbox)]
+    [InlineData(nameof(AreaMapDisplaySettings.ShowOmenAltar), AreaContentKind.OmenAltar)]
+    [InlineData(nameof(AreaMapDisplaySettings.ShowPollen), AreaContentKind.Pollen)]
     public void Build_AppliesEachMechanicSwitchIndependently(
         string settingName,
         AreaContentKind kind)
@@ -660,7 +670,8 @@ public sealed class AreaMapOverlayPluginTests
         Vector2 gridPosition,
         int? holeCount = null,
         bool includeExpeditionDetails = false,
-        uint? sourceEntityId = null)
+        uint? sourceEntityId = null,
+        AreaPollenKind pollenKind = AreaPollenKind.Unknown)
         => new(
             instanceId,
             $"content-{instanceId}",
@@ -674,6 +685,9 @@ public sealed class AreaMapOverlayPluginTests
             [],
             includeExpeditionDetails
                 ? new AreaExpeditionDetails(holeCount)
+                : null,
+            kind == AreaContentKind.Pollen
+                ? new AreaPollenDetails(pollenKind)
                 : null);
 
     private static AreaEntitySnapshot Entity(
@@ -711,6 +725,8 @@ public sealed class AreaMapOverlayPluginTests
             AreaContentKind.Essence => AreaMapOverlayMarkerKind.Essence,
             AreaContentKind.Incursion => AreaMapOverlayMarkerKind.Incursion,
             AreaContentKind.Strongbox => AreaMapOverlayMarkerKind.Strongbox,
+            AreaContentKind.OmenAltar => AreaMapOverlayMarkerKind.OmenAltar,
+            AreaContentKind.Pollen => AreaMapOverlayMarkerKind.Pollen,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 
@@ -725,6 +741,8 @@ public sealed class AreaMapOverlayPluginTests
             nameof(AreaMapDisplaySettings.ShowEssence) => settings with { ShowEssence = false },
             nameof(AreaMapDisplaySettings.ShowIncursion) => settings with { ShowIncursion = false },
             nameof(AreaMapDisplaySettings.ShowStrongbox) => settings with { ShowStrongbox = false },
+            nameof(AreaMapDisplaySettings.ShowOmenAltar) => settings with { ShowOmenAltar = false },
+            nameof(AreaMapDisplaySettings.ShowPollen) => settings with { ShowPollen = false },
             _ => throw new ArgumentOutOfRangeException(nameof(settingName), settingName, null)
         };
 

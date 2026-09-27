@@ -46,7 +46,10 @@ public sealed class AreaMapOverlayPlugin
                 continue;
             }
 
-            var visualState = MapVisualState(content.Kind, content.Phase);
+            var visualState = MapVisualState(
+                content.Kind,
+                content.Phase,
+                content.PollenDetails?.Kind ?? AreaPollenKind.Unknown);
             if (visualState is null
                 || !AreaMapProjection.TryProject(
                     snapshot.Player!.GridPosition,
@@ -184,7 +187,8 @@ public sealed class AreaMapOverlayPlugin
 
     private static AreaMapOverlayVisualState? MapVisualState(
         AreaContentKind kind,
-        AreaContentPhase phase)
+        AreaContentPhase phase,
+        AreaPollenKind pollenKind = AreaPollenKind.Unknown)
         => (kind, phase) switch
         {
             (AreaContentKind.BossCandidate, _) => AreaMapOverlayVisualState.BossInactive,
@@ -219,6 +223,9 @@ public sealed class AreaMapOverlayPlugin
                 AreaMapOverlayVisualState.IncursionAvailable,
             (AreaContentKind.Strongbox, AreaContentPhase.Available) =>
                 AreaMapOverlayVisualState.StrongboxAvailable,
+            (AreaContentKind.OmenAltar, AreaContentPhase.Available) =>
+                AreaMapOverlayVisualState.OmenAltarAvailable,
+            (AreaContentKind.Pollen, _) => MapPollenVisualState(pollenKind),
             _ => null
         };
 
@@ -232,6 +239,16 @@ public sealed class AreaMapOverlayPlugin
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 
+    private static AreaMapOverlayVisualState MapPollenVisualState(AreaPollenKind kind)
+        => kind switch
+        {
+            AreaPollenKind.Wild => AreaMapOverlayVisualState.PollenWild,
+            AreaPollenKind.Soul => AreaMapOverlayVisualState.PollenSoul,
+            AreaPollenKind.Primal => AreaMapOverlayVisualState.PollenPrimal,
+            AreaPollenKind.Sacred => AreaMapOverlayVisualState.PollenSacred,
+            _ => AreaMapOverlayVisualState.PollenAvailable
+        };
+
     private static AreaMapOverlayMarkerKind MapMarkerKind(AreaContentKind kind)
         => kind switch
         {
@@ -243,6 +260,8 @@ public sealed class AreaMapOverlayPlugin
             AreaContentKind.Essence => AreaMapOverlayMarkerKind.Essence,
             AreaContentKind.Incursion => AreaMapOverlayMarkerKind.Incursion,
             AreaContentKind.Strongbox => AreaMapOverlayMarkerKind.Strongbox,
+            AreaContentKind.OmenAltar => AreaMapOverlayMarkerKind.OmenAltar,
+            AreaContentKind.Pollen => AreaMapOverlayMarkerKind.Pollen,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 
@@ -286,6 +305,8 @@ public sealed class AreaMapOverlayPlugin
             AreaContentKind.Essence => settings.ShowEssence,
             AreaContentKind.Incursion => settings.ShowIncursion,
             AreaContentKind.Strongbox => settings.ShowStrongbox,
+            AreaContentKind.OmenAltar => settings.ShowOmenAltar,
+            AreaContentKind.Pollen => settings.ShowPollen,
             _ => false
         };
 

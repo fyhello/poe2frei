@@ -21,9 +21,11 @@ internal enum AreaMapOverlayGlyph
     Essence,
     Incursion,
     Strongbox,
+    OmenAltar,
     RareMonster,
     RareChest,
-    UniqueChest
+    UniqueChest,
+    Pollen
 }
 
 internal enum AreaMapOverlayRenderMode
@@ -63,6 +65,11 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
     private const float MinimumIconRadius = 7f;
     private const float MaximumIconRadius = 13f;
 
+    // 灵火是高密度点位，用独立的小圆点半径，避免密集区糊成一片。
+    private const float PollenDotScale = 0.24f;
+    private const float MinimumPollenDotRadius = 1.8f;
+    private const float MaximumPollenDotRadius = 3.2f;
+
     private static readonly IReadOnlyDictionary<AreaMapOverlayVisualState, AreaMapOverlayVisualStyle>
         VisualStyles = new Dictionary<AreaMapOverlayVisualState, AreaMapOverlayVisualStyle>
         {
@@ -82,9 +89,15 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
             [AreaMapOverlayVisualState.EssenceCompleted] = CompletedMechanic(),
             [AreaMapOverlayVisualState.IncursionAvailable] = Original("#F2D45C"),
             [AreaMapOverlayVisualState.StrongboxAvailable] = Original("#F29A4A"),
+            [AreaMapOverlayVisualState.OmenAltarAvailable] = Original("#F2C14E"),
             [AreaMapOverlayVisualState.RareMonster] = Original("#F2D45C"),
             [AreaMapOverlayVisualState.RareChest] = Original("#E8C44F"),
-            [AreaMapOverlayVisualState.UniqueChest] = Original("#D9822B")
+            [AreaMapOverlayVisualState.UniqueChest] = Original("#D9822B"),
+            [AreaMapOverlayVisualState.PollenWild] = Original("#E1C14C"),
+            [AreaMapOverlayVisualState.PollenSoul] = Original("#B14CE1"),
+            [AreaMapOverlayVisualState.PollenPrimal] = Original("#35C9C9"),
+            [AreaMapOverlayVisualState.PollenSacred] = Original("#E17C3D"),
+            [AreaMapOverlayVisualState.PollenAvailable] = Original("#D8D8D8")
         };
 
     private readonly LayeredOverlayWindow _window;
@@ -260,9 +273,11 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
             AreaMapOverlayMarkerKind.Essence => AreaMapOverlayGlyph.Essence,
             AreaMapOverlayMarkerKind.Incursion => AreaMapOverlayGlyph.Incursion,
             AreaMapOverlayMarkerKind.Strongbox => AreaMapOverlayGlyph.Strongbox,
+            AreaMapOverlayMarkerKind.OmenAltar => AreaMapOverlayGlyph.OmenAltar,
             AreaMapOverlayMarkerKind.RareMonster => AreaMapOverlayGlyph.RareMonster,
             AreaMapOverlayMarkerKind.RareChest => AreaMapOverlayGlyph.RareChest,
             AreaMapOverlayMarkerKind.UniqueChest => AreaMapOverlayGlyph.UniqueChest,
+            AreaMapOverlayMarkerKind.Pollen => AreaMapOverlayGlyph.Pollen,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 
@@ -277,9 +292,11 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
             AreaMapOverlayMarkerKind.Incursion => "AtlasIconContentIncursion",
             AreaMapOverlayMarkerKind.Strongbox => "AtlasIconContentStrongBox",
             AreaMapOverlayMarkerKind.Expedition
+                or AreaMapOverlayMarkerKind.OmenAltar
                 or AreaMapOverlayMarkerKind.RareMonster
                 or AreaMapOverlayMarkerKind.RareChest
-                or AreaMapOverlayMarkerKind.UniqueChest => null,
+                or AreaMapOverlayMarkerKind.UniqueChest
+                or AreaMapOverlayMarkerKind.Pollen => null,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 
@@ -583,6 +600,13 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
             case AreaMapOverlayGlyph.Strongbox:
                 DrawChest(renderTarget, brush, command.Center, command.Radius, false, false);
                 break;
+            case AreaMapOverlayGlyph.OmenAltar:
+                DrawDiamond(renderTarget, brush, command.Center, command.Radius);
+                renderTarget.DrawEllipse(
+                    new Ellipse(command.Center, command.Radius * 0.38f, command.Radius * 0.38f),
+                    brush,
+                    1.8f);
+                break;
             case AreaMapOverlayGlyph.RareMonster:
                 DrawRareMonster(renderTarget, brush, command.Center, command.Radius);
                 break;
@@ -591,6 +615,9 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
                 break;
             case AreaMapOverlayGlyph.UniqueChest:
                 DrawChest(renderTarget, brush, command.Center, command.Radius, false, true);
+                break;
+            case AreaMapOverlayGlyph.Pollen:
+                DrawPollen(renderTarget, brush, command.Center, command.Radius);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(command), command.Glyph, null);
@@ -679,6 +706,19 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
         {
             target.FillEllipse(new Ellipse(center + offset, dotRadius, dotRadius), brush);
         }
+    }
+
+    private static void DrawPollen(
+        ID2D1RenderTarget target,
+        ID2D1Brush brush,
+        Vector2 center,
+        float radius)
+    {
+        var dotRadius = Math.Clamp(
+            radius * PollenDotScale,
+            MinimumPollenDotRadius,
+            MaximumPollenDotRadius);
+        target.FillEllipse(new Ellipse(center, dotRadius, dotRadius), brush);
     }
 
     private static void DrawBreach(

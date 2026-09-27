@@ -86,6 +86,10 @@ public sealed record AreaMapDisplaySettings(
 
     public bool ShowRareChests { get; init; } = true;
 
+    public bool ShowPollen { get; init; } = true;
+
+    public bool ShowOmenAltar { get; init; } = true;
+
     public AreaMapExpeditionTagStyle ExpeditionTag { get; init; } =
         AreaMapExpeditionTagStyle.Default;
 

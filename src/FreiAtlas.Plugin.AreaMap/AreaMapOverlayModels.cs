@@ -22,9 +22,15 @@ public enum AreaMapOverlayVisualState
     EssenceCompleted,
     IncursionAvailable,
     StrongboxAvailable,
+    OmenAltarAvailable,
     RareMonster,
     RareChest,
-    UniqueChest
+    UniqueChest,
+    PollenWild,
+    PollenSoul,
+    PollenPrimal,
+    PollenSacred,
+    PollenAvailable
 }
 
 public enum AreaMapOverlayMarkerKind
@@ -37,9 +43,11 @@ public enum AreaMapOverlayMarkerKind
     Essence,
     Incursion,
     Strongbox,
+    OmenAltar,
     RareMonster,
     RareChest,
-    UniqueChest
+    UniqueChest,
+    Pollen
 }
 
 public sealed record AreaMapExpeditionMarker
@@ -100,10 +108,11 @@ public sealed record AreaMapOverlayPlacement
             AreaContentKind.Expedition => AreaMapOverlayMarkerKind.Expedition,
             AreaContentKind.Abyss => AreaMapOverlayMarkerKind.Abyss,
             AreaContentKind.Ritual => AreaMapOverlayMarkerKind.Ritual,
-            AreaContentKind.Breach => AreaMapOverlayMarkerKind.Breach,
             AreaContentKind.Essence => AreaMapOverlayMarkerKind.Essence,
             AreaContentKind.Incursion => AreaMapOverlayMarkerKind.Incursion,
             AreaContentKind.Strongbox => AreaMapOverlayMarkerKind.Strongbox,
+            AreaContentKind.OmenAltar => AreaMapOverlayMarkerKind.OmenAltar,
+            AreaContentKind.Pollen => AreaMapOverlayMarkerKind.Pollen,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 }

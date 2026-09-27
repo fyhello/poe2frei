@@ -62,7 +62,9 @@ public enum AreaContentKind
     Shrine,
     Waypoint,
     Transition,
-    Incursion
+    Incursion,
+    Pollen,
+    OmenAltar
 }
 
 public enum AreaContentPhase
@@ -162,6 +164,17 @@ public sealed record AreaExpeditionDetails
     }
 }
 
+public enum AreaPollenKind
+{
+    Unknown,
+    Wild,
+    Soul,
+    Primal,
+    Sacred
+}
+
+public sealed record AreaPollenDetails(AreaPollenKind Kind);
+
 public sealed record AreaReadDiagnostic(
     string Code,
     string Message,
@@ -195,7 +208,8 @@ public sealed record AreaContentSnapshot(
     float Confidence,
     uint? SourceEntityId,
     IReadOnlyList<AreaContentEvidence> Evidence,
-    AreaExpeditionDetails? ExpeditionDetails = null);
+    AreaExpeditionDetails? ExpeditionDetails = null,
+    AreaPollenDetails? PollenDetails = null);
 
 public sealed record AreaLandmarkSnapshot(
     string LandmarkId,

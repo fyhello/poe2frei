@@ -37,7 +37,8 @@ internal sealed class AreaContentNormalizer
         IReadOnlyDictionary<uint, IReadOnlyList<AreaContentEvidence>>? evidenceByEntity = null,
         IReadOnlyDictionary<uint, AreaExpeditionDetails>? expeditionDetailsByEntity = null,
         AreaPlayerSnapshot? player = null,
-        IReadOnlySet<uint>? rawObservedEntityIds = null)
+        IReadOnlySet<uint>? rawObservedEntityIds = null,
+        IReadOnlyDictionary<uint, AreaPollenDetails>? pollenDetailsByEntity = null)
     {
         ArgumentNullException.ThrowIfNull(area);
         ArgumentNullException.ThrowIfNull(entities);
@@ -93,6 +94,15 @@ internal sealed class AreaContentNormalizer
                 ritualInteractableEvidence);
             if (_mechanic.TryResolve(context, out var content))
             {
+                if (content.Kind == AreaContentKind.Pollen
+                    && pollenDetailsByEntity is not null
+                    && pollenDetailsByEntity.TryGetValue(
+                        entity.EntityId,
+                        out var pollenDetails))
+                {
+                    content = content with { PollenDetails = pollenDetails };
+                }
+
                 contents.Add(content);
                 handledEntityIds.Add(entity.EntityId);
                 matchedMechanicEntityIds.Add(entity.EntityId);

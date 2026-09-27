@@ -412,6 +412,8 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
             ShowStrongbox = saved?.ShowStrongbox ?? defaults.ShowStrongbox,
             ShowRareMonster = saved?.ShowRareMonster ?? defaults.ShowRareMonster,
             ShowRareChests = saved?.ShowRareChests ?? defaults.ShowRareChests,
+            ShowPollen = saved?.ShowPollen ?? defaults.ShowPollen,
+            ShowOmenAltar = saved?.ShowOmenAltar ?? defaults.ShowOmenAltar,
             ExpeditionTag = new AreaMapExpeditionTagStyle(
                 saved?.ExpeditionTag?.BackgroundColor
                     ?? defaults.ExpeditionTag.BackgroundColor,
@@ -565,6 +567,8 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
                         ShowStrongbox = settings.AreaMap.ShowStrongbox,
                         ShowRareMonster = settings.AreaMap.ShowRareMonster,
                         ShowRareChests = settings.AreaMap.ShowRareChests,
+                        ShowPollen = settings.AreaMap.ShowPollen,
+                        ShowOmenAltar = settings.AreaMap.ShowOmenAltar,
                         LargeMapLabelFontSize = settings.AreaMap.LargeMapLabelFontSize,
                         ExpeditionTag = new AreaMapExpeditionTagStyleDocument
                         {
