@@ -440,6 +440,51 @@ public sealed class AreaMapOverlayPluginTests
     }
 
     [Theory]
+    [InlineData(AreaPollenKind.Wild)]
+    [InlineData(AreaPollenKind.Soul)]
+    [InlineData(AreaPollenKind.Primal)]
+    [InlineData(AreaPollenKind.Sacred)]
+    public void Build_HidesOnlyTheDisabledPollenKind(AreaPollenKind disabledKind)
+    {
+        var visibility = new AreaMapPollenVisibility(
+            Wild: disabledKind != AreaPollenKind.Wild,
+            Soul: disabledKind != AreaPollenKind.Soul,
+            Primal: disabledKind != AreaPollenKind.Primal,
+            Sacred: disabledKind != AreaPollenKind.Sacred);
+        var scene = Assert.IsType<AreaMapOverlayScene>(Build(
+            Snapshot(contents:
+            [
+                Content("wild", AreaContentKind.Pollen, AreaContentPhase.Available, Vector2.Zero, pollenKind: AreaPollenKind.Wild),
+                Content("soul", AreaContentKind.Pollen, AreaContentPhase.Available, new Vector2(1, 0), pollenKind: AreaPollenKind.Soul),
+                Content("primal", AreaContentKind.Pollen, AreaContentPhase.Available, new Vector2(2, 0), pollenKind: AreaPollenKind.Primal),
+                Content("sacred", AreaContentKind.Pollen, AreaContentPhase.Available, new Vector2(3, 0), pollenKind: AreaPollenKind.Sacred)
+            ]),
+            settings: AtlasDisplaySettings.Default.AreaMap with { PollenVisibility = visibility }));
+
+        Assert.DoesNotContain(scene.Placements, placement => placement.InstanceId == disabledKind.ToString().ToLowerInvariant());
+        Assert.Equal(3, scene.Placements.Length);
+        Assert.DoesNotContain(scene.Placements, placement => placement.Kind != AreaContentKind.Pollen);
+    }
+
+    [Fact]
+    public void Build_HidesAllPollenWhenMasterSwitchIsDisabledRegardlessOfTypeSettings()
+    {
+        var scene = Assert.IsType<AreaMapOverlayScene>(Build(
+            Snapshot(contents:
+            [
+                Content("wild", AreaContentKind.Pollen, AreaContentPhase.Available, Vector2.Zero, pollenKind: AreaPollenKind.Wild),
+                Content("sacred", AreaContentKind.Pollen, AreaContentPhase.Available, new Vector2(1, 0), pollenKind: AreaPollenKind.Sacred)
+            ]),
+            settings: AtlasDisplaySettings.Default.AreaMap with
+            {
+                ShowPollen = false,
+                PollenVisibility = new AreaMapPollenVisibility(true, true, true, true)
+            }));
+
+        Assert.Empty(scene.Placements);
+    }
+
+    [Theory]
     [InlineData(nameof(AreaMapDisplaySettings.ShowAbyss), AreaContentKind.Abyss)]
     [InlineData(nameof(AreaMapDisplaySettings.ShowBreach), AreaContentKind.Breach)]
     [InlineData(nameof(AreaMapDisplaySettings.ShowEssence), AreaContentKind.Essence)]

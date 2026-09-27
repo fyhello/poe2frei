@@ -17,6 +17,7 @@ public static class AtlasDisplaySettingsValidator
         ArgumentNullException.ThrowIfNull(settings.AreaMap);
         ArgumentNullException.ThrowIfNull(settings.AreaMap.ExpeditionTag);
         ArgumentNullException.ThrowIfNull(settings.AreaMap.ExpeditionPanel);
+        ArgumentNullException.ThrowIfNull(settings.AreaMap.PollenVisibility);
         ArgumentNullException.ThrowIfNull(settings.Navigation);
         ArgumentNullException.ThrowIfNull(settings.Navigation.Rules);
 

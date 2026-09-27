@@ -122,11 +122,24 @@ internal sealed class AreaMapDisplaySettingsDocument
 
     public bool? ShowOmenAltar { get; set; }
 
+    public AreaMapPollenVisibilityDocument? PollenVisibility { get; set; }
+
     public float? LargeMapLabelFontSize { get; set; }
 
     public AreaMapExpeditionTagStyleDocument? ExpeditionTag { get; set; }
 
     public AreaMapExpeditionPanelSettingsDocument? ExpeditionPanel { get; set; }
+}
+
+internal sealed class AreaMapPollenVisibilityDocument
+{
+    public bool? Wild { get; set; }
+
+    public bool? Soul { get; set; }
+
+    public bool? Primal { get; set; }
+
+    public bool? Sacred { get; set; }
 }
 
 internal sealed class AreaMapExpeditionTagStyleDocument

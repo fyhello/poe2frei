@@ -41,7 +41,7 @@ public sealed class AreaMapOverlayPlugin
             .ToHashSet();
         foreach (var content in snapshot.Contents)
         {
-            if (!ShouldShow(content.Kind, settings))
+            if (!ShouldShow(content, settings))
             {
                 continue;
             }
@@ -293,6 +293,21 @@ public sealed class AreaMapOverlayPlugin
     }
 
     private static bool ShouldShow(
+        AreaContentSnapshot content,
+        AreaMapDisplaySettings settings)
+    {
+        if (!ShouldShow(content.Kind, settings))
+        {
+            return false;
+        }
+
+        return content.Kind != AreaContentKind.Pollen
+               || ShouldShowPollenKind(
+                   content.PollenDetails?.Kind ?? AreaPollenKind.Unknown,
+                   settings.PollenVisibility);
+    }
+
+    private static bool ShouldShow(
         AreaContentKind kind,
         AreaMapDisplaySettings settings)
         => kind switch
@@ -308,6 +323,18 @@ public sealed class AreaMapOverlayPlugin
             AreaContentKind.OmenAltar => settings.ShowOmenAltar,
             AreaContentKind.Pollen => settings.ShowPollen,
             _ => false
+        };
+
+    private static bool ShouldShowPollenKind(
+        AreaPollenKind kind,
+        AreaMapPollenVisibility visibility)
+        => kind switch
+        {
+            AreaPollenKind.Wild => visibility.Wild,
+            AreaPollenKind.Soul => visibility.Soul,
+            AreaPollenKind.Primal => visibility.Primal,
+            AreaPollenKind.Sacred => visibility.Sacred,
+            _ => true
         };
 
     private static bool ShouldShow(

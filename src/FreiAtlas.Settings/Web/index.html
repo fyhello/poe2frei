@@ -94,7 +94,13 @@
                 <div class="field"><span>Boss</span><button id="areaMapBossToggle" class="toggle" type="button" role="switch" aria-label="显示 Boss"></button></div>
                 <div class="field"><span>深渊</span><button id="areaMapAbyssToggle" class="toggle" type="button" role="switch" aria-label="显示深渊"></button></div>
                 <div class="field"><span>驱灵仪式</span><button id="areaMapRitualToggle" class="toggle" type="button" role="switch" aria-label="显示驱灵仪式"></button></div>
-                <div class="field"><span>灵火</span><button id="areaMapPollenToggle" class="toggle" type="button" role="switch" aria-label="显示灵火"></button></div>
+                <div class="field pollen-setting"><span>灵火</span><span class="pollen-setting-actions"><button id="areaMapPollenToggle" class="toggle" type="button" role="switch" aria-label="显示灵火"></button><button id="areaMapPollenOptionsButton" class="pollen-options-button" type="button" aria-label="配置灵火类型显示" aria-controls="areaMapPollenVisibility" aria-expanded="false" title="配置灵火类型显示"><i data-lucide="settings-2"></i></button></span></div>
+                <div id="areaMapPollenVisibility" class="pollen-visibility-panel" aria-label="灵火类型显示设置">
+                  <div class="pollen-type-option"><span><i class="pollen-swatch wild"></i>荒野灵火</span><button id="areaMapPollenWildToggle" class="toggle pollen-type-toggle" type="button" role="switch" aria-label="显示荒野灵火"></button></div>
+                  <div class="pollen-type-option"><span><i class="pollen-swatch soul"></i>灵现魂灵</span><button id="areaMapPollenSoulToggle" class="toggle pollen-type-toggle" type="button" role="switch" aria-label="显示灵现魂灵"></button></div>
+                  <div class="pollen-type-option"><span><i class="pollen-swatch primal"></i>原始灵火</span><button id="areaMapPollenPrimalToggle" class="toggle pollen-type-toggle" type="button" role="switch" aria-label="显示原始灵火"></button></div>
+                  <div class="pollen-type-option"><span><i class="pollen-swatch sacred"></i>圣洁灵火</span><button id="areaMapPollenSacredToggle" class="toggle pollen-type-toggle" type="button" role="switch" aria-label="显示圣洁灵火"></button></div>
+                </div>
                 <div class="field"><span>预兆祭坛</span><button id="areaMapOmenAltarToggle" class="toggle" type="button" role="switch" aria-label="显示预兆祭坛"></button></div>
                 <div class="field"><span>裂隙</span><button id="areaMapBreachToggle" class="toggle" type="button" role="switch" aria-label="显示裂隙"></button></div>
                 <div class="field"><span>精华</span><button id="areaMapEssenceToggle" class="toggle" type="button" role="switch" aria-label="显示精华"></button></div>

@@ -414,6 +414,11 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
             ShowRareChests = saved?.ShowRareChests ?? defaults.ShowRareChests,
             ShowPollen = saved?.ShowPollen ?? defaults.ShowPollen,
             ShowOmenAltar = saved?.ShowOmenAltar ?? defaults.ShowOmenAltar,
+            PollenVisibility = new AreaMapPollenVisibility(
+                saved?.PollenVisibility?.Wild ?? defaults.PollenVisibility.Wild,
+                saved?.PollenVisibility?.Soul ?? defaults.PollenVisibility.Soul,
+                saved?.PollenVisibility?.Primal ?? defaults.PollenVisibility.Primal,
+                saved?.PollenVisibility?.Sacred ?? defaults.PollenVisibility.Sacred),
             ExpeditionTag = new AreaMapExpeditionTagStyle(
                 saved?.ExpeditionTag?.BackgroundColor
                     ?? defaults.ExpeditionTag.BackgroundColor,
@@ -569,6 +574,13 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
                         ShowRareChests = settings.AreaMap.ShowRareChests,
                         ShowPollen = settings.AreaMap.ShowPollen,
                         ShowOmenAltar = settings.AreaMap.ShowOmenAltar,
+                        PollenVisibility = new AreaMapPollenVisibilityDocument
+                        {
+                            Wild = settings.AreaMap.PollenVisibility.Wild,
+                            Soul = settings.AreaMap.PollenVisibility.Soul,
+                            Primal = settings.AreaMap.PollenVisibility.Primal,
+                            Sacred = settings.AreaMap.PollenVisibility.Sacred
+                        },
                         LargeMapLabelFontSize = settings.AreaMap.LargeMapLabelFontSize,
                         ExpeditionTag = new AreaMapExpeditionTagStyleDocument
                         {
