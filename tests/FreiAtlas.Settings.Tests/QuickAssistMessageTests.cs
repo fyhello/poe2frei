@@ -16,7 +16,13 @@ public sealed class QuickAssistMessageTests
             Mana = new() { Percentage = 35, Key = "Ctrl+2" }
         };
         Assert.True(Route("updateQuickAssist", new { settings }, out var command));
-        Assert.Equal(settings, Assert.IsType<UpdateQuickAssistWebCommand>(command).Settings);
+        var actual = Assert.IsType<UpdateQuickAssistWebCommand>(command).Settings;
+        Assert.Equal(settings.Health, actual.Health);
+        Assert.Equal(settings.Mana, actual.Mana);
+        Assert.Equal(settings.PortalSqueeze, actual.PortalSqueeze);
+        Assert.Equal(settings.Pickup.Enabled, actual.Pickup.Enabled);
+        Assert.Equal(settings.Pickup.PickupRangeGrid, actual.Pickup.PickupRangeGrid);
+        Assert.Equal(settings.Pickup.Whitelist, actual.Pickup.Whitelist);
     }
 
     [Theory]
@@ -59,7 +65,10 @@ public sealed class QuickAssistMessageTests
         };
 
         Assert.True(Route("updateQuickAssist", new { settings }, out var update));
-        Assert.Equal(settings, Assert.IsType<UpdateQuickAssistWebCommand>(update).Settings);
+        var actual = Assert.IsType<UpdateQuickAssistWebCommand>(update).Settings;
+        Assert.Equal(settings.PortalSqueeze, actual.PortalSqueeze);
+        Assert.Equal(settings.Pickup.Enabled, actual.Pickup.Enabled);
+        Assert.Equal(settings.Pickup.Whitelist, actual.Pickup.Whitelist);
         Assert.True(Route("triggerPortalSqueeze", new { }, out var trigger));
         Assert.IsType<TriggerPortalSqueezeWebCommand>(trigger);
     }

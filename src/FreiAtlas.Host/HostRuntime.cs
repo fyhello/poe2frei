@@ -93,6 +93,19 @@ public sealed class HostRuntime
             return RunPollenProbe(options.ProcessId.Value);
         }
 
+        if (options.GroundItemProbe)
+        {
+            if (options.ProcessId is null)
+            {
+                Console.WriteLine("pid=required");
+                Console.WriteLine("groundItems=unavailable");
+                Console.WriteLine("reason=--pid-is-required");
+                return 2;
+            }
+
+            return RunGroundItemProbe(options.ProcessId.Value);
+        }
+
         if (options.AreaProbe
             || options.AreaWatch
             || options.AreaExpeditionProbe
@@ -482,5 +495,51 @@ public sealed class HostRuntime
         return clientBounds.Width > 0 && clientBounds.Height > 0
             ? new AtlasViewport(clientBounds.Width, clientBounds.Height)
             : null;
+    }
+
+    private static int RunGroundItemProbe(int processId)
+    {
+        if (!ProcessAttachment.TryAttach(processId, out var attachment) || attachment is null)
+        {
+            Console.WriteLine($"pid={processId}");
+            Console.WriteLine("groundItems=unavailable");
+            Console.WriteLine("reason=read-only-process-attach-failed");
+            return 2;
+        }
+
+        using (attachment)
+        {
+            var probe = new FreiAtlas.Game.Memory.GroundItemResearchProbe(attachment.Memory);
+            var result = probe.Capture();
+            var hover = probe.CaptureHover();
+            var window = new GameWindowTracker().Track(processId);
+            var cameraMatrix = result.CameraWorldToScreenMatrix;
+            Console.WriteLine($"pid={result.ProcessId}");
+            Console.WriteLine($"profile={result.ProfileId}");
+            Console.WriteLine($"area={result.Area?.AreaCode ?? "unavailable"}");
+            Console.WriteLine($"playerGrid={result.PlayerGridPosition?.ToString() ?? "unavailable"}");
+            Console.WriteLine($"groundItems=count:{result.Candidates.Count}");
+            foreach (var candidate in result.Candidates)
+            {
+                Console.WriteLine(
+                    $"candidate=id:{candidate.EntityId};grid:{candidate.GridPosition.X:F2},{candidate.GridPosition.Y:F2};"
+                    + $"distance:{candidate.DistanceToPlayer:F2};name:{candidate.ItemName};art:{candidate.ArtName};"
+                    + $"world:{candidate.WorldPosition?.ToString() ?? "unavailable"}");
+            }
+
+            Console.WriteLine("\n--- Scanning Ground Labels from IngameUI ---");
+            var labels = probe.CaptureLabels();
+            Console.WriteLine($"groundLabels=count:{labels.Count}");
+            foreach (var label in labels)
+            {
+                Console.WriteLine(
+                    $"label=text:'{label.Text}';target:'{label.TargetItemName}';path:{label.Path};"
+                    + $"indices:{string.Join(',', label.IndexChain)};addr:0x{label.Address:X};"
+                    + $"size:{label.Size.X:F1}x{label.Size.Y:F1};rel:{label.RelativePosition.X:F1},{label.RelativePosition.Y:F1};"
+                    + $"scale:{label.Scale:F2};textOffset:0x{label.TextPointerOffset:X}");
+            }
+
+            return 0;
+        }
     }
 }

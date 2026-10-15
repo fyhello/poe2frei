@@ -480,7 +480,16 @@ public partial class MainWindow : Window
                     _quickAssist.Current.Vitals,
                     _quickAssist.Current.HealthStatus,
                     _quickAssist.Current.ManaStatus,
-                    portalSqueeze = ToPortalSqueezeState(_quickAssist.PortalSqueeze)
+                    portalSqueeze = ToPortalSqueezeState(_quickAssist.PortalSqueeze),
+                    pickup = new
+                    {
+                        message = _quickAssist.Pickup.Message,
+                        eligibleTarget = _quickAssist.Pickup.EligibleTarget,
+                        entityId = _quickAssist.Pickup.EntityId,
+                        itemName = _quickAssist.Pickup.ItemName,
+                        distanceToPlayer = _quickAssist.Pickup.DistanceToPlayer,
+                        updatedAt = _quickAssist.Pickup.UpdatedAt
+                    }
                 },
                 error = error ?? _portalHotkeyError
             }

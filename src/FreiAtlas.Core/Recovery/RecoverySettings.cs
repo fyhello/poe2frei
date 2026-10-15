@@ -26,6 +26,7 @@ public sealed record QuickAssistSettings
     public RecoveryRule Health { get; init; } = new();
     public RecoveryRule Mana { get; init; } = new() { Percentage = 40, Key = "2" };
     public FreiAtlas.Core.PortalSqueeze.PortalSqueezeSettings PortalSqueeze { get; init; } = new();
+    public FreiAtlas.Core.Pickup.PickupSettings Pickup { get; init; } = new();
     public static QuickAssistSettings Default => new();
 
     public void Validate()
@@ -33,9 +34,11 @@ public sealed record QuickAssistSettings
         ArgumentNullException.ThrowIfNull(Health);
         ArgumentNullException.ThrowIfNull(Mana);
         ArgumentNullException.ThrowIfNull(PortalSqueeze);
+        ArgumentNullException.ThrowIfNull(Pickup);
         Health.Validate();
         Mana.Validate();
         PortalSqueeze.Validate();
+        Pickup.Validate();
     }
 }
 
