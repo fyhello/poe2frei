@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FreiAtlas.Core\FreiAtlas.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="LibBundle3">
+      <HintPath>..\..\libs\LibBundle3.dll</HintPath>
+    </Reference>
+    <Reference Include="LibBundledGGPK3">
+      <HintPath>..\..\libs\LibBundledGGPK3.dll</HintPath>
+    </Reference>
+    <Reference Include="LibGGPK3">
+      <HintPath>..\..\libs\LibGGPK3.dll</HintPath>
+    </Reference>
+    <Reference Include="SystemExtensions">
+      <HintPath>..\..\libs\SystemExtensions.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\libs\oo2core.dll">
+      <Link>oo2core.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Include="..\..\libs\LibBundle3.dll">
+      <Link>LibBundle3.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Include="..\..\libs\LibBundledGGPK3.dll">
+      <Link>LibBundledGGPK3.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Include="..\..\libs\LibGGPK3.dll">
+      <Link>LibGGPK3.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Include="..\..\libs\SystemExtensions.dll">
+      <Link>SystemExtensions.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Include="..\..\data\poe2\colormod_overrides.json">
+      <Link>data\poe2\colormod_overrides.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

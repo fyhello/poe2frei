@@ -6,11 +6,12 @@ namespace FreiAtlas.Game.Tests.Entities;
 internal sealed class EntityMemoryBuilder
 {
     private readonly SyntheticProcessMemory _memory;
-    private long _nextAddress = 0x500000;
+    private long _nextAddress;
 
-    public EntityMemoryBuilder(SyntheticProcessMemory memory)
+    public EntityMemoryBuilder(SyntheticProcessMemory memory, nint firstAddress = 0x500000)
     {
         _memory = memory;
+        _nextAddress = firstAddress;
     }
 
     public SyntheticProcessMemory Memory => _memory;

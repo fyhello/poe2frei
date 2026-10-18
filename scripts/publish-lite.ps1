@@ -6,6 +6,18 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$env:PATH = [Environment]::ExpandEnvironmentVariables($env:PATH)
+if (Test-Path 'C:\BuildTools\VC\Auxiliary\Build\vcvars64.bat') {
+    $cmdPath = Join-Path ($env:SystemRoot ?? 'C:\Windows') 'System32\cmd.exe'
+    if (Test-Path $cmdPath) {
+        & $cmdPath /c "call C:\BuildTools\VC\Auxiliary\Build\vcvars64.bat && set" | ForEach-Object {
+            if ($_ -match '^(.*?)=(.*)$') {
+                Set-Content "env:$($matches[1])" $matches[2]
+            }
+        }
+    }
+}
+
 $workspaceRoot = Split-Path -Parent $PSScriptRoot
 $settingsProjectPath = Join-Path $workspaceRoot 'src\FreiAtlas.Settings\FreiAtlas.Settings.csproj'
 $launcherProjectPath = Join-Path $workspaceRoot 'src\FreiAtlas.Launcher\FreiAtlas.Launcher.csproj'

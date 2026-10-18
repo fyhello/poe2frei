@@ -5,6 +5,36 @@ namespace FreiAtlas.Host.Tests;
 public sealed class HostOptionsTests
 {
     [Fact]
+    public void Parse_GroundItemProbeCapturesExplicitPid()
+    {
+        var options = HostOptions.Parse(["--pid", "30744", "--ground-item-probe"]);
+
+        Assert.Equal(30744, options.ProcessId);
+        Assert.True(options.GroundItemProbe);
+    }
+
+    [Fact]
+    public void Parse_GroundItemProbeWithoutPid_Throws()
+    {
+        Assert.Throws<ArgumentException>(() => HostOptions.Parse(["--ground-item-probe"]));
+    }
+
+    [Fact]
+    public void Parse_GroundItemProbeCannotCombineWithPollenProbe()
+    {
+        Assert.Throws<ArgumentException>(() => HostOptions.Parse(
+            ["--pid", "30744", "--ground-item-probe", "--pollen-probe"]));
+    }
+
+    [Fact]
+    public void Parse_AreaRecordStillCapturesPath()
+    {
+        var options = HostOptions.Parse(["--pid", "30744", "--area-record", "captures"]);
+
+        Assert.Equal("captures", options.AreaRecordPath);
+    }
+
+    [Fact]
     public void Parse_ReplayModeCapturesPath()
     {
         var options = HostOptions.Parse(

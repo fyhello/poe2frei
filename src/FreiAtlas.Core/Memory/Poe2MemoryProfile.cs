@@ -31,6 +31,7 @@ public sealed record Poe2MemoryProfile
     public GameStateLayout GameState { get; init; } = new(0x10, 0x50, 0x10, 12);
 
     public InGameStateLayout InGameState { get; init; } = new(0x290, 0x2F0);
+    public CameraLayout Camera { get; init; } = new(0x368, 0x1A0);
 
     public AreaInstanceLayout AreaInstance { get; init; } = new(
         0x098,
@@ -76,6 +77,16 @@ public sealed record Poe2MemoryProfile
 
     public MinimapIconLayout MinimapIcon { get; init; } = new(0x10);
 
+    // profile-specific and validated against the live WorldItem sample before use.
+    public GroundItemLayout GroundItem { get; init; } = new(
+        WorldItemEntityOffset: 0x28,
+        BaseNameRowOffset: 0x10,
+        NameRowDisplayNameOffset: 0x30,
+        ModsIdentifiedOffset: 0x90,
+        ModsRarityOffset: 0x94,
+        RenderItemResourcePathOffset: 0x28);
+
+
     public ChestLayout Chest { get; init; } = new(0x168);
 
     public StateMachineLayout StateMachine { get; init; } = new(0x20);
@@ -115,6 +126,8 @@ public sealed record Poe2MemoryProfile
         2560f,
         1600f);
 
+    public HoverLayout Hover { get; init; } = new(0x300, 0x3F0, 0xA8, 0x7D8, 0x630, 0x18);
+    public bool HoverOffsetsVerified { get; init; } = true;
     public MapUiLayout MapUi { get; init; } = new(0x350, 0x358, 0x390);
 
     public RuneforgeUiLayout RuneforgeUi { get; init; } = new(
@@ -183,6 +196,7 @@ public sealed record EntityDetailsLayout(int NameOffset, int ComponentLookupOffs
 
 public sealed record ComponentLookupLayout(int BucketOffset, int EntryStride);
 
+public sealed record CameraLayout(int InGameStateCameraOffset, int WorldToScreenMatrixOffset);
 public sealed record RenderLayout(int WorldPositionOffset);
 
 public sealed record PlayerLayout(int NameOffset, int LevelOffset, int MaximumNameLength);
@@ -207,6 +221,14 @@ public sealed record ObjectMagicPropertiesLayout(
     int ModElementStride,
     int ModRecordOffset,
     int ModIdPointerOffset);
+
+public sealed record GroundItemLayout(
+    int WorldItemEntityOffset,
+    int BaseNameRowOffset,
+    int NameRowDisplayNameOffset,
+    int ModsIdentifiedOffset,
+    int ModsRarityOffset,
+    int RenderItemResourcePathOffset);
 
 public sealed record MinimapIconLayout(int CompletedOffset);
 
@@ -257,6 +279,14 @@ public sealed record UiElementLayout(
     float BaseResolutionHeight = 1600f);
 
 public sealed record MapUiLayout(int ShiftOffset, int DefaultShiftOffset, int ZoomOffset);
+
+public sealed record HoverLayout(
+    int MouseOverHostFromInGameStateOffset,
+    int MouseOverSubFromHostOffset,
+    int MouseOverEntityFromSubOffset,
+    int HoverTrackerFromUiRootOffset,
+    int HoverTrackerWorldTrackerOffset,
+    int HoverTrackerHoveredEntityOffset);
 
 public sealed record RuneforgeUiLayout(
     IReadOnlyList<uint> PanelFlagFingerprints,

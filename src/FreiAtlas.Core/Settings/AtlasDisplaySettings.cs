@@ -65,6 +65,15 @@ public sealed record AreaMapExpeditionPanelSettings(
         new(true, true);
 }
 
+public sealed record AreaMapPollenVisibility(
+    bool Wild,
+    bool Soul,
+    bool Primal,
+    bool Sacred)
+{
+    public static AreaMapPollenVisibility Default { get; } = new(true, true, true, true);
+}
+
 public sealed record AreaMapDisplaySettings(
     bool ShowExpedition,
     bool ShowBoss,
@@ -89,6 +98,9 @@ public sealed record AreaMapDisplaySettings(
     public bool ShowPollen { get; init; } = true;
 
     public bool ShowOmenAltar { get; init; } = true;
+
+    public AreaMapPollenVisibility PollenVisibility { get; init; } =
+        AreaMapPollenVisibility.Default;
 
     public AreaMapExpeditionTagStyle ExpeditionTag { get; init; } =
         AreaMapExpeditionTagStyle.Default;

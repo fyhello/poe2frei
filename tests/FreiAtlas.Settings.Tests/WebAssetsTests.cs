@@ -182,6 +182,12 @@ public sealed class WebAssetsTests
         Assert.Contains("id=\"areaMapRareMonsterToggle\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"areaMapRareChestsToggle\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"areaMapPollenToggle\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"areaMapPollenOptionsButton\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"areaMapPollenVisibility\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"areaMapPollenWildToggle\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"areaMapPollenSoulToggle\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"areaMapPollenPrimalToggle\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"areaMapPollenSacredToggle\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"areaMapOmenAltarToggle\"", html, StringComparison.Ordinal);
         AssertTagContains(
             html,
@@ -208,6 +214,17 @@ public sealed class WebAssetsTests
         Assert.Contains("settings.areaMap.showAbyss", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showRitual", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showBreach", script, StringComparison.Ordinal);
+        Assert.Contains("settings.areaMap.pollenVisibility", script, StringComparison.Ordinal);
+        Assert.Contains("aria-controls=\"areaMapPollenVisibility\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-expanded=\"false\"", html, StringComparison.Ordinal);
+        Assert.Contains("bindPollenTypeToggle('areaMapPollenWildToggle', 'wild')", script, StringComparison.Ordinal);
+        Assert.Contains("bindPollenTypeToggle('areaMapPollenSoulToggle', 'soul')", script, StringComparison.Ordinal);
+        Assert.Contains("bindPollenTypeToggle('areaMapPollenPrimalToggle', 'primal')", script, StringComparison.Ordinal);
+        Assert.Contains("bindPollenTypeToggle('areaMapPollenSacredToggle', 'sacred')", script, StringComparison.Ordinal);
+        Assert.Contains("classList.toggle('open', pollenOptionsExpanded)", script, StringComparison.Ordinal);
+        Assert.Contains("pollenOptionsExpanded = !pollenOptionsExpanded", script, StringComparison.Ordinal);
+        Assert.Contains("pollenOptionsExpanded", script, StringComparison.Ordinal);
+        Assert.Contains("areaMapPollenOptionsButton", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showEssence", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showIncursion", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showStrongbox", script, StringComparison.Ordinal);
@@ -215,6 +232,8 @@ public sealed class WebAssetsTests
         Assert.Contains("settings.areaMap.showRareChests", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showPollen", script, StringComparison.Ordinal);
         Assert.Contains("settings.areaMap.showOmenAltar", script, StringComparison.Ordinal);
+        Assert.Contains(".pollen-visibility-panel", File.ReadAllText(Path.Combine(WebRoot(), "app.css")), StringComparison.Ordinal);
+        Assert.Contains(".pollen-swatch.wild", File.ReadAllText(Path.Combine(WebRoot(), "app.css")), StringComparison.Ordinal);
         Assert.DoesNotContain("areaMapLabelFontSize", html, StringComparison.Ordinal);
         Assert.DoesNotContain("areaMapExpeditionBackgroundColor", html, StringComparison.Ordinal);
         Assert.DoesNotContain("areaMapExpeditionBackgroundOpacity", html, StringComparison.Ordinal);

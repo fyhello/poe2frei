@@ -42,6 +42,8 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
 
     public int ItemCount => _values.Count;
 
+    public ImmutableDictionary<string, decimal> AllValues => _values;
+
     public string LeagueId { get; }
 
     public static ExpeditionPriceSnapshot Empty { get; } =

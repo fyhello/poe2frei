@@ -13,6 +13,7 @@
     <Project Path="src/FreiAtlas.Plugin.ExpeditionPanel/FreiAtlas.Plugin.ExpeditionPanel.csproj" />
     <Project Path="src/FreiAtlas.Settings/FreiAtlas.Settings.csproj" />
     <Project Path="src/FreiAtlas.QuickAssist/FreiAtlas.QuickAssist.csproj" />
+    <Project Path="src/FreiAtlas.Patcher/FreiAtlas.Patcher.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FreiAtlas.QuickAssist.Tests/FreiAtlas.QuickAssist.Tests.csproj">
@@ -46,6 +47,9 @@
       <Platform Project="x64" />
     </Project>
     <Project Path="tests/FreiAtlas.Settings.Tests/FreiAtlas.Settings.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Patcher.Tests/FreiAtlas.Patcher.Tests.csproj">
       <Platform Project="x64" />
     </Project>
   </Folder>

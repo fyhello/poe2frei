@@ -1,0 +1,756 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>LibGGPK3</name>
+    </assembly>
+    <members>
+        <member name="T:LibGGPK3.GGFileStream">
+            <summary>
+            <see cref="T:System.IO.Stream"/> to access a file in <see cref="T:LibGGPK3.GGPK"/>
+            </summary>
+            <remarks>
+            Use this class only when you have to use a <see cref="T:System.IO.Stream"/>,
+            otherwise use <see cref="M:LibGGPK3.Records.FileRecord.Read"/> and <see cref="M:LibGGPK3.Records.FileRecord.Write(System.ReadOnlySpan{System.Byte},System.Nullable{System.Runtime.Intrinsics.Vector256{System.Byte}})"/> instead for better performance.
+            </remarks>
+        </member>
+        <member name="P:LibGGPK3.GGFileStream.Record">
+            <summary>
+            The <see cref="T:LibGGPK3.Records.FileRecord"/> this stream created with
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.GGFileStream.#ctor(LibGGPK3.Records.FileRecord)">
+            <summary>
+            Create a <see cref="T:LibGGPK3.GGFileStream"/> with a existing <see cref="T:LibGGPK3.Records.FileRecord"/>
+            </summary>
+            <remarks>Each <see cref="T:LibGGPK3.Records.FileRecord"/> can only have one instance of <see cref="T:LibGGPK3.GGFileStream"/> at the same time</remarks>
+            <exception cref="T:System.InvalidOperationException">Thrown when an instance of <see cref="T:LibGGPK3.GGFileStream"/> is exist with the <paramref name="record"/></exception>
+        </member>
+        <member name="M:LibGGPK3.GGFileStream.Flush">
+            <summary>
+            Write all changes to GGPK.
+            Don't call this function before completing all modifications to avoid unnecessary repeated writing and waste of space.
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.GGFileStream.SetLength(System.Int64)">
+            <summary>
+            This won't affect the actual file before <see cref="M:LibGGPK3.GGFileStream.Flush"/> or <see cref="M:LibGGPK3.GGFileStream.Dispose(System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.GGFileStream.Write(System.Byte[],System.Int32,System.Int32)">
+            <summary>
+            Won't affect the actual file before <see cref="M:LibGGPK3.GGFileStream.Flush"/> or <see cref="M:LibGGPK3.GGFileStream.Dispose(System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.GGFileStream.Write(System.ReadOnlySpan{System.Byte})">
+            <summary>
+            Won't affect the actual file before <see cref="M:LibGGPK3.GGFileStream.Flush"/> or <see cref="M:LibGGPK3.GGFileStream.Dispose(System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.GGFileStream.WriteByte(System.Byte)">
+            <summary>
+            Won't affect the actual file before <see cref="M:LibGGPK3.GGFileStream.Flush"/> or <see cref="M:LibGGPK3.GGFileStream.Dispose(System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.GGFileStream.CanSeek">
+            <returns><see langword="true"/></returns>
+        </member>
+        <member name="F:LibGGPK3.GGFileStream._Position">
+            <summary>Temporarily store the position before <see cref="F:LibGGPK3.GGFileStream._Buffer"/> is initialized</summary>
+        </member>
+        <member name="M:LibGGPK3.GGFileStream.Dispose(System.Boolean)">
+            <param name="disposing"><see langword="true"/> to call <see cref="M:LibGGPK3.GGFileStream.Flush"/> first</param>
+        </member>
+        <member name="T:LibGGPK3.GGPK">
+            <summary>
+            Class to handle the Content.ggpk file.
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.GGPK.Version">
+            <summary>
+            Version of format of this ggpk file.
+            3 for PC, 4 for Mac, 2 for gmae-version before 3.11.2 which has no bundle in ggpk.
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.GGPK.Record">
+            <summary>
+            Contains information about the ggpk file
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.GGPK.Root">
+            <summary>
+            Root directory of the tree structure in ggpk
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.GGPK.FirstFreeRecord">
+            <summary>
+            First FreeRecord in linked-list
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.GGPK.FreeRecords">
+            <summary>Free spaces in ggpk</summary>
+            <remarks>Note that you shouldn't cache the results, as they may be changed or become invalid with any write operation</remarks>
+        </member>
+        <member name="M:LibGGPK3.GGPK.#ctor(System.String)">
+            <param name="filePath">Path to Content.ggpk on disk</param>
+            <exception cref="T:System.IO.FileNotFoundException" />
+        </member>
+        <member name="M:LibGGPK3.GGPK.#ctor(System.IO.Stream,System.Boolean)">
+            <param name="stream">Stream of the Content.ggpk file</param>
+            <param name="leaveOpen">If false, close the <paramref name="stream"/> when this instance is disposed</param>
+        </member>
+        <member name="M:LibGGPK3.GGPK.ReadRecord">
+            <summary>
+            Read a record from GGPK at current stream position
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.GGPK.ReadRecord(System.Int64)">
+            <summary>
+            Read a record from GGPK with <paramref name="offset"/> in bytes
+            </summary>
+            <param name="offset">Record offset, null for current stream position</param>
+        </member>
+        <member name="M:LibGGPK3.GGPK.FindBestFreeRecord(System.UInt32,System.Int64)">
+            <summary>
+            Find the most suitable FreeRecord from <see cref="P:LibGGPK3.GGPK.FreeRecords"/> to write a <see cref="T:LibGGPK3.Records.BaseRecord"/> with length of <paramref name="length"/>,
+            or <see langword="null"/> if no one found (in this case, write at the end of the ggpk instead).
+            </summary>
+            <param name="length"><see cref="P:LibGGPK3.Records.BaseRecord.Length"/></param>
+            <param name="maxOffset">Limit the <see cref="P:LibGGPK3.Records.BaseRecord.Offset"/> of returned <see cref="T:LibGGPK3.Records.FreeRecord"/> to less than <paramref name="maxOffset"/></param>
+        </member>
+        <member name="M:LibGGPK3.GGPK.FastCompact(System.Nullable{System.Threading.CancellationToken},System.IProgress{System.Int32})">
+            <summary>
+            Compact the ggpk to reduce its size
+            </summary>
+            <param name="progress">
+            returns the number of FreeRecords remaining to be filled.
+            This won't be always decreasing.
+            </param>
+        </member>
+        <member name="M:LibGGPK3.GGPK.FixFreeRecordList">
+            <summary>
+            Try to fix the broken FreeRecord Linked List
+            </summary>
+            <remarks>
+            Currently not used
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.GGPK.FreeRecordConcat">
+            <summary>
+            Merge all adjacent FreeRecords
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.GGPK.Extract(LibGGPK3.Records.TreeNode,System.String,System.Func{LibGGPK3.Records.FileRecord,System.String,System.Boolean})">
+            <summary>
+            Extract files under a node recursively to a <paramref name="path"/> on disk.
+            </summary>
+            <param name="record">Node to extract</param>
+            <param name="path">Path to save</param>
+            <param name="callback">
+            Optional function to be called right after extracting each file.
+            <para>Provides the file extracted and its full path on disk.</para>
+            <para>Return <see langword="true"/> to cancel processing remaining files.</para>
+            </param>
+            <returns>Number of files extracted.</returns>
+        </member>
+        <member name="M:LibGGPK3.GGPK.Replace(LibGGPK3.Records.TreeNode,System.String,System.Func{LibGGPK3.Records.FileRecord,System.String,System.Boolean})">
+            <summary>
+            Replace files under a node recursively from a <paramref name="path"/> on disk.
+            </summary>
+            <param name="record">Node to replace</param>
+            <param name="path">Path to read files to replace</param>
+            <param name="callback">
+            Optional function to be called right after replacing each file.
+            <para>Provides the file replaced and its full path on disk.</para>
+            <para>Return <see langword="true"/> to cancel processing remaining files.</para>
+            </param>
+            <returns>Number of files replaced.</returns>
+        </member>
+        <member name="M:LibGGPK3.GGPK.Replace(LibGGPK3.Records.DirectoryRecord,System.Collections.Generic.IEnumerable{System.IO.Compression.ZipArchiveEntry},System.Func{LibGGPK3.Records.FileRecord,System.String,System.Boolean,System.Boolean},System.Boolean)">
+            <summary>
+            Replace files under a node recursively from <paramref name="zipEntries"/>.
+            </summary>
+            <param name="root">Node to replace</param>
+            <param name="zipEntries">Entries to read files to replace</param>
+            <param name="callback">
+            Optional function to be called right after replacing each file.
+            <para>Provides the file replaced and its full path on disk,
+            and a <see cref="T:System.Boolean"/> indicating whether the file is added (<see langword="false"/> for replaced).</para>
+            <para>Return <see langword="true"/> to cancel processing remaining files.</para>
+            </param>
+            <param name="allowAdd">Allow adding new files to ggpk.
+            <see langword="false"/> to throw <see cref="T:System.IO.FileNotFoundException"/> when a file in <paramref name="zipEntries"/> is not found in ggpk.</param>"
+            <returns>Number of files replaced.</returns>
+            <exception cref="T:System.IO.FileNotFoundException">When a file in <paramref name="zipEntries"/> is not found in ggpk, and <paramref name="allowAdd"/> is <see langword="false"/></exception>
+        </member>
+        <member name="M:LibGGPK3.GGPK.RenewHashes(System.Boolean)">
+            <summary>
+            Renew the hashes of all directories after modification.
+            </summary>
+            <param name="forceRenewRoot">
+            The Hash of <see cref="P:LibGGPK3.GGPK.Root"/> and its children won't be renew by default, <see langword="true"/> to force renew them
+            (this will cause the game to start patching on startup and revert all modifications to ggpk).
+            </param>
+            <remarks>
+            <para>This will be automatically called when <see cref="M:LibGGPK3.GGPK.Dispose"/>.</para>
+            <para>Only modifications on this instance will be tracked, this method does not apply retroactively.</para>
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.GGPK.EraseRootHash">
+            <summary>
+            Erase the hashes of <see cref="P:LibGGPK3.GGPK.Root"/> and its children.
+            </summary>
+            <remarks>This will cause the game to start patching on startup
+            and revert all modifications to ggpk from this library.</remarks>
+        </member>
+        <member name="M:LibGGPK3.GGPK.UnsafeGetStream">
+            <summary>
+            Get the field of the base stream of this instance.
+            Using this method may cause dangerous unexpected behavior.
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.LZ4.Decompress(System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.Int32,System.ReadOnlySpan{System.Byte})">
+            <param name="input">Data to decompress</param>
+            <param name="output">Span to store the decompressed data (optional starts with prefix data with <paramref name="prefixSize"/>)</param>
+            <param name="prefixSize">
+            Size in bytes of the prefix data at the start of <paramref name="output"/>.<br />
+            The actual decompressed data will be written to <paramref name="output"/>[<paramref name="prefixSize"/>..].
+            </param>
+            <param name="extDict">External dictionary to use for decompression</param>
+            <returns>Size in bytes of the data written to <paramref name="output"/></returns>
+        </member>
+        <member name="T:LibGGPK3.PatchClient">
+            <summary>
+            Client to interact with the patch server.
+            </summary>
+            <remarks>
+            <para>Currently supports protocol version 6 only.</para>
+            <para>
+            Call <see cref="M:LibGGPK3.PatchClient.ConnectAsync(System.Net.EndPoint)"/> before using other methods.<br />
+            Sample server endpoints are in <see cref="T:LibGGPK3.PatchClient.ServerEndPoints"/>.
+            </para>
+            <para>
+            All async methods will be executed sequentially, executing them simultaneously will only cause more waiting.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:LibGGPK3.PatchClient.ServerEndPoints.US">
+            <summary>
+            patch.pathofexile.com:12995
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.PatchClient.ServerEndPoints.TW">
+            <summary>
+            patch.pathofexile.tw:12999
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.PatchClient.ServerEndPoints.US2">
+            <summary>
+            patch.pathofexile2.com:13064
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.PatchClient.ServerEndPoints.TW2">
+            <summary>
+            patch.pathofexile2.tw:13070
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.PatchClient.CdnUrl">
+            <summary>
+            CDN URL to download patch files. Only available after <see cref="M:LibGGPK3.PatchClient.ConnectAsync(System.Net.EndPoint)"/> is called and completed.
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.PatchClient.QueryDirectoryAsync(System.String,System.Boolean)">
+            <param name="directoryPath"><see cref="M:LibGGPK3.Records.TreeNode.GetPath"/> without trailing slash</param>
+            <param name="throwIfNotFound">Throw <see cref="T:System.ArgumentException"/> if the given directory not found</param>
+            <returns>The entries of the given directory, or <see langword="null"/> if not found</returns>
+        </member>
+        <member name="M:LibGGPK3.PatchClient.UpdateNodeAsync(LibGGPK3.Records.TreeNode,System.Nullable{System.TimeSpan},System.Threading.CancellationToken)">
+            <summary>
+            Update a <paramref name="node"/> in ggpk from the patch server recursively,
+            if its <see cref="P:LibGGPK3.Records.TreeNode.Hash"/> doesn't match or it is <see cref="P:LibGGPK3.GGPK.Root"/>.
+            </summary>
+            <returns>
+            Total number of <see cref="T:LibGGPK3.Records.FileRecord"/>s updated/added/removed.
+            </returns>
+            <remarks>
+            <para>
+            Updating <see cref="P:LibGGPK3.GGPK.Root"/> is equivalent to starting patching of the game.
+            </para>
+            <para>
+            If you want to revert all changes done by this library,
+            you must call <see cref="M:LibGGPK3.GGPK.EraseRootHash"/> first and pass <see cref="P:LibGGPK3.GGPK.Root"/> to <paramref name="node"/>.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.PatchClient.ThrowIfNotMatched(System.Byte,System.Byte)">
+            <exception cref="T:System.IO.InvalidDataException"/>
+        </member>
+        <member name="T:LibGGPK3.Records.BaseRecord">
+            <summary>
+            Base type of all records in GGPK
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.BaseRecord.#ctor(System.UInt32,LibGGPK3.GGPK)">
+            <summary>
+            Base type of all records in GGPK
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.BaseRecord.Ggpk">
+            <summary>
+            GGPK which contains this record
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.BaseRecord.Offset">
+            <summary>
+            Offset in pack file where record begins
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.BaseRecord.Length">
+            <summary>
+            Length of the entire record in bytes
+            </summary>
+            <remarks>
+            If you're looking for the file length, <see cref="P:LibGGPK3.Records.FileRecord.DataLength"/> may be what you want
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.BaseRecord.WriteRecordData">
+            <summary>
+            Write the record data to the current position of GGPK stream, this method must set <see cref="P:LibGGPK3.Records.BaseRecord.Offset"/> to where the record begins
+            </summary>
+        </member>
+        <member name="T:LibGGPK3.Records.BaseRecord.LengthWrapper">
+            <summary>
+            For <see cref="M:System.MemoryExtensions.BinarySearch``1(System.ReadOnlySpan{``0},System.IComparable{``0})"/> to search span sorted by <see cref="P:LibGGPK3.Records.BaseRecord.Length"/>
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.BaseRecord.LengthWrapper.#ctor(System.UInt32)">
+            <summary>
+            For <see cref="M:System.MemoryExtensions.BinarySearch``1(System.ReadOnlySpan{``0},System.IComparable{``0})"/> to search span sorted by <see cref="P:LibGGPK3.Records.BaseRecord.Length"/>
+            </summary>
+        </member>
+        <member name="T:LibGGPK3.Records.BaseRecord.LengthComparer">
+            <summary>
+            For sorting by <see cref="P:LibGGPK3.Records.BaseRecord.Length"/>
+            </summary>
+        </member>
+        <member name="T:LibGGPK3.Records.BaseRecord.OffsetWrapper">
+            <summary>
+            For <see cref="M:System.MemoryExtensions.BinarySearch``1(System.ReadOnlySpan{``0},System.IComparable{``0})"/> to search span sorted by <see cref="P:LibGGPK3.Records.BaseRecord.Offset"/>
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.BaseRecord.OffsetWrapper.#ctor(System.Int64)">
+            <summary>
+            For <see cref="M:System.MemoryExtensions.BinarySearch``1(System.ReadOnlySpan{``0},System.IComparable{``0})"/> to search span sorted by <see cref="P:LibGGPK3.Records.BaseRecord.Offset"/>
+            </summary>
+        </member>
+        <member name="T:LibGGPK3.Records.BaseRecord.OffsetComparer">
+            <summary>
+            For sorting by <see cref="P:LibGGPK3.Records.BaseRecord.Offset"/>
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.Records.DirectoryRecord.Tag">
+            <summary>PDIR</summary>
+        </member>
+        <member name="T:LibGGPK3.Records.DirectoryRecord.Entry">
+            <summary>
+            Container of <paramref name="nameHash"/> and <paramref name="offset"/> of each entry in children
+            </summary>
+            <remarks>
+            There shouldn't be any duplicate namehash in the same directory
+            </remarks>
+            <param name="nameHash">Murmur2 hash of lowercase entry name (can be calculated by <see cref="M:LibGGPK3.Records.TreeNode.GetNameHash(System.ReadOnlySpan{System.Char})"/>)</param>
+            <param name="offset">Offset in pack file where the record begins</param>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.Entry.#ctor(System.UInt32,System.Int64)">
+            <summary>
+            Container of <paramref name="nameHash"/> and <paramref name="offset"/> of each entry in children
+            </summary>
+            <remarks>
+            There shouldn't be any duplicate namehash in the same directory
+            </remarks>
+            <param name="nameHash">Murmur2 hash of lowercase entry name (can be calculated by <see cref="M:LibGGPK3.Records.TreeNode.GetNameHash(System.ReadOnlySpan{System.Char})"/>)</param>
+            <param name="offset">Offset in pack file where the record begins</param>
+        </member>
+        <member name="F:LibGGPK3.Records.DirectoryRecord.Entry.NameHash">
+            <summary>
+            Murmur2 hash of lowercase entry name (can be calculated by <see cref="M:LibGGPK3.Records.TreeNode.GetNameHash(System.ReadOnlySpan{System.Char})"/>)
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.Records.DirectoryRecord.Entry.Offset">
+            <summary>
+            Offset in pack file where the record begins
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.Records.DirectoryRecord.Entries">
+            <summary>
+            Entries of this directory recorded in ggpk.
+            </summary>
+            <remarks>They must be in order of <see cref="F:LibGGPK3.Records.DirectoryRecord.Entry.NameHash"/></remarks>
+        </member>
+        <member name="F:LibGGPK3.Records.DirectoryRecord.Children">
+            <summary>
+            Children of this directory.
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.#ctor(System.UInt32,LibGGPK3.GGPK)">
+            <summary>
+            Read a DirectoryRecord from GGPK
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.#ctor(System.String,LibGGPK3.GGPK)">
+            <summary>
+            Internal Usage
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.DirectoryRecord.Count">
+            <summary>
+            Child count of this directory.
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.DirectoryRecord.Item(System.UInt32)">
+            <summary>
+            Get child with the given <paramref name="nameHash"/> which can be gotten from <see cref="M:LibGGPK3.Records.TreeNode.GetNameHash(System.ReadOnlySpan{System.Char})"/> or <see cref="P:LibGGPK3.Records.TreeNode.NameHash"/>.
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.DirectoryRecord.Item(System.ReadOnlySpan{System.Char})">
+            <summary>
+            Get child with the given <paramref name="name"/>.
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.TryFindNode(System.ReadOnlySpan{System.Char},LibGGPK3.Records.TreeNode@)">
+            <summary>
+            Find a <see cref="T:LibGGPK3.Records.TreeNode"/> with a <paramref name="path"/> relative to this directory.
+            </summary>
+            <param name="path">Relative path (with forward slash, but not starting or ending with slash) in ggpk under this directory</param>
+            <param name="node">The node found, or <see langword="null"/> when not found, or <see langword="this"/> if <paramref name="path"/> is empty</param>
+            <returns>Whether found a node.</returns>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.FindOrAddDirectory(System.ReadOnlySpan{System.Char},LibGGPK3.Records.DirectoryRecord@)">
+            <summary>
+            Find a <see cref="T:LibGGPK3.Records.DirectoryRecord"/> with a <paramref name="path"/> relative to this directory, or create it if not found.
+            </summary>
+            <param name="path">Relative path (with forward slashes, but not starting with slash) in ggpk under this directory</param>
+            <param name="record">The node found</param>
+            <returns><see langword="true"/> if added a new directory, <see langword="false"/> if found.</returns>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.FindOrAddFile(System.ReadOnlySpan{System.Char},LibGGPK3.Records.FileRecord@,System.Int32)">
+            <summary>
+            Find a <see cref="T:LibGGPK3.Records.FileRecord"/> with a <paramref name="path"/> relative to this directory, or create it if not found.
+            </summary>
+            <param name="path">Relative path (with forward slashes, but not starting or ending with slash) in ggpk under this directory</param>
+            <param name="record">The node found</param>
+            <param name="preallocatedSize">
+            Content size in bytes of the new created file which will be passed to <see cref="M:LibGGPK3.Records.FileRecord.Write(System.ReadOnlySpan{System.Byte},System.Nullable{System.Runtime.Intrinsics.Vector256{System.Byte}})"/> of <paramref name="record"/> later by the caller.
+            Not used when the file already exists.
+            </param>
+            <returns><see langword="true"/> if added a new file, <see langword="false"/> if found.</returns>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.AddDirectory(System.String,LibGGPK3.Records.DirectoryRecord@)">
+            <summary>
+            Add a directory to this directory, or returns the existing one with the same name.
+            </summary>
+            <param name="name">Name of the directory</param>
+            <param name="record">The <see cref="T:LibGGPK3.Records.DirectoryRecord"/> added/existed</param>
+            <see langword="true"/> if the directory is added successfully, <see langword="false"/> if one with the same name already exists.
+            <remarks>
+            If a node exists with the same name but is not a <see cref="T:LibGGPK3.Records.DirectoryRecord"/>, throws <see cref="T:System.Data.DuplicateNameException"/>.
+            <para>Note that modifications made to children of <see cref="P:LibGGPK3.GGPK.Root"/> will be restored immediately when the game starts.</para>
+            </remarks>
+            <exception cref="T:System.Data.DuplicateNameException"/>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.AddFile(System.String,LibGGPK3.Records.FileRecord@,System.Int32)">
+            <summary>
+            Add a file to this directory, or returns the existing one with the same name.
+            </summary>
+            <param name="name">Name of the file</param>
+            <param name="record">The <see cref="T:LibGGPK3.Records.FileRecord"/> added/existed</param>
+            <param name="preallocatedSize">
+            Content size in bytes of the new created file which will be passed to <see cref="M:LibGGPK3.Records.FileRecord.Write(System.ReadOnlySpan{System.Byte},System.Nullable{System.Runtime.Intrinsics.Vector256{System.Byte}})"/> of <paramref name="record"/> later by the caller.
+            Not used when the file already exists.
+            </param>
+            <returns>
+            <see langword="true"/> if the file is added successfully, <see langword="false"/> if one with the same name already exists.
+            </returns>
+            <remarks>
+            If a node exists with the same name but is not a <see cref="T:LibGGPK3.Records.FileRecord"/>, throws <see cref="T:System.Data.DuplicateNameException"/>.
+            <para>Note that modifications made to children of <see cref="P:LibGGPK3.GGPK.Root"/> will be restored immediately when the game starts.</para>
+            </remarks>
+            <exception cref="T:System.Data.DuplicateNameException"/>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.ThrowExist(System.String)">
+            <exception cref="T:System.Data.DuplicateNameException"/>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.InsertNode(LibGGPK3.Records.TreeNode)">
+            <summary>
+            Insert a <paramref name="node"/> to this directory.
+            </summary>
+            <returns>
+            The index of the entry that was inserted, or ~index (always negative) of the existing entry with the same namehash.
+            </returns>
+            <remarks>
+            Note that modifications made to children of <see cref="P:LibGGPK3.GGPK.Root"/> will be restored immediately when the game starts.
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.InsertEntry(LibGGPK3.Records.DirectoryRecord.Entry@)">
+            <summary>
+            Internal implementation of <see cref="M:LibGGPK3.Records.DirectoryRecord.InsertNode(LibGGPK3.Records.TreeNode)"/>.
+            </summary>
+            <returns>
+            The index of the entry that was inserted, or ~index (always negative) of the existing entry with the same namehash.
+            </returns>
+            <remarks>
+            Note that modifications made to children of <see cref="P:LibGGPK3.GGPK.Root"/> will be restored immediately when the game starts.
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.RemoveEntry(System.UInt32)">
+            <summary>
+            Remove the child node with the given namehash
+            </summary>
+            <param name="nameHash"><see cref="P:LibGGPK3.Records.TreeNode.NameHash"/> or namehash calculated from <see cref="M:LibGGPK3.Records.TreeNode.GetNameHash(System.ReadOnlySpan{System.Char})"/></param>
+            <returns>The index of the entry is removed, or ~index of the first entry with a larger namehash if not found</returns>
+            <remarks>
+            Note that modifications made to children of <see cref="P:LibGGPK3.GGPK.Root"/> will be restored immediately when the game starts.
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.CaculateRecordLength">
+            <summary>
+            Caculate the length of the record should be in ggpk file
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.WriteRecordData">
+            <summary>
+            Write the record to ggpk file to its current position
+            </summary>
+            <remarks>
+            <see langword="lock"/> the <see cref="F:LibGGPK3.GGPK.baseStream"/> while calling this method
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.DirectoryRecord.RenewHash(System.Nullable{System.Runtime.Intrinsics.Vector256{System.Byte}})">
+            <summary>
+            Recalculate <see cref="P:LibGGPK3.Records.TreeNode.Hash"/> of the directory, or replace it with the given <paramref name="hash"/>.
+            </summary>
+        </member>
+        <member name="T:LibGGPK3.Records.FileRecord">
+            <summary>
+            Record contains the data of a file.
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.Records.FileRecord.Tag">
+            <summary>FILE</summary>
+        </member>
+        <member name="P:LibGGPK3.Records.FileRecord.DataOffset">
+            <summary>
+            Offset in pack file where the raw data begins
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.FileRecord.DataLength">
+            <summary>
+            Length of the raw file data
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.FileRecord.#ctor(System.String,LibGGPK3.GGPK)">
+            <summary>
+            Internal Usage
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.FileRecord.Read">
+            <summary>
+            Get the file content of this record.
+            </summary>
+            <remarks>Use <see cref="M:LibGGPK3.Records.FileRecord.Read(System.Span{System.Byte},System.Int32)"/> instead to avoid memory allocation.</remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.FileRecord.Read(System.Range)">
+            <summary>
+            Get a part of the file content of this record.
+            </summary>
+            <remarks>Use <see cref="M:LibGGPK3.Records.FileRecord.Read(System.Span{System.Byte},System.Int32)"/> instead to avoid memory allocation.</remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.FileRecord.Read(System.Span{System.Byte},System.Int32)">
+            <summary>
+            Get a part of the file content starting from <paramref name="offset"/>.
+            </summary>
+            <remarks>If the <paramref name="span"/> is too small, the result will be truncated.</remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.FileRecord.Write(System.ReadOnlySpan{System.Byte},System.Nullable{System.Runtime.Intrinsics.Vector256{System.Byte}})">
+            <summary>
+            Replace the file content with <paramref name="newContent"/>,
+            and move this record to a <see cref="T:LibGGPK3.Records.FreeRecord"/> with most suitable size, or end of file if not found.
+            </summary>
+            <param name="hash">
+            The SHA-256 hash of the <paramref name="newContent"/>,
+            or <see langword="null"/> to calculate it with <see cref="M:System.Security.Cryptography.SHA256.HashData(System.ReadOnlySpan{System.Byte},System.Span{System.Byte})"/>.
+            </param>
+        </member>
+        <member name="M:LibGGPK3.Records.FileRecord.Write(System.ReadOnlySpan{System.Byte},System.Int32,System.Nullable{System.Runtime.Intrinsics.Vector256{System.Byte}})">
+            <summary>
+            Write <paramref name="data"/> to the file content starting from <paramref name="offset"/>.
+            The <paramref name="offset"/> + <paramref name="data"/>.Length must be less than or equal to the <see cref="P:LibGGPK3.Records.FileRecord.DataLength"/>.
+            </summary>
+            <param name="hash">
+            The SHA-256 hash of the final file content after writing the <paramref name="data"/>,
+            or <see langword="null"/> to calculate it with <see cref="M:System.Security.Cryptography.SHA256.HashData(System.ReadOnlySpan{System.Byte},System.Span{System.Byte})"/>.
+            </param>
+        </member>
+        <member name="T:LibGGPK3.Records.FreeRecord">
+            <summary>
+            A free record represents space in the pack file that has been marked as deleted. It's much cheaper to just
+            mark areas as free and append data to a suitable location than it is to rebuild the entire pack file just
+            to remove a piece of data.
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.Records.FreeRecord.Tag">
+            <summary>FREE</summary>
+        </member>
+        <member name="P:LibGGPK3.Records.FreeRecord.NextFreeOffset">
+            <summary>
+            Offset of next <see cref="T:LibGGPK3.Records.FreeRecord"/> in the linked-list
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.FreeRecord.IsInvalid">
+            <summary>
+            Whether this FreeRecord is removed from the ggpk and should not be used anymore.
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.FreeRecord.#ctor(System.Int64,System.Int64,LibGGPK3.GGPK)">
+            <summary>
+            Also calls the <see cref="M:LibGGPK3.Records.FreeRecord.WriteRecordData"/>.
+            Please calls <see cref="M:LibGGPK3.Records.FreeRecord.UpdateOffset"/> after this to add the FreeRecord to <see cref="P:LibGGPK3.GGPK.FreeRecords"/>
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.FreeRecord.RemoveFromList">
+            <summary>
+            Remove this FreeRecord from the Linked FreeRecord List of ggpk
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.FreeRecord.UpdateOffset">
+            <summary>
+            Update the link after the Offset of this FreeRecord is changed
+            </summary>
+        </member>
+        <member name="T:LibGGPK3.Records.GGPKRecord">
+            <summary>
+            GGPK record is the very first record and exists at the very beginning of the GGPK file.
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.Records.GGPKRecord.Tag">
+            <summary>GGPK</summary>
+        </member>
+        <member name="P:LibGGPK3.Records.GGPKRecord.GGPKVersion">
+            <summary>
+            3 for PC, 4 for Mac, 2 for gmae-version before 3.11.2 which has no bundle in ggpk.
+            </summary>
+        </member>
+        <member name="T:LibGGPK3.Records.TreeNode">
+            <summary>
+            Base class of <see cref="T:LibGGPK3.Records.FileRecord"/> and <see cref="T:LibGGPK3.Records.DirectoryRecord"/>, represents nodes of the file system tree in ggpk file.
+            </summary>
+            <remarks>
+            Do not extend this class directly, use <see cref="T:LibGGPK3.Records.FileRecord"/> or <see cref="T:LibGGPK3.Records.DirectoryRecord"/> instead.
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.#ctor(System.UInt32,LibGGPK3.GGPK)">
+            <summary>
+            Base class of <see cref="T:LibGGPK3.Records.FileRecord"/> and <see cref="T:LibGGPK3.Records.DirectoryRecord"/>, represents nodes of the file system tree in ggpk file.
+            </summary>
+            <remarks>
+            Do not extend this class directly, use <see cref="T:LibGGPK3.Records.FileRecord"/> or <see cref="T:LibGGPK3.Records.DirectoryRecord"/> instead.
+            </remarks>
+        </member>
+        <member name="P:LibGGPK3.Records.TreeNode.Name">
+            <summary>
+            File/Directory name
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.TreeNode.Hash">
+            <summary>
+            SHA256 hash of the file content
+            </summary>
+        </member>
+        <member name="F:LibGGPK3.Records.TreeNode.SIZE_OF_HASH">
+            <summary>
+            Size of <see cref="P:LibGGPK3.Records.TreeNode.Hash"/> in bytes == <see langword="sizeof"/>(<see cref="T:System.Runtime.Intrinsics.Vector256`1"/>)
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.TreeNode.Parent">
+            <summary>
+            Parent node
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.WriteWithNewLength(System.UInt32,LibGGPK3.Records.FreeRecord)">
+            <summary>
+            Write the modified record data to ggpk file.
+            </summary>
+            <param name="newLength">New length of the record after modification</param>
+            <param name="specify">The specified <see cref="T:LibGGPK3.Records.FreeRecord"/> to be written, <see langword="null"/> for finding a best one automatically</param>
+            <returns>The <see cref="T:LibGGPK3.Records.FreeRecord"/> created at the original position if the record is moved, or <see langword="null"/> if replaced in place.
+            It may also return an existing one if it was expanded to cover the original position.</returns>
+            <remarks>Don't set <see cref="P:LibGGPK3.Records.BaseRecord.Length"/> before calling this method, the method will update it</remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.MarkAsFree">
+            <summary>
+            Set this record to a <see cref="T:LibGGPK3.Records.FreeRecord"/>
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.UpdateOffset">
+            <summary>
+            Update the offset of this record in <see cref="P:LibGGPK3.Records.TreeNode.Parent"/>.<see cref="F:LibGGPK3.Records.DirectoryRecord.Entries"/>
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.CaculateRecordLength">
+            <summary>
+            Caculate the length of the record should be in ggpk file
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.GetPath">
+            <summary>
+            Get the full path in GGPK of this File/Directory
+            </summary>
+        </member>
+        <member name="P:LibGGPK3.Records.TreeNode.NameHash">
+            <summary>
+            Get the murmur hash of name of this File/Directory
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.MoveTo(LibGGPK3.Records.DirectoryRecord)">
+            <summary>
+            Move the node from <see cref="P:LibGGPK3.Records.TreeNode.Parent"/> to <paramref name="directory"/> (which can't be <see cref="P:LibGGPK3.GGPK.Root"/>)
+            </summary>
+            <param name="directory">The new parent node to move to (which can't be <see cref="P:LibGGPK3.GGPK.Root"/>)</param>
+            <remarks>
+            <para><see cref="P:LibGGPK3.GGPK.Root"/> can't be moved.</para>
+            <para>Note that modifications made to children of <see cref="P:LibGGPK3.GGPK.Root"/> will be restored immediately when the game starts.</para>
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.Remove">
+            <summary>
+            Remove this record and all children permanently from ggpk.
+            </summary>
+            <remarks>
+            <para><see cref="P:LibGGPK3.GGPK.Root"/> can't be removed.</para>
+            <para>Note that modifications made to children of <see cref="P:LibGGPK3.GGPK.Root"/> will be restored immediately when the game starts.</para>
+            <para>Do not use any record instance of the removed nodes or its children after calling this, otherwise it may break the ggpk.</para>
+            </remarks>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.MarkAsFreeRecursively">
+            <summary>
+            Internal implementation of <see cref="M:LibGGPK3.Records.TreeNode.Remove"/>
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.RecurseTree(LibGGPK3.Records.TreeNode)">
+            <summary>
+            Recurse all nodes under <paramref name="node"/> (include self)
+            </summary>
+        </member>
+        <member name="M:LibGGPK3.Records.TreeNode.RecurseFiles(LibGGPK3.Records.TreeNode)">
+            <summary>
+            Recurse all <see cref="T:LibGGPK3.Records.FileRecord"/> under <paramref name="node"/> (include self)
+            </summary>
+            <returns>A tuple of <see cref="T:LibGGPK3.Records.FileRecord"/> and its relative path to <paramref name="node"/>
+            (or <see cref="F:System.String.Empty"/> if <paramref name="node"/> is <see cref="T:LibGGPK3.Records.FileRecord"/>)</returns>
+        </member>
+        <member name="T:LibGGPK3.Records.TreeNode.NodeComparer">
+            <summary>
+            Use to sort the children of directory.
+            </summary>
+        </member>
+    </members>
+</doc>

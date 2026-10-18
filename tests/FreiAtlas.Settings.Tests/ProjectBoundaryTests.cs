@@ -75,7 +75,10 @@ public sealed class ProjectBoundaryTests
             var scriptPath = Path.Combine(
                 TestPaths.WorkspaceRoot,
                 "scripts", "prepare-lite-runtimeconfig.ps1");
-            var startInfo = new ProcessStartInfo("powershell.exe")
+            var powerShellExe = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe"))
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe")
+                : "powershell.exe";
+            var startInfo = new ProcessStartInfo(powerShellExe)
             {
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,

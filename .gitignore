@@ -16,6 +16,7 @@
 /runtime-analysis/
 /.superpowers/
 /.playwright-cli/
+/.pi/
 /docs/
 
 # 外部参考仓库与逆向资料

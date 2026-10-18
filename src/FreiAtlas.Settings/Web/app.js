@@ -11,6 +11,7 @@ let draftSettings = null;
 let catalog = [];
 let activePage = 'nodes';
 let navigationSearch = '';
+let pollenOptionsExpanded = false;
 let lastSnapshotAt = 0;
 let hotkeyRecording = false;
 let localHotkeyError = '';
@@ -531,6 +532,15 @@ function bindAreaMapToggle(id, key) {
   });
 }
 
+function bindPollenTypeToggle(id, key) {
+  $(id).addEventListener('click', () => {
+    const settings = editableSettings();
+    if (!settings?.areaMap?.pollenVisibility) return;
+    settings.areaMap.pollenVisibility[key] = !settings.areaMap.pollenVisibility[key];
+    submitSettings(settings);
+  });
+}
+
 function configureAreaMapControls() {
   $('areaMapPanelEntryState').addEventListener('change', () => {
     const settings = editableSettings();
@@ -544,6 +554,14 @@ function configureAreaMapControls() {
   bindAreaMapToggle('areaMapAbyssToggle', 'showAbyss');
   bindAreaMapToggle('areaMapRitualToggle', 'showRitual');
   bindAreaMapToggle('areaMapPollenToggle', 'showPollen');
+  bindPollenTypeToggle('areaMapPollenWildToggle', 'wild');
+  bindPollenTypeToggle('areaMapPollenSoulToggle', 'soul');
+  bindPollenTypeToggle('areaMapPollenPrimalToggle', 'primal');
+  bindPollenTypeToggle('areaMapPollenSacredToggle', 'sacred');
+  $('areaMapPollenOptionsButton').addEventListener('click', () => {
+    pollenOptionsExpanded = !pollenOptionsExpanded;
+    renderAreaMap();
+  });
   bindAreaMapToggle('areaMapOmenAltarToggle', 'showOmenAltar');
   bindAreaMapToggle('areaMapBreachToggle', 'showBreach');
   bindAreaMapToggle('areaMapEssenceToggle', 'showEssence');
@@ -577,6 +595,15 @@ function renderAreaMap() {
   setToggle($('areaMapAbyssToggle'), settings.areaMap.showAbyss);
   setToggle($('areaMapRitualToggle'), settings.areaMap.showRitual);
   setToggle($('areaMapPollenToggle'), settings.areaMap.showPollen);
+  const pollenVisibility = settings.areaMap.pollenVisibility || { wild: true, soul: true, primal: true, sacred: true };
+  const pollenTypesEnabled = Boolean(settings.areaMap.showPollen);
+  setToggle($('areaMapPollenWildToggle'), pollenVisibility.wild);
+  setToggle($('areaMapPollenSoulToggle'), pollenVisibility.soul);
+  setToggle($('areaMapPollenPrimalToggle'), pollenVisibility.primal);
+  setToggle($('areaMapPollenSacredToggle'), pollenVisibility.sacred);
+  ['areaMapPollenWildToggle', 'areaMapPollenSoulToggle', 'areaMapPollenPrimalToggle', 'areaMapPollenSacredToggle'].forEach(id => { $(id).disabled = !pollenTypesEnabled; });
+  $('areaMapPollenOptionsButton').setAttribute('aria-expanded', String(pollenOptionsExpanded));
+  $('areaMapPollenVisibility').classList.toggle('open', pollenOptionsExpanded);
   setToggle($('areaMapOmenAltarToggle'), settings.areaMap.showOmenAltar);
   setToggle($('areaMapBreachToggle'), settings.areaMap.showBreach);
   setToggle($('areaMapEssenceToggle'), settings.areaMap.showEssence);
@@ -694,6 +721,9 @@ function showPage(page) {
   activePage = page;
   document.querySelectorAll('.page').forEach(item => item.classList.toggle('active', item.id === page));
   document.querySelectorAll('.nav-button').forEach(item => item.classList.toggle('active', item.dataset.page === page));
+  if (page === 'clientPatch') {
+    post('getPatcherStatus');
+  }
 }
 
 function closeProcessMenu() {
@@ -705,6 +735,7 @@ async function initialize() {
   catalog = await fetch('assets/content-catalog.json').then(response => response.json());
   window.quickAssistUi?.initialize(() => { hotkeyRecording = false; renderHotkey(); });
   window.pricesUi?.initialize();
+  window.patcherUi?.initialize();
   configureAreaMapControls();
   configureVisualControls();
   document.querySelectorAll('.nav-button').forEach(button => button.addEventListener('click', () => showPage(button.dataset.page)));
@@ -769,6 +800,7 @@ async function initialize() {
     const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
     if (message?.version === protocolVersion && message.type === 'quickAssistSnapshot') window.quickAssistUi?.receive(message.payload);
     if (message?.version === protocolVersion && message.type === 'pricesSnapshot') window.pricesUi?.receive(message.payload);
+    if (message?.version === protocolVersion && message.type === 'patcherSnapshot') window.patcherUi?.receive(message.payload);
     if (message?.version === protocolVersion && message.type === 'snapshot') {
       const snapshot = message.payload;
       if (draftSettings && settingsEqual(snapshot.settings, draftSettings)) {

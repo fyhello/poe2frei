@@ -20,7 +20,7 @@ public sealed class QuickAssistSession : IAsyncDisposable
     public QuickAssistSnapshot Current => _runtime.Current;
 
     public PortalSqueezeSnapshot PortalSqueeze => _runtime.PortalSqueeze;
-
+    public PickupMonitorSnapshot Pickup => _runtime.Pickup;
     public int SelectedProcessId => _runtime.SelectedProcessId;
 
     public void SelectProcess(int? processId) => _runtime.SelectProcess(processId);

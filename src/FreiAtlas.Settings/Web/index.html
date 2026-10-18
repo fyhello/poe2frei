@@ -6,6 +6,7 @@
   <title>FreiAtlas 设置</title>
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="prices.css">
+  <link rel="stylesheet" href="patcher.css">
 </head>
 <body>
   <div class="app-shell">
@@ -31,6 +32,7 @@
           <button class="nav-button" type="button" data-page="visuals"><i data-lucide="sliders-horizontal"></i><span>视觉样式</span></button>
           <button class="nav-button" type="button" data-page="quickAssist"><i data-lucide="keyboard"></i><span>快捷助手</span></button>
           <button class="nav-button" type="button" data-page="prices"><i data-lucide="coins"></i><span>物价设置</span></button>
+          <button class="nav-button" type="button" data-page="clientPatch"><i data-lucide="wrench"></i><span>客户端补丁</span></button>
         </nav>
         <div class="sidebar-bottom">
           <button id="hotkeyButton" class="sidebar-command hotkey-command" type="button" aria-pressed="false" disabled><i data-lucide="keyboard"></i><span class="command-label">启停快捷键</span><kbd id="hotkeyValue">正在加载</kbd></button>
@@ -94,7 +96,13 @@
                 <div class="field"><span>Boss</span><button id="areaMapBossToggle" class="toggle" type="button" role="switch" aria-label="显示 Boss"></button></div>
                 <div class="field"><span>深渊</span><button id="areaMapAbyssToggle" class="toggle" type="button" role="switch" aria-label="显示深渊"></button></div>
                 <div class="field"><span>驱灵仪式</span><button id="areaMapRitualToggle" class="toggle" type="button" role="switch" aria-label="显示驱灵仪式"></button></div>
-                <div class="field"><span>灵火</span><button id="areaMapPollenToggle" class="toggle" type="button" role="switch" aria-label="显示灵火"></button></div>
+                <div class="field pollen-setting"><span>灵火</span><span class="pollen-setting-actions"><button id="areaMapPollenToggle" class="toggle" type="button" role="switch" aria-label="显示灵火"></button><button id="areaMapPollenOptionsButton" class="pollen-options-button" type="button" aria-label="配置灵火类型显示" aria-controls="areaMapPollenVisibility" aria-expanded="false" title="配置灵火类型显示"><i data-lucide="settings-2"></i></button></span></div>
+                <div id="areaMapPollenVisibility" class="pollen-visibility-panel" aria-label="灵火类型显示设置">
+                  <div class="pollen-type-option"><span><i class="pollen-swatch wild"></i>荒野灵火</span><button id="areaMapPollenWildToggle" class="toggle pollen-type-toggle" type="button" role="switch" aria-label="显示荒野灵火"></button></div>
+                  <div class="pollen-type-option"><span><i class="pollen-swatch soul"></i>灵现魂灵</span><button id="areaMapPollenSoulToggle" class="toggle pollen-type-toggle" type="button" role="switch" aria-label="显示灵现魂灵"></button></div>
+                  <div class="pollen-type-option"><span><i class="pollen-swatch primal"></i>原始灵火</span><button id="areaMapPollenPrimalToggle" class="toggle pollen-type-toggle" type="button" role="switch" aria-label="显示原始灵火"></button></div>
+                  <div class="pollen-type-option"><span><i class="pollen-swatch sacred"></i>圣洁灵火</span><button id="areaMapPollenSacredToggle" class="toggle pollen-type-toggle" type="button" role="switch" aria-label="显示圣洁灵火"></button></div>
+                </div>
                 <div class="field"><span>预兆祭坛</span><button id="areaMapOmenAltarToggle" class="toggle" type="button" role="switch" aria-label="显示预兆祭坛"></button></div>
                 <div class="field"><span>裂隙</span><button id="areaMapBreachToggle" class="toggle" type="button" role="switch" aria-label="显示裂隙"></button></div>
                 <div class="field"><span>精华</span><button id="areaMapEssenceToggle" class="toggle" type="button" role="switch" aria-label="显示精华"></button></div>
@@ -181,15 +189,913 @@
           <p id="priceCatalogError" class="price-warning" role="status"></p>
           <p id="priceError" class="assistant-error" role="alert"></p>
         </section>
+
+        <section id="clientPatch" class="page">
+          <div class="page-head">
+            <div>
+              <h1>客户端补丁</h1>
+              <span class="page-meta">游戏原生资源强化与微调</span>
+            </div>
+            <button class="link-button reset-page" type="button" data-reset="clientPatch">恢复本页默认值</button>
+          </div>
+
+          <!-- 游戏环境与状态指示条 -->
+          <div class="patcher-status-banner">
+            <div class="patcher-meta-row">
+              <div class="patcher-dir-group">
+                <input id="patcherGameDir" class="patcher-dir-input" type="text" placeholder="PoE2 游戏目录 (例: E:\Path of Exile 2)">
+                <button id="btnSetGameDir" class="secondary-button" type="button">更新路径</button>
+              </div>
+              <div class="patcher-badges">
+                <span id="patcherBadgeMode" class="patcher-badge mode-ggpk">检测中</span>
+                <span id="patcherBadgeRun" class="patcher-badge running-safe">检查运行状态</span>
+                <span id="patcherBadgeBackup" class="patcher-badge">检查备份</span>
+                <button id="btnBackupCurrentVersion" class="btn-compact" style="color: #60a5fa; border-color: rgba(96,165,250,0.4);" title="将当前客户端状态拍摄为永久保存的独立快照">
+                  💾 备份当前版本
+                </button>
+                <button id="btnOpenSnapshotsModal" class="btn-compact" style="color: #34d399; border-color: rgba(52,211,153,0.4);" title="查看并管理官方底包、手动备份和最近5版自动快照">
+                  📜 版本备份管理
+                </button>
+                <button id="btnRestorePatches" class="btn-compact" style="color: #f87171; border-color: rgba(239,68,68,0.4);" title="还原所有游戏文件索引为纯净官方状态">
+                  ↺ 恢复纯净
+                </button>
+              </div>
+            </div>
+            <div id="patcherFeedback" class="patcher-feedback" role="alert"></div>
+          </div>
+
+          <!-- 方案 B: 视图 1 - 仪表盘总览 (Hub) -->
+          <div id="patcherHubView">
+            <!-- 8 大功能控制卡片网格 (2 列规整排版) -->
+            <div class="hub-grid" id="hubCardsGrid">
+              <!-- 卡片 1: 词缀染色 -->
+              <div class="hub-card" id="hcard-colormod" data-module="colormod">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">🎨</div>
+                    <div class="hub-card-names">
+                      <strong>词缀多色彩染色</strong>
+                      <span>ColorMod · 文本属性着色</span>
+                    </div>
+                  </div>
+                  <input type="checkbox" checked id="masterToggle-colormod" style="cursor: pointer;" title="总开关">
+                </div>
+                <div class="hub-card-desc">
+                  装备词缀整句或纯数值按类别染色，高危致命词缀警示加粗。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #f87171; border-color: rgba(239,68,68,0.3);">无法回复生命</span>
+                  <span class="hub-badge" style="color: #38b469; border-color: rgba(56,180,105,0.3);">瞬时偷取</span>
+                  <span class="hub-badge" style="color: #60a5fa;">法术暴击</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-colormod" class="hub-status-txt">● 14 条规则生效中</span>
+                  <span class="hub-enter-link">配置细则 ➔</span>
+                </div>
+              </div>
+
+              <!-- 卡片 2: 神图冲天光柱 -->
+              <div class="hub-card" id="hcard-mapbeam" data-module="mapbeam">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">🌟</div>
+                    <div class="hub-card-names">
+                      <strong>神图冲天光柱</strong>
+                      <span>MapBeam · 瓦尔粒子光束</span>
+                    </div>
+                  </div>
+                  <input type="checkbox" checked id="masterToggle-mapbeam" style="cursor: pointer;" title="总开关">
+                </div>
+                <div class="hub-card-desc">
+                  高价值异界神图掉落时，生成 3D 瓦尔垂直冲天呼吸光柱。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #c9a84c;">法鲁丁金柱</span>
+                  <span class="hub-badge" style="color: #4c9a5f;">青玉群岛</span>
+                  <span class="hub-badge" style="color: #e0b33c;">纯净乐园</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-mapbeam" class="hub-status-txt">● 5 种神图光柱激活</span>
+                  <span class="hub-enter-link">配置细则 ➔</span>
+                </div>
+              </div>
+
+              <!-- 卡片 5: 宝箱透视与防暴毙 -->
+              <div class="hub-card" id="hcard-chests" data-module="chests">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">📦</div>
+                    <div class="hub-card-names">
+                      <strong>宝箱透视与防暴毙</strong>
+                      <span>Chests · 保险箱与致命陷阱</span>
+                    </div>
+                  </div>
+                  <input type="checkbox" checked id="masterToggle-chests" style="cursor: pointer;" title="总开关">
+                </div>
+                <div class="hub-card-desc">
+                  奥术师/制图师高价值箱透视，开箱死尸爆炸整行红字警示。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #3b82f6;">奥术师</span>
+                  <span class="hub-badge" style="color: #eab308;">制图师</span>
+                  <span class="hub-badge" style="color: #f87171; font-weight: bold;">⚠️ 死尸爆炸告警</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-chests" class="hub-status-txt">● 陷阱防护开启</span>
+                  <span class="hub-enter-link">配置细则 ➔</span>
+                </div>
+              </div>
+
+              <!-- 卡片 6: 异界传言奖励透视 -->
+              <div class="hub-card" id="hcard-rumours" data-module="rumours">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">🔮</div>
+                    <div class="hub-card-names">
+                      <strong>异界传言奖励透视</strong>
+                      <span>Rumours · 传言石收益解析</span>
+                    </div>
+                  </div>
+                  <input type="checkbox" checked id="masterToggle-rumours" style="cursor: pointer;" title="总开关">
+                </div>
+                <div class="hub-card-desc">
+                  精魂上限、终局天赋点等关键传言产出直接透视，拒绝盲目刷图。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #38b469;">+30 精魂上限</span>
+                  <span class="hub-badge" style="color: #d4a754;">+2 终局天赋点</span>
+                  <span class="hub-badge" style="color: #c084fc;">双倍暗金</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-rumours" class="hub-status-txt">● 4 项传言明细解析</span>
+                  <span class="hub-enter-link">配置细则 ➔</span>
+                </div>
+              </div>
+
+              <!-- 卡片 7: 游戏字体与排版增强 -->
+              <div class="hub-card" id="hcard-fontmod" data-module="fontmod">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">🔤</div>
+                    <div class="hub-card-names">
+                      <strong>游戏字体与排版</strong>
+                      <span>FontMod · 字体替换与缩放</span>
+                    </div>
+                  </div>
+                  <input type="checkbox" checked id="masterToggle-fontmod" style="cursor: pointer;" title="总开关">
+                </div>
+                <div class="hub-card-desc">
+                  思源黑体/霞鹜文楷/得意黑一键切换，本地 TTF 导入与字号缩放。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #cbd5e1;">微软雅黑 (原版默认)</span>
+                  <span class="hub-badge" style="color: #34d399;">缩放 100%</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-fontmod" class="hub-status-txt">● 原生系统渲染中</span>
+                  <span class="hub-enter-link">配置细则 ➔</span>
+                </div>
+              </div>
+
+              <!-- 卡片 8: 原生价格全分类深度注入 -->
+              <div class="hub-card" id="hcard-price" data-module="price">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">💰</div>
+                    <div class="hub-card-names">
+                      <strong>原生价格深度注入</strong>
+                      <span>Price · 原生掉落物价挂接</span>
+                    </div>
+                  </div>
+                  <input type="checkbox" checked id="masterToggle-price" style="cursor: pointer;" title="总开关">
+                </div>
+                <div class="hub-card-desc">
+                  全品类掉落标签注入赛季物价，低价隐藏后缀减少视觉杂乱。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #d4a754;">[★ 280D] 金星</span>
+                  <span class="hub-badge" style="color: #94a3b8;">门槛 &lt;5E 隐藏</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-price" class="hub-status-txt">● 实时物价挂接中</span>
+                  <span class="hub-enter-link">配置细则 ➔</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 方案 B: 视图 2 - 专注配置工作台 (Workbench) -->
+          <div id="patcherWorkbenchView" class="hidden">
+            <!-- 工作台顶栏 -->
+            <div class="wb-navbar">
+              <div class="wb-left-crumb">
+                <button id="btnBackToHub" class="wb-back-btn">← 返回功能总览</button>
+                <span style="color: var(--border-color, #2d3345);">|</span>
+                <span id="wbModuleTitle" class="wb-current-badge">🎨 词缀多色彩染色 (ColorMod)</span>
+              </div>
+              <div class="wb-right-nav">
+                <span style="color: var(--text-muted, #94a3b8); font-size: 11px;">快速直达：</span>
+                <select id="wbModuleSelect" class="preset-select" style="height: 26px;">
+                  <option value="colormod">🎨 词缀染色 (ColorMod)</option>
+                  <option value="mapbeam">🌟 神图光柱 (MapBeam)</option>
+                  <option value="chests">📦 宝箱透视与防暴毙 (Chests)</option>
+                  <option value="rumours">🔮 异界传言透视 (Rumours)</option>
+                  <option value="fontmod">🔤 游戏字体与排版 (FontMod)</option>
+                  <option value="price">💰 原生价格注入 (Price)</option>
+                </select>
+                <button id="btnApplyCurrentWorkbench" class="primary-button" style="height: 26px; padding: 0 10px; font-size: 11px;" title="仅保存并同步当前功能配置到游戏">💾 保存并同步当前功能</button>
+              </div>
+            </div>
+
+            <!-- 8 个功能专注视窗 -->
+            <!-- 模块 1: 词缀染色 -->
+            <div id="psec-colormod" class="patcher-section">
+              <div class="patcher-grid-split">
+                <div class="patcher-box">
+                  <!-- 词缀专属预设与客户端词库管理工具栏 -->
+                  <div class="patcher-preset-bar" style="margin-bottom: 0;">
+                    <div class="preset-left">
+                      <span style="color: var(--text-muted); font-size: 11px;">规则预设：</span>
+                      <select id="presetSelect" class="preset-select" style="min-width: 170px;">
+                        <option value="default">🌟 默认预设 (官方推荐)</option>
+                      </select>
+                      <button id="btnSavePresetModal" class="btn-compact" title="将当前编辑的规则另存为自定义预设">
+                        💾 另存为预设
+                      </button>
+                      <button id="btnDeletePreset" class="btn-compact hidden" style="color: #ef4444; border-color: rgba(239,68,68,0.3);" title="删除选中的自定义预设">
+                        🗑️ 删除预设
+                      </button>
+                      <button id="btnRestoreSnapshot" class="btn-compact" title="读取上一次成功保存到游戏的规则快照">
+                        🕒 引用上次
+                      </button>
+
+                      <button id="btnScanClient" class="btn-compact btn-scan-client" title="从当前游戏客户端提取 StatDescriptions 完整官方词库">
+                        <span id="scanSpinner" class="hidden animate-spin">⟳</span>
+                        <span id="scanBtnText">🎮 读取客户端词库</span>
+                      </button>
+
+                      <span id="clientDictBadge" class="dict-status-badge">
+                        <span id="dictStatusDot" class="dict-status-dot"></span>
+                        <span id="dictStatusText">词库: 内置精选 (86条)</span>
+                      </span>
+                    </div>
+
+                    <div style="display: flex; gap: 6px;">
+                      <button id="btnOpenAddModal" class="btn-compact btn-compact-accent">
+                        ✨ + 添加自定义规则
+                      </button>
+                      <button id="btnOpenImportModal" class="btn-compact">📥 导入</button>
+                      <button id="btnOpenExportModal" class="btn-compact">📤 导出</button>
+                    </div>
+                  </div>
+
+                  <div class="filter-bar">
+                    <div class="pill-tabs">
+                      <button id="pill-通用" class="pill-btn">通用装备</button>
+                      <button id="pill-地图" class="pill-btn active">异界地图</button>
+                      <button id="pill-石板" class="pill-btn">远征石板</button>
+                      <button id="pill-终局地图" class="pill-btn">终局顶级</button>
+                    </div>
+                    <input id="searchInput" type="text" placeholder="搜索关键词 (如反伤/偷取)..." class="search-box">
+                  </div>
+
+                  <div class="table-container">
+                    <table class="compact-table">
+                      <thead>
+                        <tr>
+                          <th style="width: 34px; text-align: center;">
+                            <input type="checkbox" id="chkSelectAllRules" style="cursor: pointer; vertical-align: middle;" title="全选 / 全不选当前筛选的词缀">
+                          </th>
+                          <th style="min-width: 220px; text-align: left;">词缀描述</th>
+                          <th style="width: 65px; text-align: left;">分组</th>
+                          <th style="width: 40px; text-align: center;">色板</th>
+                          <th style="width: 75px; text-align: left;">染色模式</th>
+                          <th style="width: 65px; text-align: left;">标记</th>
+                          <th style="width: 35px; text-align: center;">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="rulesTableBody"></tbody>
+                    </table>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 11px; margin-top: 6px; flex-wrap: wrap; gap: 6px;">
+                    <span id="rulesCountText">当前展示 0 条 (全库 0 条)</span>
+                    <div id="colormodPagination" style="display: flex; align-items: center; gap: 4px;">
+                      <button id="btnFirstPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">首页</button>
+                      <button id="btnPrevPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">上一页</button>
+                      <span id="pageIndicator" style="font-size: 10px; color: var(--text); padding: 0 4px;">1 / 1</span>
+                      <button id="btnNextPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">下一页</button>
+                      <button id="btnLastPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">尾页</button>
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                      <button id="btnBatchCheckAll" class="btn-compact" style="font-size: 10px; height: 22px;" title="将当前筛选的所有词缀批量设为开启">一键全选</button>
+                      <button id="btnBatchUncheckAll" class="btn-compact" style="font-size: 10px; height: 22px;" title="将当前筛选的所有词缀批量设为关闭">一键全不选</button>
+                      <button id="btnBatchWhole" class="btn-compact" style="font-size: 10px; height: 22px;">一键整句</button>
+                      <button id="btnBatchNumber" class="btn-compact" style="font-size: 10px; height: 22px;">一键数字</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 右侧 Tooltip 仿真 -->
+                <div class="preview-sticky-wrap">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600; color: var(--text); font-size: 11.5px;">游戏内装备 Tooltip 实时变色</span>
+                    <select id="cardTypeSelect" class="preset-select" style="height: 22px; font-size: 10px;">
+                      <option value="map">异界地图预览</option>
+                      <option value="gear">传奇防具预览</option>
+                      <option value="tablet">远征石板预览</option>
+                    </select>
+                  </div>
+
+                  <div class="poe-item-card" id="previewPoeCard">
+                    <div class="poe-item-header">
+                      <div class="poe-item-title" id="cardTitle">阿兹莫里山区 (Azmerian Ranges)</div>
+                      <div class="poe-item-subtitle" id="cardSubtitle">阶级: 15 异界地图</div>
+                    </div>
+                    <div id="cardBaseProps" class="poe-props-row">
+                      <span>物品稀有度: <strong style="color: var(--gold-primary);">稀有 (Rare)</strong></span>
+                      <span>物品数量: <strong>+68%</strong></span>
+                    </div>
+                    <div class="poe-divider"></div>
+                    <div id="cardAffixesBox" style="display: grid; gap: 4px; padding: 4px 0;"></div>
+                    <div class="poe-divider"></div>
+                    <div style="font-size: 9.5px; color: #5a6672; text-align: center;">在制图仪中使用以开启传送门</div>
+                  </div>
+
+                  <div class="loot-ground-label" style="text-align: center; margin-top: 4px;">
+                    地面掉落 Label 实时效果: <span id="lootLabelAffix">阿兹莫里山区 [T15]</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模块 2: 神图光柱 -->
+            <div id="psec-mapbeam" class="patcher-section hidden">
+              <div class="patcher-grid-split">
+                <div class="patcher-box" id="mapBeamListContainer"></div>
+                <div class="preview-sticky-wrap">
+                  <span style="font-weight: 600; color: var(--text);">瓦尔垂直冲天光束仿真视窗</span>
+                  <div class="beam-stage">
+                    <div id="beamCore" class="beam-core" style="background: linear-gradient(to top, #c9a84c 0%, rgba(201,168,76,0.6) 40%, transparent 100%);"></div>
+                    <div class="beam-center"></div>
+                    <div id="beamLabel" class="loot-ground-label">青玉群岛 (The Jade Isles)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模块 5: 宝箱透视与防暴毙 -->
+            <div id="psec-chests" class="patcher-section hidden">
+              <div class="patcher-grid-split">
+                <div class="patcher-box" style="gap: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                      <strong style="color: var(--text); font-size: 12px;">高价值保险箱识别与致命陷阱防猝死</strong>
+                      <div style="color: var(--text-muted); font-size: 10px;">从游戏客户端实际数据提取，按关键词语义规则识别打标</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <button id="btnScanChests" class="btn-compact btn-scan-client" title="从当前游戏客户端提取 chests.datc64 真实宝箱条目并按语义规则打标">
+                        <span id="scanChestsSpinner" class="hidden animate-spin">⟳</span>
+                        <span>🎮 读取客户端宝箱</span>
+                      </button>
+                      <span id="chestsStatusBadge" class="dict-status-badge">
+                        <span id="chestsStatusDot" class="dict-status-dot"></span>
+                        <span id="chestsStatusText">宝箱库: 预设</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div style="display: grid; gap: 6px;" id="chestsListContainer"></div>
+                  <div style="border-top: 1px solid var(--border-color); padding-top: 8px;">
+                    <strong style="color: #f87171; font-size: 11px;">⚠️ 致命开箱陷阱词缀警示设置：</strong>
+                    <div style="display: grid; gap: 4px; margin-top: 6px; font-size: 11px; color: var(--text-muted);">
+                      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" checked id="chkChestCorpseExplode">
+                        <span>引爆附近的死尸 (高危瞬间灭顶) - 标红加粗</span>
+                      </label>
+                      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" checked id="chkChestIceNova">
+                        <span>释放极度冰冻与冰霜新星 - 标深蓝警示</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="preview-sticky-wrap">
+                  <span style="font-weight: 600; color: var(--text);">保险箱游戏内实机 Tooltip 模拟</span>
+                  <div class="poe-item-card" style="border-color: #3b82f6;">
+                    <div class="poe-item-header" style="background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent); border-color: #1d4ed8;">
+                      <div style="color: #60a5fa; font-weight: bold; font-size: 12px;">奥术师的保险箱 (Arcanist's Strongbox)</div>
+                      <div style="color: #93c5fd; font-size: 10px;">魔法 保险箱</div>
+                    </div>
+                    <div style="padding: 8px 0; display: grid; gap: 5px;">
+                      <div style="color: #38b469;">额外包含 (4-6) 件通货物品</div>
+                      <div style="color: #f87171; font-weight: bold; background: rgba(239,68,68,0.15); padding: 2px 4px; border-radius: 3px;">
+                        ⚠️ 开箱时引爆附近的死尸
+                      </div>
+                      <div style="color: var(--gold-primary);">包含额外 3 件品质通货</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模块 6: 传言奖励透视与标注 -->
+            <div id="psec-rumours" class="patcher-section hidden">
+              <div class="patcher-grid-split">
+                <div class="patcher-box" style="gap: 10px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                      <strong style="color: var(--text); font-size: 12px;">异界地图传言标注 (Endgame Map Rumours)</strong>
+                      <div style="color: var(--text-muted); font-size: 10px;">从游戏客户端实际数据提取，按规则闭环识别与精准注入</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <button id="btnScanRumours" class="btn-compact btn-scan-client" title="从当前游戏客户端提取 EndgameMaps.datc64 实际传言数据">
+                        <span id="scanRumoursSpinner" class="hidden animate-spin">⟳</span>
+                        <span>🎮 读取客户端传言</span>
+                      </button>
+                      <span id="rumoursStatusBadge" class="dict-status-badge">
+                        <span id="rumoursStatusDot" class="dict-status-dot"></span>
+                        <span id="rumoursStatusText">传言库: 待读取</span>
+                      </span>
+                      <input id="rumourSearch" type="text" placeholder="搜索地图 / 原传言 / 分类..." class="search-box" style="width: 140px;">
+                    </div>
+                  </div>
+                  <div class="table-container" style="max-height: 420px;">
+                    <table class="compact-table">
+                      <thead>
+                        <tr>
+                          <th style="width: 32px; text-align: center;">启</th>
+                          <th style="width: 42px; text-align: center;">行</th>
+                          <th style="width: 95px;">所属地图</th>
+                          <th style="width: 65px; text-align: center;">分类</th>
+                          <th style="width: 145px;">客户端原始传言</th>
+                          <th>注入修改与染色效果</th>
+                        </tr>
+                      </thead>
+                      <tbody id="rumoursTbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="preview-sticky-wrap">
+                  <span style="font-weight: 600; color: var(--text);">异界地图传言 Tooltip 仿真视窗</span>
+                  <div class="poe-item-card" style="border-color: #a855f7;">
+                    <div class="poe-item-header" style="background: linear-gradient(90deg, transparent, rgba(168,85,247,0.3), transparent); border-color: #7e22ce;">
+                      <div id="simRumourMapTitle" style="color: #c084fc; font-weight: bold; font-size: 12px;">漂流者之所 (Castaway)</div>
+                      <div style="color: #e9d5ff; font-size: 10px;">阶级 15 异界地图</div>
+                    </div>
+                    <div style="padding: 10px 0; display: grid; gap: 6px;">
+                      <div style="font-size: 10px; color: var(--text-muted);">区域附带传言词缀：</div>
+                      <div id="simRumourPreviewText" style="color: #eab308; font-weight: bold; font-size: 12px; line-height: 1.4; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 4px; border: 1px dashed rgba(234,179,8,0.3);">
+                        [★ 顛沛領域] 閃光的未必是金……
+                      </div>
+                      <div id="simRumourCategoryTag" style="font-size: 10px; color: #a855f7;">
+                        🏷️ 识别分类：特殊神图
+                      </div>
+                    </div>
+                    <div class="poe-divider"></div>
+                    <div style="font-size: 9.5px; color: #5a6672; text-align: center;">游戏内悬浮或按 Alt 查看传言详情</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模块 7: 字体与排版 -->
+            <div id="psec-fontmod" class="patcher-section hidden">
+              <div class="patcher-grid-split">
+                <div class="patcher-box" style="gap: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                      <strong style="color: var(--text); font-size: 12px;">游戏字体与排版引擎 (Font Settings)</strong>
+                      <div style="color: var(--text-muted); font-size: 10px;">成熟补丁精细基准兜底，双文件协同清除语言覆盖冲突</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <button id="btnScanFontSettings" class="btn-compact btn-scan-client" title="从客户端实际读取 uisettings*.xml 当前生效模板">
+                        <span id="scanFontSpinner" class="hidden animate-spin">⟳</span>
+                        <span>🎮 读取客户端字体配置</span>
+                      </button>
+                      <span id="fontSettingsBadge" class="dict-status-badge">
+                        <span id="fontSettingsDot" class="dict-status-dot"></span>
+                        <span id="fontSettingsText">模板: 待读取</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- 字体预设栏：默认预设锁定兜底，支持另存自定义预设 -->
+                  <div class="patcher-preset-bar" style="margin-bottom: 0;">
+                    <div class="preset-left">
+                      <span style="color: var(--text-muted); font-size: 11px;">排版预设：</span>
+                      <select id="fontPresetSelect" class="preset-select" style="min-width: 195px;">
+                        <option value="default">🌟 成熟推荐预设 (官方标准兜底)</option>
+                      </select>
+                      <button id="btnSaveFontPreset" class="btn-compact" title="将当前编辑的字号与排版另存为自定义预设">
+                        💾 另存预设
+                      </button>
+                      <button id="btnDeleteFontPreset" class="btn-compact hidden" style="color: #ef4444; border-color: rgba(239,68,68,0.3);" title="删除当前选中的自定义预设">
+                        🗑️ 删除
+                      </button>
+                      <button id="btnResetFontPreset" class="btn-compact" title="恢复为成熟官方推荐默认标准">
+                        ↺ 恢复默认
+                      </button>
+                    </div>
+                  </div>
+
+                  <div id="clientFontInfoCard" class="hidden" style="background: var(--patcher-inner-bg); border: 1px solid rgba(52,211,153,0.3); border-radius: 4px; padding: 8px 10px; font-size: 11px; color: var(--text-muted);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                      <span style="color: #34d399; font-weight: 600;">当前客户端生效文件：<span id="cfiFileName">-</span></span>
+                      <span>当前 Typeface：<strong id="cfiCurrentTypeface" style="color: var(--text);">-</strong></span>
+                    </div>
+                    <div>Fallback 回落字体链条：<span id="cfiFallbackChain" style="color: var(--text-secondary); word-break: break-all;">-</span></div>
+                  </div>
+
+                  <!-- 字体选择器 -->
+                  <div style="background: var(--patcher-inner-bg); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-color); display: grid; gap: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <label style="color: var(--text); font-size: 11.5px; font-weight: 600;">目标游戏字体 (系统已安装)：</label>
+                      <span id="fontCountHint" style="color: var(--text-muted); font-size: 10px;">枚举系统中...</span>
+                    </div>
+                    <select id="fontSelectDropdown" class="preset-select" style="width: 100%; height: 30px; font-size: 11.5px;">
+                      <option value="Microsoft YaHei">微软雅黑 (Microsoft YaHei)</option>
+                    </select>
+                  </div>
+
+                  <!-- 细分内容字号详细微调面板 -->
+                  <div style="background: var(--patcher-inner-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); display: grid; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                      <div>
+                        <strong style="color: var(--text); font-size: 11.5px;">细分内容字号个性化调节 (Detail Categories)</strong>
+                        <div style="color: var(--text-muted); font-size: 10px;">针对掉落标签、正文、标题与微小角标分别精准定标</div>
+                      </div>
+                      <span style="font-size: 10px; color: #34d399; background: rgba(52,211,153,0.12); padding: 2px 6px; border-radius: 3px;">
+                        独立独立作用域适配
+                      </span>
+                    </div>
+
+                    <!-- 1. 掉落物与物品标签 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <span style="color: var(--text); font-size: 11px; font-weight: 500;">📦 地面掉落与物品标签：</span>
+                        <div style="color: var(--text-muted); font-size: 9.5px;">地面高亮标签、物品堆叠数量角标、悬浮标题</div>
+                      </div>
+                      <select id="fontSizeDropItemSelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
+                        <option value="-2">微缩 (-2 号字)</option>
+                        <option value="-1">微缩 (-1 号字)</option>
+                        <option value="0" selected>成熟标准 (±0)</option>
+                        <option value="1">醒目 (+1 号字)</option>
+                        <option value="2">清晰 (+2 号字 推荐)</option>
+                        <option value="3">中大 (+3 号字)</option>
+                        <option value="4">超大 (+4 号字)</option>
+                      </select>
+                    </div>
+
+                    <!-- 2. 正文与技能描述 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <span style="color: var(--text); font-size: 11px; font-weight: 500;">💬 通用正文与技能描述：</span>
+                        <div style="color: var(--text-muted); font-size: 9.5px;">天赋树说明、技能石词缀、NPC 任务对话正文</div>
+                      </div>
+                      <select id="fontSizeGeneralSelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
+                        <option value="-2">缩小 (-2 号字)</option>
+                        <option value="-1">微缩 (-1 号字)</option>
+                        <option value="0" selected>成熟标准 (±0)</option>
+                        <option value="1">适度 (+1 号字)</option>
+                        <option value="2">大号 (+2 号字)</option>
+                        <option value="3">极大 (+3 号字)</option>
+                      </select>
+                    </div>
+
+                    <!-- 3. 窗口标题与大字顶栏 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <span style="color: var(--text); font-size: 11px; font-weight: 500;">🏷️ 界面窗口大标题 (防爆框)：</span>
+                        <div style="color: var(--text-muted); font-size: 9.5px;">窗口 Header、结算大标题（中文字体下已内建防爆框）</div>
+                      </div>
+                      <select id="fontSizeTitleSelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
+                        <option value="-4">收敛 (-4 号字)</option>
+                        <option value="-2">紧凑 (-2 号字)</option>
+                        <option value="0" selected>成熟标准 (±0 推荐)</option>
+                        <option value="2">微大 (+2 号字)</option>
+                        <option value="4">宽大 (+4 号字)</option>
+                      </select>
+                    </div>
+
+                    <!-- 4. 状态与微型数值角标 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <span style="color: var(--text); font-size: 11px; font-weight: 500;">🔢 微型角标与价格标签：</span>
+                        <div style="color: var(--text-muted); font-size: 9.5px;">查价标签 [★ 15C]、倒计时、紧凑堆叠微小字</div>
+                      </div>
+                      <select id="fontSizeTinySelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
+                        <option value="-2">极微 (-2 号字)</option>
+                        <option value="-1">精巧 (-1 号字)</option>
+                        <option value="0" selected>成熟标准 (±0)</option>
+                        <option value="1">清晰 (+1 号字 推荐)</option>
+                        <option value="2">醒目 (+2 号字)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- 全局整平微调与加粗 -->
+                  <div style="display: grid; gap: 8px; background: var(--patcher-inner-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <strong style="color: var(--text); font-size: 11.5px;">全局整体平移档位 (Global Scale)：</strong>
+                        <div style="color: var(--text-muted); font-size: 10px;">在当前预设与细分设定的基础上，整盘平移缩放</div>
+                      </div>
+                      <select id="fontSizeDeltaSelect" class="preset-select" style="min-width: 130px; height: 28px; font-size: 11px;">
+                        <option value="-2">整平缩小 (-2 档)</option>
+                        <option value="-1">整平微缩 (-1 档)</option>
+                        <option value="0" selected>标准原准档 (±0)</option>
+                        <option value="1">整平微增 (+1 档)</option>
+                        <option value="2">整平放大 (+2 档)</option>
+                        <option value="3">整平大号 (+3 档)</option>
+                      </select>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <strong style="color: var(--text); font-size: 11.5px;">原生字重加粗 (Weight 700 / Bold)：</strong>
+                        <div style="color: var(--text-muted); font-size: 10px;">注入 DirectWrite 原生加粗，文字质感更饱满清晰</div>
+                      </div>
+                      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="chkFontBold" style="cursor: pointer; width: 16px; height: 16px;">
+                        <span id="boldStatusText" style="font-size: 11px; color: var(--text-muted);">未加粗</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 仿真多内容即时视窗 -->
+                <div class="preview-sticky-wrap">
+                  <span style="font-weight: 600; color: var(--text);">实机多内容渲染即时呈现</span>
+                  
+                  <!-- 1. 地面掉落标签仿真 -->
+                  <div style="background: rgba(0,0,0,0.4); border: 1px solid #c9a84c; border-radius: 4px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div id="simDropItemPreview" style="color: #f3e5ab; font-weight: bold; font-size: 13px;">
+                      ✦ 崇高石 [★ 15C]
+                    </div>
+                    <span id="simTinyBadgePreview" style="font-size: 10px; background: rgba(234,179,8,0.2); color: #eab308; padding: 1px 5px; border-radius: 3px; border: 1px solid rgba(234,179,8,0.4);">
+                      掉落物标签
+                    </span>
+                  </div>
+
+                  <!-- 2. 装备卡片与标题仿真 -->
+                  <div id="fontPreviewCard" class="poe-item-card">
+                    <div class="poe-item-header">
+                      <div id="simTitlePreview" style="color: var(--gold-primary); font-weight: bold; font-size: 13px;">法师之血 重革腰带</div>
+                      <div style="color: #9f8c67; font-size: 10px;">传奇 重革腰带 · 堆叠 1/1</div>
+                    </div>
+                    <div id="simGeneralPreview" style="padding: 8px 0; display: grid; gap: 4px; font-size: 11.5px;">
+                      <div style="color: #60a5fa;">+(30-40) 力量与敏捷</div>
+                      <div style="color: #38b469;">左侧 4 个魔法药剂槽位持续获得充能</div>
+                      <div style="color: var(--gold-primary); font-weight: bold;">魔法药剂的效果永远不会结束</div>
+                    </div>
+                  </div>
+
+                  <div style="font-size: 10px; color: var(--text-muted); line-height: 1.4; background: var(--patcher-inner-bg); padding: 8px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    💡 <strong>调谐提示</strong>：成熟推荐预设已根据中文字体深度优化，调节上方各分类可独立实时改变视窗中对应元素的大小。
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模块 8: 原生物价注入 -->
+            <div id="psec-price" class="patcher-section hidden">
+              <div class="patcher-grid-split">
+                <div class="patcher-box" style="gap: 12px;">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; color: var(--text-muted); background: var(--patcher-inner-bg); padding: 8px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input type="checkbox" checked id="chkPriceCurrency">
+                      <span style="color: var(--text);">基础通货 (神圣/崇高等)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input type="checkbox" checked id="chkPriceUnique">
+                      <span style="color: var(--text);">稀有传奇暗金装备</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input type="checkbox" checked id="chkPriceMaps">
+                      <span style="color: var(--text);">异界神图与圣遗物</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input type="checkbox" checked id="chkPriceCards">
+                      <span style="color: var(--text);">命运卡片与精华</span>
+                    </label>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div>
+                      <label style="color: var(--text-muted); font-size: 11px;">物价后缀分隔符：</label>
+                      <select id="priceSepSelect" class="preset-select" style="width: 100%; height: 30px; margin-top: 4px;">
+                        <option value=" ">空格分隔 (如: 崇高石 [15E])</option>
+                        <option value=" - ">中划线分隔 (如: 崇高石 - [15E])</option>
+                        <option value="|">竖线分隔 (如: 崇高石|[15E])</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="color: var(--text-muted); font-size: 11px;">低价过滤门槛 (低于不显示)：</label>
+                      <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                        <input id="priceFilterMin" type="number" value="5" class="search-box" style="max-width: 80px; height: 30px;">
+                        <span style="color: var(--text-muted); font-size: 11px;">E 以下隐藏</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; align-items: center; justify-content: space-between; background: var(--patcher-inner-bg); padding: 8px 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <span style="color: var(--text-muted); font-size: 11px;">高价值物品醒目金边高亮 (高于 1D)：</span>
+                    <input type="checkbox" id="chkGoldStar" checked style="cursor: pointer;">
+                  </div>
+                </div>
+
+                <div class="preview-sticky-wrap">
+                  <span style="font-weight: 600; color: var(--text);">地面 Label 视觉效果即时模拟</span>
+                  <div style="background: var(--patcher-inner-bg); border: 1px solid var(--border-color); border-radius: 6px; height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px;">
+                    <div id="simPriceUnique" class="loot-ground-label" style="border-color: #a8742b; color: #af6025;">
+                      法师之血 重革腰带 [★ 280D]
+                    </div>
+                    <div id="simPriceDivine" class="loot-ground-label" style="border-color: #d4a754; color: #aa9e82;">
+                      神圣石 [400E]
+                    </div>
+                    <div id="simPriceSmall" class="loot-ground-label" style="border-color: #4b5563; color: #9ca3af; font-size: 10px;">
+                      重铸石 (低于门槛已隐藏物价后缀)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
 
     <footer class="save-bar"><span id="saveStatus">正在加载设置</span><span id="overlayStatus">正在加载运行状态</span></footer>
   </div>
 
+  <!-- 模态框: 添加自定义规则 -->
+  <div id="addCustomModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <strong style="color: var(--text); font-size: 13px;">✨ 添加自定义词缀染色规则</strong>
+        <button id="btnCloseAddModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+        <span style="color: var(--text-muted); font-size: 10px; width: 100%;">快速模板填入：</span>
+        <button id="tplReflect" class="btn-compact" style="font-size: 10px;">物理反伤</button>
+        <button id="tplNoRegen" class="btn-compact" style="font-size: 10px;">无法回复</button>
+        <button id="tplInstantLeech" class="btn-compact" style="font-size: 10px;">瞬偷</button>
+        <button id="tplImmuneChaos" class="btn-compact" style="font-size: 10px;">混沌免疫</button>
+      </div>
+
+      <div style="display: grid; gap: 8px;">
+        <div style="position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+            <label style="color: var(--text-muted); font-size: 11px;">词缀完整文本或关键词：</label>
+            <span id="dictSuggestHint" style="color: #34d399; font-size: 10px;">✓ 已连接官方词库自动补全</span>
+          </div>
+          <input id="modalRuleText" type="text" placeholder="输入关键词 (如: 反射, 免疫, 偷取, 暴击, 抗性)..." class="search-box" style="max-width: 100%; height: 32px;" autocomplete="off">
+          <div id="autocompleteDropdown" class="hidden" style="position: absolute; top: 54px; left: 0; right: 0; background: var(--surface); border: 1px solid var(--gold-border); border-radius: 4px; max-height: 150px; overflow-y: auto; z-index: 100; box-shadow: 0 12px 28px rgba(0,0,0,0.4);"></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="color: var(--text-muted); font-size: 11px;">归属分类：</label>
+            <select id="modalRuleGroup" class="preset-select" style="width: 100%; height: 30px;">
+              <option value="通用">通用装备</option>
+              <option value="地图" selected>异界地图</option>
+              <option value="石板">远征石板</option>
+              <option value="终局地图">终局顶级</option>
+            </select>
+          </div>
+          <div>
+            <label style="color: var(--text-muted); font-size: 11px;">染色方式：</label>
+            <select id="modalRuleStyle" class="preset-select" style="width: 100%; height: 30px;">
+              <option value="Whole">整句着色 (推荐反伤/减益)</option>
+              <option value="NumberOnly">仅高亮数值 (推荐数值加成)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="color: var(--text-muted); font-size: 11px;">高亮颜色：</label>
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
+              <input id="modalRuleColor" type="color" value="#e64545" style="width: 32px; height: 28px; background: none; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;">
+              <span id="modalColorHex" style="font-family: monospace; font-size: 11px; color: var(--gold-primary);">#e64545</span>
+            </div>
+          </div>
+          <div>
+            <label style="color: var(--text-muted); font-size: 11px;">标签微标：</label>
+            <input id="modalRuleTag" type="text" value="自定义" class="search-box" style="max-width: 100%; height: 30px; margin-top: 3px;">
+          </div>
+        </div>
+
+        <!-- 实时效果预览盒 -->
+        <div style="background: var(--patcher-inner-bg); border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; margin-top: 4px;">
+          <span style="color: var(--text-muted); font-size: 10px; display: block; margin-bottom: 4px;">实机渲染效果预览：</span>
+          <div id="modalPreviewBox" style="font-size: 12px; font-weight: bold;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+          <button id="btnCancelModal" class="btn-compact">取消</button>
+          <button id="btnConfirmAddRule" class="primary-button" style="height: 30px; padding: 0 16px;">确认添加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框: 导入/导出 -->
+  <div id="ioModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <strong id="ioModalTitle" style="color: var(--text); font-size: 13px;">配置码</strong>
+        <button id="btnCloseIoModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
+      </div>
+      <textarea id="ioTextarea" rows="8" style="background: var(--control); border: 1px solid var(--line-strong); color: var(--text); font-family: monospace; font-size: 11px; padding: 8px; border-radius: 4px; resize: vertical;"></textarea>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button id="btnCancelIo" class="btn-compact">关闭</button>
+        <button id="btnConfirmIo" class="primary-button" style="height: 28px; padding: 0 14px;">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框: 保存为自定义预设 -->
+  <div id="savePresetModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="width: 380px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <strong style="color: var(--text); font-size: 13px;">💾 保存为自定义预设</strong>
+        <button id="btnCloseSavePresetModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
+      </div>
+      <div style="display: grid; gap: 8px;">
+        <label style="color: var(--text-muted); font-size: 11px;">请输入预设方案名称：</label>
+        <input id="inpNewPresetName" type="text" placeholder="例如：专家保命方案 / 冰法速刷..." class="search-box" style="max-width: 100%; height: 32px;" autocomplete="off">
+        <p id="savePresetError" style="color: var(--danger); font-size: 11px; margin: 0; min-height: 16px;"></p>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+          <button id="btnCancelSavePreset" class="btn-compact">取消</button>
+          <button id="btnConfirmSavePreset" class="primary-button" style="height: 30px; padding: 0 16px;">确认保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框: 备份当前版本 -->
+  <div id="createSnapshotModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="width: 440px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <strong style="color: var(--text); font-size: 13px;">💾 备份当前版本</strong>
+        <button id="btnCloseCreateSnapshotModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
+      </div>
+      <div style="display: grid; gap: 10px; margin-top: 6px;">
+        <div>
+          <label style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 4px;">快照版本名称：</label>
+          <input id="inpSnapshotName" type="text" placeholder="例如：开荒稳定版 / 全满染色版" class="search-box" style="max-width: 100%; height: 32px;" autocomplete="off">
+        </div>
+        <div>
+          <label style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 4px;">快照备注（可选）：</label>
+          <input id="inpSnapshotDesc" type="text" placeholder="例如：已启用词缀变色与神图光柱" class="search-box" style="max-width: 100%; height: 32px;" autocomplete="off">
+        </div>
+        <p id="createSnapshotError" style="color: var(--danger); font-size: 11px; margin: 0; min-height: 16px;"></p>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button id="btnCancelCreateSnapshot" class="btn-compact">取消</button>
+          <button id="btnConfirmCreateSnapshot" class="primary-button" style="height: 30px; padding: 0 16px;">确认备份</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框: 客户端版本快照管理中心 -->
+  <div id="snapshotCenterModal" class="modal-overlay hidden">
+    <div class="modal-dialog snapshot-modal-dialog">
+      <div class="snapshot-modal-header">
+        <div>
+          <strong style="color: var(--text); font-size: 14px;">📜 客户端多版本备份与还原中心</strong>
+          <span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">
+            轻量索引快照 · 自由双向回退 · 自动轮转淘汰
+          </span>
+        </div>
+        <button id="btnCloseSnapshotCenterModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
+      </div>
+      
+      <div class="snapshot-modal-toolbar">
+        <div style="font-size: 11px; color: var(--text-muted);">
+          ℹ️ 每次仅备份 115MB 原始索引文件，不占用磁盘。打补丁前自动保留最近 5 版轮转，手动版本永久保留。
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnTriggerCreateSnapInCenter" class="primary-button" style="height: 28px; padding: 0 12px; font-size: 11px;">
+            💾 备份当前版本
+          </button>
+        </div>
+      </div>
+
+      <div id="snapshotListContainer" class="snapshot-list-container">
+        <!-- 由 patcher.js 动态渲染 -->
+      </div>
+    </div>
+  </div>
+
   <script src="lucide.min.js"></script>
   <script src="quick-assist.js"></script>
   <script src="prices.js"></script>
+  <script src="patcher.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

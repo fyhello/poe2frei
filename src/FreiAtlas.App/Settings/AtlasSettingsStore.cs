@@ -73,6 +73,12 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
 
     public event Action<PriceSettings>? PricesChanged;
 
+    private ClientPatchSettings _clientPatch = ClientPatchSettings.Default;
+
+    public ClientPatchSettings ClientPatch => Volatile.Read(ref _clientPatch);
+
+    public event Action<ClientPatchSettings>? ClientPatchChanged;
+
     public AtlasSettingsLoadStatus LoadStatus { get; }
 
     public event Action<AtlasDisplaySettings>? SettingsChanged;
@@ -126,6 +132,7 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
                 out var savedHotkey)
                 ? savedHotkey!
                 : AtlasHotkey.Default;
+            var clientPatch = document.ClientPatch ?? ClientPatchSettings.Default;
             ValidateRecoveryHotkey(quickAssist, hotkey);
             return new AtlasSettingsStore(
                 filePath,
@@ -133,7 +140,7 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
                 saveDelay ?? TimeSpan.FromMilliseconds(250),
                 settings,
                 hotkey,
-                AtlasSettingsLoadStatus.Loaded) { _quickAssist = quickAssist, _prices = prices };
+                AtlasSettingsLoadStatus.Loaded) { _quickAssist = quickAssist, _prices = prices, _clientPatch = clientPatch };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -220,6 +227,20 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
             ScheduleSave();
         }
         PricesChanged?.Invoke(settings);
+        PersistenceChanged?.Invoke(AtlasSettingsPersistenceStatus.Saving);
+    }
+
+    public void UpdateClientPatch(ClientPatchSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        lock (_stateGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            Volatile.Write(ref _clientPatch, settings);
+            _currentGeneration++;
+            ScheduleSave();
+        }
+        ClientPatchChanged?.Invoke(settings);
         PersistenceChanged?.Invoke(AtlasSettingsPersistenceStatus.Saving);
     }
 
@@ -414,6 +435,11 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
             ShowRareChests = saved?.ShowRareChests ?? defaults.ShowRareChests,
             ShowPollen = saved?.ShowPollen ?? defaults.ShowPollen,
             ShowOmenAltar = saved?.ShowOmenAltar ?? defaults.ShowOmenAltar,
+            PollenVisibility = new AreaMapPollenVisibility(
+                saved?.PollenVisibility?.Wild ?? defaults.PollenVisibility.Wild,
+                saved?.PollenVisibility?.Soul ?? defaults.PollenVisibility.Soul,
+                saved?.PollenVisibility?.Primal ?? defaults.PollenVisibility.Primal,
+                saved?.PollenVisibility?.Sacred ?? defaults.PollenVisibility.Sacred),
             ExpeditionTag = new AreaMapExpeditionTagStyle(
                 saved?.ExpeditionTag?.BackgroundColor
                     ?? defaults.ExpeditionTag.BackgroundColor,
@@ -493,6 +519,7 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
             AtlasHotkey hotkey;
             QuickAssistSettings quickAssist;
             PriceSettings prices;
+            ClientPatchSettings clientPatch;
             long generation;
             lock (_stateGate)
             {
@@ -505,6 +532,7 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
                 hotkey = _currentHotkey;
                 quickAssist = _quickAssist;
                 prices = _prices;
+                clientPatch = _clientPatch;
                 generation = _currentGeneration;
             }
 
@@ -523,6 +551,7 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
                 OverlayToggleHotkey = hotkey.Gesture,
                 QuickAssist = quickAssist,
                 Prices = prices,
+                ClientPatch = clientPatch,
                 Display = new AtlasDisplayDocument
                 {
                     Nodes = settings.Nodes.ToDictionary(
@@ -569,6 +598,13 @@ public sealed class AtlasSettingsStore : IAtlasSettingsSource, IAsyncDisposable
                         ShowRareChests = settings.AreaMap.ShowRareChests,
                         ShowPollen = settings.AreaMap.ShowPollen,
                         ShowOmenAltar = settings.AreaMap.ShowOmenAltar,
+                        PollenVisibility = new AreaMapPollenVisibilityDocument
+                        {
+                            Wild = settings.AreaMap.PollenVisibility.Wild,
+                            Soul = settings.AreaMap.PollenVisibility.Soul,
+                            Primal = settings.AreaMap.PollenVisibility.Primal,
+                            Sacred = settings.AreaMap.PollenVisibility.Sacred
+                        },
                         LargeMapLabelFontSize = settings.AreaMap.LargeMapLabelFontSize,
                         ExpeditionTag = new AreaMapExpeditionTagStyleDocument
                         {
