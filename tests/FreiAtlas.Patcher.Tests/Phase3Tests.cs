@@ -243,6 +243,35 @@ public class Phase3Tests
     }
 
     [Fact]
+    public void PatchBackupManager_WhenBackupPathIsAFile_DoesNotThrowAndReportsUnavailable()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "frei_badbak_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string badPath = Path.Combine(tempDir, "patch_backup");
+        File.WriteAllText(badPath, "not a directory");
+
+        try
+        {
+            var mgr = new PatchBackupManager(badPath);
+
+            Assert.False(mgr.IsAvailable);
+            Assert.False(string.IsNullOrWhiteSpace(mgr.UnavailableReason));
+
+            var info = new GameModeInfo { IsValid = true, GameDirectory = tempDir, Mode = GameMode.Bundles2 };
+            Assert.False(mgr.HasBackup(info));
+            Assert.Empty(mgr.GetSnapshots(info));
+
+            var created = mgr.CreateSnapshot(info, PatchSnapshotType.Manual, "测试", "目录不可用");
+            Assert.False(created.Success);
+            Assert.Contains("不可用", created.Message);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
     public void PatchBackupManager_CheckResourceLock_ReportsClearReasonOnLockedFile()
     {
         string tempDir = Path.Combine(Path.GetTempPath(), "frei_test_lock_" + Guid.NewGuid().ToString("N"));

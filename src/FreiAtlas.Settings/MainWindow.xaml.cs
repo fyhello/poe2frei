@@ -87,7 +87,18 @@ public partial class MainWindow : Window
         _quickAssist.Start();
         _prices = new PricesSession(_settingsStore);
         _prices.Start();
-        _patcher = new PatcherFacade();
+        try
+        {
+            _patcher = new PatcherFacade();
+            // 备份目录受限时不再让整个设置窗口退出，仅把原因带到补丁页展示。
+            _patcherError = _patcher.IsBackupAvailable ? null : _patcher.BackupUnavailableReason;
+        }
+        catch (Exception exception)
+        {
+            // 补丁模块是辅助功能，初始化失败也不应阻断设置窗口和其它模块。
+            _patcher = null;
+            _patcherError = $"补丁模块初始化失败：{exception.Message}";
+        }
         _runtime = new AtlasRuntimeFacade(
             new Poe2ProcessCatalog(),
             _prices.CreateOverlaySession(),
@@ -1373,6 +1384,47 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// 补丁模块整体不可用时，仍向补丁页推送一份最小快照，让前端展示失败原因而不是空白。
+    /// </summary>
+    private void SendPatcherUnavailableSnapshot(string? error)
+    {
+        if (SettingsWebView.CoreWebView2 is null || _settingsStore is null) return;
+
+        string reason = error ?? "补丁模块不可用";
+        var json = JsonSerializer.Serialize(new
+        {
+            version = 1,
+            type = "patcherSnapshot",
+            payload = new
+            {
+                gameDir = _settingsStore.ClientPatch.CustomGameDirectory ?? string.Empty,
+                gameMode = "未知",
+                isValid = false,
+                errorMessage = reason,
+                isGameRunning = PatcherFacade.IsGameRunning(),
+                hasBackup = false,
+                snapshots = Array.Empty<PatchSnapshotInfo>(),
+                settings = _settingsStore.ClientPatch,
+                builtinColors = UiColorService.BuiltinEntries,
+                installedFonts = Array.Empty<FontItem>(),
+                clientRumours = (IReadOnlyList<EndgameMapRumourItem>?)null,
+                clientChests = (IReadOnlyList<NamePatchItem>?)null,
+                fontSettings = (FontSettingsInfo?)null,
+                clientBaseItems = (IReadOnlyList<PricePatchService.BaseItemName>?)null,
+                defaultRumours = Array.Empty<string>(),
+                defaultChests = Array.Empty<string>(),
+                defaultMapBeams = Array.Empty<object>(),
+                initialColorMods = ColorModService.GetBuiltinEntries(),
+                scannedEntries = (IReadOnlyList<ColorModEntry>?)null,
+                message = (string?)null,
+                error = reason
+            }
+        }, JsonOptions);
+
+        SettingsWebView.CoreWebView2.PostWebMessageAsJson(json);
+    }
+
     private void SendPatcherSnapshot(
         string? message = null,
         string? error = null,
@@ -1382,7 +1434,12 @@ public partial class MainWindow : Window
         FontSettingsInfo? fontSettings = null,
         IReadOnlyList<PricePatchService.BaseItemName>? clientBaseItems = null)
     {
-        if (SettingsWebView.CoreWebView2 is null || _patcher is null || _settingsStore is null) return;
+        if (SettingsWebView.CoreWebView2 is null || _settingsStore is null) return;
+        if (_patcher is null)
+        {
+            SendPatcherUnavailableSnapshot(error ?? _patcherError);
+            return;
+        }
         if (error is not null)
         {
             _patcherError = error;

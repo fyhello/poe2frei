@@ -59,6 +59,17 @@ public sealed class PatchBackupManager
         "EF_"
     ];
 
+    /// <summary>
+    /// 当前实例的备份目录是否已成功初始化并可写。
+    /// 初始化失败时不会抛出异常，而是置为 false，并给出 <see cref="UnavailableReason"/>。
+    /// </summary>
+    public bool IsAvailable { get; }
+
+    /// <summary>
+    /// 备份目录不可用时的原因说明（可用时为空）。
+    /// </summary>
+    public string? UnavailableReason { get; }
+
     public PatchBackupManager(string? customBackupDir = null)
     {
         _backupDir = customBackupDir ?? Path.Combine(
@@ -66,11 +77,38 @@ public sealed class PatchBackupManager
             "FreiAtlas",
             "patch_backup");
 
-        if (!Directory.Exists(_backupDir))
+        try
         {
+            // 目录已存在时 CreateDirectory 不会报错；这里额外做一次写入探针，
+            // 以便发现“目录存在但当前进程无权写入”的情况（如低完整性/沙箱/ACL 受限）。
             Directory.CreateDirectory(_backupDir);
+            string probePath = Path.Combine(_backupDir, ".frei_write_probe_" + Guid.NewGuid().ToString("N"));
+            using (var probe = new FileStream(probePath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                probe.WriteByte(0);
+            }
+
+            try { File.Delete(probePath); } catch { }
+            IsAvailable = true;
+        }
+        catch (Exception ex) when (IsFileSystemFailure(ex))
+        {
+            IsAvailable = false;
+            UnavailableReason =
+                $"补丁备份目录不可用：{_backupDir}。{ex.Message} " +
+                "请检查目录权限、磁盘空间，或安全软件/沙箱对该目录的拦截。";
         }
     }
+
+    private static bool IsFileSystemFailure(Exception ex) =>
+        ex is UnauthorizedAccessException
+            or IOException
+            or System.Security.SecurityException
+            or NotSupportedException
+            or ArgumentException;
+
+    private BackupRestoreResult UnavailableResult() =>
+        new(false, UnavailableReason ?? "补丁备份目录不可用，备份/还原功能已禁用。");
 
     /// <summary>
     /// 获取当前游戏目录专用的备份路径（结合目录哈希隔离，防止多客户端相互覆盖）
@@ -111,6 +149,8 @@ public sealed class PatchBackupManager
 
     public bool HasBackup(GameModeInfo info)
     {
+        if (!IsAvailable) return false;
+
         string isolatedPath = GetBackupFilePath(info);
         if (File.Exists(isolatedPath)) return true;
 
@@ -158,9 +198,16 @@ public sealed class PatchBackupManager
     {
         string dirHash = ComputeDirectoryHash(info.GameDirectory);
         string subDir = Path.Combine(_backupDir, $"snapshots_{dirHash}");
-        if (!Directory.Exists(subDir))
+        if (IsAvailable && !Directory.Exists(subDir))
         {
-            Directory.CreateDirectory(subDir);
+            try
+            {
+                Directory.CreateDirectory(subDir);
+            }
+            catch (Exception ex) when (IsFileSystemFailure(ex))
+            {
+                // 留给后续文件操作按“不可用”处理，这里不抛异常打断 UI。
+            }
         }
         return subDir;
     }
@@ -175,6 +222,8 @@ public sealed class PatchBackupManager
     /// </summary>
     public IReadOnlyList<PatchSnapshotInfo> GetSnapshots(GameModeInfo info)
     {
+        if (!IsAvailable) return [];
+
         var manifestPath = GetManifestPath(info);
         var list = new List<PatchSnapshotInfo>();
 
@@ -281,6 +330,8 @@ public sealed class PatchBackupManager
         List<string>? activeModules = null,
         Action<string>? logger = null)
     {
+        if (!IsAvailable) return UnavailableResult();
+
         var (isLocked, lockReason) = CheckResourceLock(info);
         if (isLocked)
         {
@@ -376,6 +427,8 @@ public sealed class PatchBackupManager
     {
         restoredSettingsJson = null;
 
+        if (!IsAvailable) return UnavailableResult();
+
         var snapshots = GetSnapshots(info);
         var target = snapshots.FirstOrDefault(s => s.Id == snapshotId);
         if (target == null)
@@ -465,6 +518,12 @@ public sealed class PatchBackupManager
             return false;
         }
 
+        if (!IsAvailable)
+        {
+            message = UnavailableReason ?? "补丁备份目录不可用，无法删除快照。";
+            return false;
+        }
+
         var list = GetSnapshots(info).ToList();
         var target = list.FirstOrDefault(s => s.Id == snapshotId);
         if (target == null)
@@ -498,6 +557,12 @@ public sealed class PatchBackupManager
     /// </summary>
     public bool EnsureBackup(GameModeInfo info, Action<string>? logger = null)
     {
+        if (!IsAvailable)
+        {
+            logger?.Invoke(UnavailableReason ?? "补丁备份目录不可用，无法生成备份。");
+            return false;
+        }
+
         var backupPath = GetBackupFilePath(info);
         if (File.Exists(backupPath))
         {
@@ -605,6 +670,8 @@ public sealed class PatchBackupManager
     /// </summary>
     public BackupRestoreResult Restore(GameModeInfo info, Action<string>? logger = null)
     {
+        if (!IsAvailable) return UnavailableResult();
+
         // 优先尝试从快照系统中还原 clean_official
         var res = RestoreSnapshot(info, "clean_official", out _, logger);
         if (res.Success) return res;

@@ -15,6 +15,13 @@ public sealed class PatcherFacade
     private readonly MapBeamPatchService _mapBeamService;
 
     public PatchBackupManager BackupManager => _backupManager;
+
+    /// <summary>补丁备份目录是否可用；不可用时补丁页应展示原因而不是让整个设置窗口退出。</summary>
+    public bool IsBackupAvailable => _backupManager.IsAvailable;
+
+    /// <summary>补丁备份目录不可用的原因（可用时为 null）。</summary>
+    public string? BackupUnavailableReason => _backupManager.UnavailableReason;
+
     public PatchEngine Engine => _engine;
     public FontPatchService FontService => _fontService;
     public UiColorService UiColorService => _uiColorService;
