@@ -38,3 +38,67 @@ public sealed record TriggerPortalSqueezeWebCommand : WebCommand;
 public sealed record SelectPriceLeagueWebCommand(string LeagueId) : WebCommand;
 
 public sealed record RefreshPricesWebCommand : WebCommand;
+
+public sealed record GetPatcherStatusWebCommand : WebCommand;
+
+public sealed record SetPatcherGameDirWebCommand(string Path) : WebCommand;
+
+public sealed record ScanClientDictionaryWebCommand : WebCommand;
+
+public sealed record ApplyFontPatchWebCommand(
+    string FontFamily,
+    int FontSizeDelta,
+    bool ApplyPresetScales,
+    bool IsBold = false,
+    int DropItemSizeDelta = 0,
+    int GeneralTextSizeDelta = 0,
+    int TitleSizeDelta = 0,
+    int TinyBadgeSizeDelta = 0,
+    string PresetId = "default",
+    IReadOnlyList<FreiAtlas.Core.Settings.FontCustomPreset>? CustomPresets = null) : WebCommand;
+
+public sealed record ApplyUiColorPatchWebCommand(IReadOnlyList<FreiAtlas.Core.Settings.ClientPatchColorOption> Colors) : WebCommand;
+
+public sealed record ApplyRumourPatchWebCommand(
+    bool Enabled,
+    IReadOnlyList<FreiAtlas.Core.Settings.RumourItemOption>? Items = null) : WebCommand;
+
+public sealed record ApplyChestPatchWebCommand(
+    bool Enabled,
+    IReadOnlyList<FreiAtlas.Core.Settings.NamePatchOption>? Items = null) : WebCommand;
+
+public sealed record ApplyArchnemesisPatchWebCommand(bool Enabled) : WebCommand;
+
+public sealed record ApplyColorModPatchWebCommand(
+    bool Enabled,
+    string Style,
+    IReadOnlyList<FreiAtlas.Core.Settings.ColorModRuleItem>? Rules = null) : WebCommand;
+
+public sealed record ApplyMapBeamPatchWebCommand(
+    bool Enabled,
+    IReadOnlyList<FreiAtlas.Core.Settings.MapBeamTargetOption>? Targets = null) : WebCommand;
+
+public sealed record ApplyPricePatchWebCommand(string? CsvPath, string Mode, string Separator) : WebCommand;
+
+public sealed record ApplyCurrentPricesPatchWebCommand(string Mode, string Separator) : WebCommand;
+
+public sealed record CleanPricePatchWebCommand(string Separator) : WebCommand;
+
+public sealed record RestoreAllPatchesWebCommand : WebCommand;
+
+public sealed record GetPatcherSnapshotsWebCommand : WebCommand;
+
+public sealed record CreatePatcherSnapshotWebCommand(string Name, string Description) : WebCommand;
+
+public sealed record RestorePatcherSnapshotWebCommand(string SnapshotId) : WebCommand;
+
+public sealed record DeletePatcherSnapshotWebCommand(string SnapshotId) : WebCommand;
+
+public sealed record ScanClientRumoursWebCommand : WebCommand;
+
+public sealed record ScanClientChestsWebCommand : WebCommand;
+
+public sealed record ScanClientFontSettingsWebCommand : WebCommand;
+
+public sealed record ScanClientBaseItemsWebCommand : WebCommand;
+

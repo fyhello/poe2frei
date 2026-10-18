@@ -721,6 +721,9 @@ function showPage(page) {
   activePage = page;
   document.querySelectorAll('.page').forEach(item => item.classList.toggle('active', item.id === page));
   document.querySelectorAll('.nav-button').forEach(item => item.classList.toggle('active', item.dataset.page === page));
+  if (page === 'clientPatch') {
+    post('getPatcherStatus');
+  }
 }
 
 function closeProcessMenu() {
@@ -732,6 +735,7 @@ async function initialize() {
   catalog = await fetch('assets/content-catalog.json').then(response => response.json());
   window.quickAssistUi?.initialize(() => { hotkeyRecording = false; renderHotkey(); });
   window.pricesUi?.initialize();
+  window.patcherUi?.initialize();
   configureAreaMapControls();
   configureVisualControls();
   document.querySelectorAll('.nav-button').forEach(button => button.addEventListener('click', () => showPage(button.dataset.page)));
@@ -796,6 +800,7 @@ async function initialize() {
     const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
     if (message?.version === protocolVersion && message.type === 'quickAssistSnapshot') window.quickAssistUi?.receive(message.payload);
     if (message?.version === protocolVersion && message.type === 'pricesSnapshot') window.pricesUi?.receive(message.payload);
+    if (message?.version === protocolVersion && message.type === 'patcherSnapshot') window.patcherUi?.receive(message.payload);
     if (message?.version === protocolVersion && message.type === 'snapshot') {
       const snapshot = message.payload;
       if (draftSettings && settingsEqual(snapshot.settings, draftSettings)) {
