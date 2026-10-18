@@ -17,6 +17,8 @@ internal sealed class AtlasSettingsDocument
     public FreiAtlas.Core.Recovery.QuickAssistSettings? QuickAssist { get; set; }
 
     public PriceSettings? Prices { get; set; }
+
+    public ClientPatchSettings? ClientPatch { get; set; }
 }
 
 internal sealed class AtlasDisplayDocument

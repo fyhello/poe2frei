@@ -1,5 +1,6 @@
 using FreiAtlas.App.Settings;
 using FreiAtlas.Core.Settings;
+using FreiAtlas.Expedition;
 using FreiAtlas.Host;
 
 namespace FreiAtlas.App.Runtime;
@@ -17,6 +18,7 @@ public sealed class PricesSession : IAsyncDisposable
     }
 
     public PricesRuntimeSnapshot Current => _runtime.Current;
+    public ExpeditionPriceSnapshot CurrentBook => _runtime.CurrentBook;
     public IOverlaySession CreateOverlaySession() => new OverlaySession(new AtlasOverlayRunner(_runtime));
     public void Start() => _runtime.Start();
     public Task RefreshAsync() => _runtime.RefreshAsync();

@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>LibBundledGGPK3</name>
+    </assembly>
+    <members>
+        <member name="T:LibBundledGGPK3.BundledGGPK">
+            <summary>
+            <see cref="T:LibGGPK3.GGPK"/> but also parses "Bundles2/_.index.bin" to <see cref="P:LibBundledGGPK3.BundledGGPK.Index"/>
+            </summary>
+        </member>
+        <member name="P:LibBundledGGPK3.BundledGGPK.Index">
+            For processing bundles in ggpk
+        </member>
+        <member name="M:LibBundledGGPK3.BundledGGPK.#ctor(System.String,System.Boolean)">
+            <param name="filePath">Path to Content.ggpk on disk</param>
+            <param name="parsePathsInIndex">
+            Whether to call <see cref="M:LibBundle3.Index.ParsePaths"/> automatically.
+            <see langword="false"/> to speed up reading, but all <see cref="P:LibBundle3.Records.FileRecord.Path"/> in each of <see cref="P:LibBundle3.Index.Files"/> of <see cref="P:LibBundledGGPK3.BundledGGPK.Index"/> will be <see langword="null"/>,
+            and <see cref="P:LibBundle3.Index.Root"/> and <see cref="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)"/> will be unable to use until you call <see cref="M:LibBundle3.Index.ParsePaths"/> manually.
+            </param>
+            <exception cref="T:System.IO.FileNotFoundException" />
+        </member>
+        <member name="M:LibBundledGGPK3.BundledGGPK.#ctor(System.IO.Stream,System.Boolean,System.Boolean)">
+            <param name="stream">Stream of the Content.ggpk file</param>
+            <param name="leaveOpen">If false, close the <paramref name="stream"/> when this instance is disposed</param>
+            <param name="parsePathsInIndex">
+            Whether to call <see cref="M:LibBundle3.Index.ParsePaths"/> automatically.
+            <see langword="false"/> to speed up reading, but all <see cref="P:LibBundle3.Records.FileRecord.Path"/> in each of <see cref="P:LibBundle3.Index.Files"/> of <see cref="P:LibBundledGGPK3.BundledGGPK.Index"/> will be <see langword="null"/>,
+            and <see cref="P:LibBundle3.Index.Root"/> and <see cref="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)"/> will be unable to use until you call <see cref="M:LibBundle3.Index.ParsePaths"/> manually.
+            </param>
+            <exception cref="T:System.IO.FileNotFoundException" />
+        </member>
+        <member name="T:LibBundledGGPK3.GGPKBundleFactory">
+            <param name="bundles2">
+            Record of "Bundles2" (parent of _.index.bin) in GGPK.
+            </param>
+        </member>
+        <member name="M:LibBundledGGPK3.GGPKBundleFactory.#ctor(LibGGPK3.GGPK,LibGGPK3.Records.DirectoryRecord)">
+            <param name="bundles2">
+            Record of "Bundles2" (parent of _.index.bin) in GGPK.
+            </param>
+        </member>
+        <member name="F:LibBundledGGPK3.GGPKBundleFactory.Bundles2">
+            <summary>
+            Record of "Bundles2" (parent of _.index.bin) in GGPK.
+            </summary>
+        </member>
+        <member name="T:LibBundledGGPK3.ServerBundleFactory">
+            <summary>
+            <see cref="T:LibBundle3.DriveBundleFactory"/> but downloads the bundle from the patch server if it doesn't exist.
+            </summary>
+            <remarks>
+            Remember to call <see cref="M:LibBundledGGPK3.ServerBundleFactory.Dispose"/> when done.
+            </remarks>
+            <param name="baseDirectory">Path of "Bundles2" (parent of _.index.bin) on the drive.</param>
+            <param name="patchCdnUrl">Can get from <see cref="M:LibGGPK3.PatchClient.GetPatchCdnUrlAsync(System.Net.EndPoint)"/></param>
+        </member>
+        <member name="M:LibBundledGGPK3.ServerBundleFactory.#ctor(System.String,System.String)">
+            <summary>
+            <see cref="T:LibBundle3.DriveBundleFactory"/> but downloads the bundle from the patch server if it doesn't exist.
+            </summary>
+            <remarks>
+            Remember to call <see cref="M:LibBundledGGPK3.ServerBundleFactory.Dispose"/> when done.
+            </remarks>
+            <param name="baseDirectory">Path of "Bundles2" (parent of _.index.bin) on the drive.</param>
+            <param name="patchCdnUrl">Can get from <see cref="M:LibGGPK3.PatchClient.GetPatchCdnUrlAsync(System.Net.EndPoint)"/></param>
+        </member>
+        <member name="M:LibBundledGGPK3.ServerBundleFactory.Download(System.String)">
+            <param name="bundlePath">Relative path of the bundle which ends with ".bundle.bin"</param>
+        </member>
+        <member name="M:LibBundledGGPK3.ServerBundleFactory.DownloadIndex">
+            <summary>
+            Downloads the "Bundles2/_.index.bin" file and saves it to the baseDirectory
+            </summary>
+        </member>
+    </members>
+</doc>

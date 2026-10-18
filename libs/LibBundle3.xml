@@ -1,0 +1,991 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>LibBundle3</name>
+    </assembly>
+    <members>
+        <member name="T:LibBundle3.Bundle">
+            <summary>
+            Class to handle the *.bundle.bin file.
+            </summary>
+        </member>
+        <member name="T:LibBundle3.Bundle.Header">
+            <summary>
+            Metadata of a bundle file which is stored at the beginning of the file in 60 bytes.
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Bundle.Header.#ctor">
+            <summary>
+            Initialize a <see cref="T:LibBundle3.Bundle.Header"/> instance with default values of a empty bundle (Not same as <see langword="default"/>).
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Bundle.Header.GetLastChunkSize">
+            <returns>Size of decompressed Chunks[Chunks.Length - 1] in bytes</returns>
+        </member>
+        <member name="P:LibBundle3.Bundle.Record">
+            <summary>
+            Record of the <see cref="T:LibBundle3.Bundle"/> instance, not <see langword="null"/> when this instance is created by <see cref="T:LibBundle3.Index"/>.
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Bundle.UncompressedSize">
+            <summary>
+            Size of the uncompressed content in bytes, synced with <see cref="P:LibBundle3.Records.BundleRecord.UncompressedSize"/> of <see cref="P:LibBundle3.Bundle.Record"/>.
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Bundle.CompressedSize">
+            <summary>
+            Size of the compressed content in bytes.
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Bundle.Compressor">
+            <summary>
+            Compressor used to compress the contents in this bundle.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Bundle.leaveOpen">
+            <summary>
+            If false, close the <see cref="F:LibBundle3.Bundle.baseStream"/> when <see cref="M:LibBundle3.Bundle.Dispose"/>.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Bundle.compressed_chunk_sizes">
+            <summary>
+            Sizes of each compressed chunk in bytes.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Bundle.cachedContent">
+            <summary>
+            Cached data of the full decompressed content, use <see cref="F:LibBundle3.Bundle.cacheTable"/> to determine the initialization of each chunk.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Bundle.cacheTable">
+            <summary>
+            Indicate whether the corresponding chunk of <see cref="F:LibBundle3.Bundle.cachedContent"/> is initialized.
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Bundle.#ctor(System.String,LibBundle3.Records.BundleRecord)">
+            <param name="filePath">Path of the bundle file on disk</param>
+            <param name="record">Record of this bundle file</param>
+            <exception cref="T:System.IO.FileNotFoundException" />
+        </member>
+        <member name="M:LibBundle3.Bundle.#ctor(System.IO.Stream,System.Boolean,LibBundle3.Records.BundleRecord)">
+            <param name="stream">Stream of the bundle file</param>
+            <param name="leaveOpen">If false, close the <paramref name="stream"/> when this instance is disposed</param>
+            <param name="record">Record of this bundle file</param>
+        </member>
+        <member name="M:LibBundle3.Bundle.#ctor(System.IO.Stream,LibBundle3.Records.BundleRecord)">
+            <summary>
+            Internal used by <see cref="M:LibBundle3.Index.CreateBundle(System.String)"/>.
+            </summary>
+            <param name="stream">Stream of the bundle to write (which will be cleared)</param>
+            <param name="record">Record of the bundle</param>
+        </member>
+        <member name="M:LibBundle3.Bundle.ReadWithoutCache">
+            <summary>
+            Read the whole data of the bundle without caching.
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Bundle.ReadWithoutCache(System.Span{System.Byte})">
+            <summary>
+            Read the whole data of the bundle without caching.
+            </summary>
+            <param name="span">Span to save the data read</param>
+            <returns>Size of the data read in bytes.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException"/>
+        </member>
+        <member name="M:LibBundle3.Bundle.ReadWithoutCache(System.Int32,System.Int32)">
+            <summary>
+            Read the data with the given <paramref name="offset"/> and <paramref name="length"/> without caching.
+            </summary>
+            <returns>
+            The data read. You can do anything with it cause we don't keep any reference to it.
+            </returns>
+            <exception cref="T:System.ArgumentOutOfRangeException"/>
+        </member>
+        <member name="M:LibBundle3.Bundle.Read">
+            <summary>
+            Read the whole data of the bundle (use cached data if exists).
+            </summary>
+            <remarks>Use <see cref="M:LibBundle3.Bundle.ReadWithoutCache"/> instead if you'll read only once</remarks>
+        </member>
+        <member name="M:LibBundle3.Bundle.Read(System.Int32,System.Int32)">
+            <summary>
+            Read the data with the given <paramref name="offset"/> and <paramref name="length"/> (use cached data if exists).
+            </summary>
+            <remarks>Use <see cref="M:LibBundle3.Bundle.ReadWithoutCache(System.Int32,System.Int32)"/> instead if you'll read only once or the range is far apart each call</remarks>
+            <exception cref="T:System.ArgumentOutOfRangeException"/>
+        </member>
+        <member name="M:LibBundle3.Bundle.ReadChunks(System.Span{System.Byte},System.Int32,System.Int32,System.Boolean)">
+            <summary>
+            Read data from compressed chunk(with size <see cref="F:LibBundle3.Bundle.Header.chunk_size"/>)
+            start from index = <paramref name="start"/> and combine them to a <see cref="T:System.Byte"/>[] without caching.
+            </summary>
+            <param name="start">Index of the beginning chunk</param>
+            <param name="end">Index of the ending chunk (exclusive)</param>
+            <remarks>
+            Internal implementation of other Read methods.
+            <para>There's no arguments checking as the upper methods did it.</para>
+            </remarks>
+            <exception cref="T:System.ArgumentOutOfRangeException"/>
+        </member>
+        <member name="M:LibBundle3.Bundle.RemoveCache">
+            <summary>
+            Remove all the cached data of this instance.
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Bundle.Save(System.ReadOnlySpan{System.Byte},LibBundle3.Oodle.Compressor,LibBundle3.Oodle.CompressionLevel)">
+            <summary>
+            Save the bundle with new contents.
+            </summary>
+            <param name="compressor">Compressor to use, <see cref="F:LibBundle3.Oodle.Compressor.Invalid"/> to use <see cref="P:LibBundle3.Bundle.Compressor"/></param>
+            <param name="compressionLevel">Compression level to use</param>
+        </member>
+        <member name="M:LibBundle3.Bundle.UnsafeGetStream">
+            <summary>
+            Get the field of the base stream of this instance.
+            Using this method may cause dangerous unexpected behavior.
+            </summary>
+        </member>
+        <member name="P:LibBundle3.DriveBundleFactory.BaseDirectory">
+            <summary>
+            Path of "Bundles2" (parent of _.index.bin) on the drive. (ends with slash)
+            </summary>
+        </member>
+        <member name="M:LibBundle3.DriveBundleFactory.#ctor(System.String)">
+            <param name="baseDirectory">
+            Path of "Bundles2" (parent of _.index.bin) on the drive.
+            </param>
+        </member>
+        <member name="M:LibBundle3.IBundleFactory.GetBundle(LibBundle3.Records.BundleRecord)">
+            <summary>
+            Create a <see cref="T:LibBundle3.Bundle"/> instance of the <paramref name="record"/>
+            </summary>
+        </member>
+        <member name="M:LibBundle3.IBundleFactory.CreateBundle(System.String)">
+            <summary>
+            Get a <see cref="T:System.IO.Stream"/> (which will be cleared before writing) to write when creating a new bundle with specified <paramref name="bundlePath"/> (ends with ".bundle.bin")
+            </summary>
+            <remarks>
+            If the bundle already exists, it will be overwritten.
+            </remarks>
+            <param name="bundlePath">Relative path of the bundle which ends with ".bundle.bin"</param>
+        </member>
+        <member name="M:LibBundle3.IBundleFactory.DeleteBundle(System.String)">
+            <summary>
+            Remove a bundle file with <paramref name="bundlePath"/>
+            </summary>
+            <param name="bundlePath">Relative path of the bundle which ends with ".bundle.bin"</param>
+            <returns>
+            <see langword="true"/> if the bundle is removed, <see langword="false"/> if the bundle doesn't exist
+            </returns>
+        </member>
+        <member name="T:LibBundle3.Index">
+            <summary>
+            Class to handle the _.index.bin file.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Index.baseBundle">
+            <summary>
+            <see cref="T:LibBundle3.Bundle"/> instance of "_.index.bin"
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Index.directoryBundleData">
+            <summary>
+            Data for <see cref="M:LibBundle3.Index.ParsePaths"/>
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Index.CustomBundles">
+            <summary>
+            Bundles ceated by this library for writing modfied files.
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Index.Files">
+            <summary>
+            Files with their <see cref="P:LibBundle3.Records.FileRecord.PathHash"/> as key.
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Index.MaxBundleSize">
+            <summary>
+            Size to limit each bundle when writing, default to 200MiB
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Index.Root">
+            <summary>
+            Root node of the tree (This will call <see cref="M:LibBundle3.Index.BuildTree(System.Boolean)"/> with default implementation when first calling).
+            You can also implement your custom class and use <see cref="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)"/> instead of using this.
+            <para>This will throw when any file have a null path (See <see cref="M:LibBundle3.Index.ParsePaths"/>)</para>
+            </summary>
+            <exception cref="T:System.InvalidOperationException">Thrown when <see cref="M:LibBundle3.Index.ParsePaths"/> haven't been called</exception>
+            <exception cref="T:System.NullReferenceException">Thrown when a file has null path. See <paramref name="ignoreNullPath"/> of <see cref="M:LibBundle3.Index.ParsePaths"/>.</exception>
+        </member>
+        <member name="M:LibBundle3.Index.BuildTree(System.Boolean)">
+            <summary>
+            Default implementation of <see cref="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)"/> which <see cref="P:LibBundle3.Index.Root"/> use.
+            </summary>
+            <param name="ignoreNullPath">Whether to ignore files with <see cref="P:LibBundle3.Records.FileRecord.Path"/> as <see langword="null"/> instead of throwing.
+            This happens when <see cref="M:LibBundle3.Index.ParsePaths"/> has not been called or failed to parse some paths (returns not 0).
+            <para>The ignored files won't appear in the returned tree</para></param>
+        </member>
+        <member name="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)">
+            <summary>
+            Build a tree to represent the file and directory structure in bundles
+            </summary>
+            <param name="createDirectory">Function to create a instance of <see cref="T:LibBundle3.Nodes.IDirectoryNode"/></param>
+            <param name="createFile">Function to create a instance of <see cref="T:LibBundle3.Nodes.IFileNode"/></param>
+            <param name="ignoreNullPath">Whether to ignore files with <see cref="P:LibBundle3.Records.FileRecord.Path"/> as <see langword="null"/> instead of throwing.
+            This happens when <see cref="M:LibBundle3.Index.ParsePaths"/> has not been called or failed to parse some paths (returns not 0).
+            <para>The ignored files won't appear in the returned tree</para></param>
+            <returns>The root node of the built tree</returns>
+            <remarks>
+            You can implement your custom class and call this, or just use the default implementation by calling <see cref="P:LibBundle3.Index.Root"/>.
+            </remarks>
+            <exception cref="T:System.InvalidOperationException">Thrown when <see cref="M:LibBundle3.Index.ParsePaths"/> haven't been called.</exception>
+            <exception cref="T:System.NullReferenceException">Thrown when a file has null path. See <paramref name="ignoreNullPath"/>.</exception>
+        </member>
+        <member name="M:LibBundle3.Index.#ctor(System.String,System.Boolean,LibBundle3.IBundleFactory)">
+            <summary>
+            Initialize with a _.index.bin file on disk. (For Steam/Epic version)
+            </summary>
+            <param name="filePath">Path to _.index.bin on disk</param>
+            <param name="parsePaths">
+            Whether to call <see cref="M:LibBundle3.Index.ParsePaths"/> automatically.
+            <see langword="false"/> to speed up reading, but all <see cref="P:LibBundle3.Records.FileRecord.Path"/> in each of <see cref="P:LibBundle3.Index.Files"/> will be <see langword="null"/>,
+            and <see cref="P:LibBundle3.Index.Root"/> and <see cref="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)"/> will be unable to use until you call <see cref="M:LibBundle3.Index.ParsePaths"/> manually.
+            </param>
+            <param name="bundleFactory">Factory to handle .bin files of <see cref="T:LibBundle3.Bundle"/></param>
+            <exception cref="T:System.IO.FileNotFoundException" />
+        </member>
+        <member name="M:LibBundle3.Index.#ctor(System.IO.Stream,System.Boolean,System.Boolean,LibBundle3.IBundleFactory)">
+            <summary>
+            Initialize with <paramref name="stream"/>.
+            </summary>
+            <param name="stream">Stream of the _.index.bin file</param>
+            <param name="leaveOpen">If false, close the <paramref name="stream"/> when this instance is disposed</param>
+            <param name="parsePaths">
+            Whether to call <see cref="M:LibBundle3.Index.ParsePaths"/> automatically.
+            <see langword="false"/> to speed up reading, but all <see cref="P:LibBundle3.Records.FileRecord.Path"/> in each of <see cref="P:LibBundle3.Index.Files"/> will be <see langword="null"/>,
+            and <see cref="P:LibBundle3.Index.Root"/> and <see cref="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)"/> will be unable to use until you call <see cref="M:LibBundle3.Index.ParsePaths"/> manually.
+            </param>
+            <param name="bundleFactory">Factory to handle .bin files of <see cref="T:LibBundle3.Bundle"/></param>
+            <remarks>
+            For Steam/Epic version, use <see cref="M:LibBundle3.Index.#ctor(System.String,System.Boolean,LibBundle3.IBundleFactory)"/> instead,
+            or you must set <see cref="P:System.Environment.CurrentDirectory"/> to the directory where the _.index.bin file is before calling this constructor.
+            </remarks>
+        </member>
+        <member name="F:LibBundle3.Index.pathsParsed">
+            <summary>
+            Whether <see cref="M:LibBundle3.Index.ParsePaths"/> has been called.
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Index.ParsePaths">
+            <summary>
+            Parses all the <see cref="P:LibBundle3.Records.FileRecord.Path"/> of each <see cref="P:LibBundle3.Index.Files"/>.
+            </summary>
+            <returns>Number of paths failed to parse, these files will have <see cref="P:LibBundle3.Records.FileRecord.Path"/> as <see langword="null"/><br />
+            If this method has been called before, skips parsing and returns 0 always no matter how many files have failed last time.</returns>
+            <remarks>This will automatically be called by constructor if <see langword="true"/> passed to the parsePaths parameter (default to <see langword="true"/>),
+            and throw if the returned value is not 0.</remarks>
+        </member>
+        <member name="M:LibBundle3.Index.Save(LibBundle3.Oodle.Compressor,LibBundle3.Oodle.CompressionLevel)">
+            <summary>
+            Save the _.index.bin file.
+            Call this after modifying the files or bundles.
+            </summary>
+            <param name="compressor">Compressor to use, <see cref="F:LibBundle3.Oodle.Compressor.Invalid"/> to use the what it used last time</param>
+            <param name="compressionLevel">Compression level to use</param>
+        </member>
+        <member name="M:LibBundle3.Index.TryGetFile(System.ReadOnlySpan{System.Char},LibBundle3.Records.FileRecord@)">
+            <summary>
+            Get a FileRecord from its absolute path (This won't cause the tree building).
+            The separator of the <paramref name="path"/> must be forward slash '/'
+            </summary>
+            <param name="path"><see cref="P:LibBundle3.Records.FileRecord.Path"/> </param>
+            <returns>Null when not found</returns>
+        </member>
+        <member name="M:LibBundle3.Index.AddFileRecordPlaceholder(System.String)">
+            <summary>
+            预注册一个占位文件记录（offset=0/size=0，宿主 bundle 指向第一个 bundle），
+            供写入补丁前为"新增文件"在索引中占位，随后 <see cref="M:LibBundle3.Index.Replace(LibBundle3.Index,System.Collections.Generic.IEnumerable{System.IO.Compression.ZipArchiveEntry},LibBundle3.Index.FileCallback,System.Boolean)"/> 会把它当作
+            已存在文件处理：内容写入新自定义 bundle、记录重定向、索引落盘。
+            这是对本仓库的本地补充（Poe2PriceGui 的 SmootherGgpkBackupStore.PreregisterNewFiles
+            原先用反射访问 <see cref="F:LibBundle3.Index._Files"/> 与 FileRecord 私有构造，此处改为直接调用）。
+            路径 hash 已被占用时不做任何事。
+            </summary>
+            <param name="path">文件绝对虚拟路径（正斜杠分隔，hash 前会小写化，与游戏一致）</param>
+            <returns>是否新增了占位记录</returns>
+        </member>
+        <member name="M:LibBundle3.Index.TryFindNode(System.ReadOnlySpan{System.Char},LibBundle3.Nodes.ITreeNode@,LibBundle3.Nodes.DirectoryNode)">
+            <summary>
+            Find a node in the tree. You should use <see cref="M:LibBundle3.Index.TryGetFile(System.ReadOnlySpan{System.Char},LibBundle3.Records.FileRecord@)"/> instead of this if you have the absolute path of the file
+            </summary>
+            <param name="path">Relative path (with forward slashes) under <paramref name="root"/></param>
+            <param name="node">The node found, or null when not found, or <paramref name="root"/> if <paramref name="path"/> is empty</param>
+            <param name="root">Node to start searching, or <see langword="null"/> for <see cref="P:LibBundle3.Index.Root"/></param>
+            <returns>Whether found a node</returns>
+        </member>
+        <member name="T:LibBundle3.Index.FileHandler">
+            <summary>
+            Function for <see cref="T:LibBundle3.Index"/>.Extract() to handle the extracted content of each file.
+            </summary>
+            <param name="record">Record of the file which the <paramref name="content"/> belongs to</param>
+            <param name="content">Content of the file, or <see langword="null"/> if failed to get the bundle of the file</param>
+            <returns><see langword="true"/> to cancel processing remaining files.</returns>
+            <remarks>Do not Read/Write the <paramref name="record"/> during the extraction in this method.</remarks>
+        </member>
+        <member name="T:LibBundle3.Index.FileCallback">
+            <summary>
+            Function for <see cref="T:LibBundle3.Index"/>.Replace() to be called right after replacing each file.
+            </summary>
+            <param name="record">Record of the file replaced</param>
+            <param name="path">Full path of the file replaced on disk or in zip</param>
+            <returns><see langword="true"/> to cancel processing remaining files.</returns>
+            <remarks>Do not Read/Write the <paramref name="record"/> during the replacement in this method.</remarks>
+        </member>
+        <member name="M:LibBundle3.Index.Extract(System.Collections.Generic.IEnumerable{LibBundle3.Records.FileRecord},LibBundle3.Index.FileHandler)">
+            <summary>
+            Extract files in batch (out of order).
+            </summary>
+            <param name="files">Files to extract</param>
+            <param name="callback">Function to execute on each file, see <see cref="T:LibBundle3.Index.FileHandler"/></param>
+            <returns>Number of files extracted successfully.</returns>
+        </member>
+        <member name="M:LibBundle3.Index.Extract(LibBundle3.Nodes.ITreeNode,LibBundle3.Index.FileHandler)">
+            <summary>
+            Extract files under a <paramref name="node"/> recursively (out of order).
+            </summary>
+            <param name="node">Node to extract</param>
+            <param name="callback">Function to execute on each file, see <see cref="T:LibBundle3.Index.FileHandler"/></param>
+            <returns>Number of files extracted successfully.</returns>
+        </member>
+        <member name="M:LibBundle3.Index.Extract(LibBundle3.Nodes.ITreeNode,System.String,LibBundle3.Index.FileCallback)">
+            <summary>
+            Extract files under a <paramref name="node"/> to disk recursively (out of order).
+            </summary>
+            <param name="node">Node to extract</param>
+            <param name="path">Path on disk to extract to</param>
+            <param name="callback">See <see cref="T:LibBundle3.Index.FileCallback"/></param>
+            <returns>Number of files extracted successfully.</returns>
+        </member>
+        <member name="M:LibBundle3.Index.ExtractParallel(System.Collections.Generic.IEnumerable{LibBundle3.Records.FileRecord},LibBundle3.Index.FileHandler)">
+            <summary>
+            Extract files parallelly (out of order).
+            </summary>
+            <param name="files">Files to extract</param>
+            <param name="callback">
+            Action to execute on each file, see <see cref="T:LibBundle3.Index.FileHandler"/>
+            <para>Note that this may be executed parallelly.</para>
+            </param>
+            <returns>Number of files extracted successfully.</returns>
+            <remarks>
+            This method is experimental and may not be faster than <see cref="M:LibBundle3.Index.Extract(System.Collections.Generic.IEnumerable{LibBundle3.Records.FileRecord},LibBundle3.Index.FileHandler)"/>.
+            <para>Files in the same bundle will be extracted sequentially in the same thread.</para>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Index.ExtractParallel(LibBundle3.Nodes.ITreeNode,LibBundle3.Index.FileHandler)">
+            <summary>
+            Extract files under a <paramref name="node"/> recursively (out of order) parallelly.
+            </summary>
+            <param name="node">Node to extract</param>
+            <param name="callback">
+            Action to execute on each file, see <see cref="T:LibBundle3.Index.FileHandler"/>
+            <para>Note that this may be executed parallelly.</para>
+            </param>
+            <returns>Number of files extracted successfully.</returns>
+            <remarks>
+            This method is experimental and may not be faster than <see cref="M:LibBundle3.Index.Extract(LibBundle3.Nodes.ITreeNode,LibBundle3.Index.FileHandler)"/>.
+            <para>Files in the same bundle will be extracted sequentially in the same thread.</para>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Index.ExtractParallel(LibBundle3.Nodes.ITreeNode,System.String,LibBundle3.Index.FileCallback)">
+            <summary>
+            Extract files under a <paramref name="node"/> to disk recursively (out of order) parallelly.
+            </summary>
+            <param name="node">Node to extract</param>
+            <param name="path">Path on disk to extract to</param>
+            <param name="callback">
+            See <see cref="T:LibBundle3.Index.FileCallback"/>
+            <para>Note that this may be executed parallelly.</para>
+            </param>
+            <returns>Number of files extracted successfully.</returns>
+            <remarks>
+            This method is experimental and may not be faster than <see cref="M:LibBundle3.Index.Extract(LibBundle3.Nodes.ITreeNode,System.String,LibBundle3.Index.FileCallback)"/>.
+            <para>Files in the same bundle will be extracted sequentially in the same thread.</para>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Index.Replace(LibBundle3.Index,System.Collections.Generic.IEnumerable{System.IO.Compression.ZipArchiveEntry},LibBundle3.Index.FileCallback,System.Boolean)">
+            <summary>
+            Patch with a zip file.
+            Throw when a file in <paramref name="zipEntries"/> couldn't be found in <paramref name="index"/>.
+            </summary>
+            <param name="zipEntries">Entries to read files to replace</param>
+            <param name="callback">See <see cref="T:LibBundle3.Index.FileCallback"/></param>
+            <param name="saveIndex">Whether to call <see cref="M:LibBundle3.Index.Save(LibBundle3.Oodle.Compressor,LibBundle3.Oodle.CompressionLevel)"/> automatically after replacement done</param>
+            <returns>Number of files replaced.</returns>
+        </member>
+        <member name="M:LibBundle3.Index.Replace(LibBundle3.Nodes.ITreeNode,System.String,LibBundle3.Index.FileCallback,System.Boolean)">
+            <summary>
+            Write files under a <paramref name="node"/> recursively (DFS).
+            The search is based on <paramref name="node"/>, and skip any file not exist in <paramref name="path"/>.
+            </summary>
+            <param name="node">Node to replace</param>
+            <param name="path">Path of a folder on disk to read files to replace</param>
+            <param name="callback">See <see cref="T:LibBundle3.Index.FileCallback"/></param>
+            <param name="saveIndex">Whether to call <see cref="M:LibBundle3.Index.Save(LibBundle3.Oodle.Compressor,LibBundle3.Oodle.CompressionLevel)"/> automatically after replacement done</param>
+            <returns>Number of files replaced.</returns>
+        </member>
+        <member name="M:LibBundle3.Index.Replace(LibBundle3.Index,System.String,System.String,LibBundle3.Index.FileCallback,System.Boolean)">
+            <summary>
+            Write files under a node recursively (DFS).
+            The search is based on files in <paramref name="pathOnDisk"/>, and skip any file not exist under <paramref name="nodePath"/>.
+            </summary>
+            <param name="nodePath">Path of a <see cref="T:LibBundle3.Nodes.ITreeNode"/> in <paramref name="index"/> to replace. (with forward slashes, and not starting with slash)</param>
+            <param name="pathOnDisk">Path of a folder on disk to read files to replace</param>
+            <param name="callback">See <see cref="T:LibBundle3.Index.FileCallback"/></param>
+            <param name="saveIndex">Whether to call <see cref="M:LibBundle3.Index.Save(LibBundle3.Oodle.Compressor,LibBundle3.Oodle.CompressionLevel)"/> automatically after replacement done</param>
+            <returns>Number of files replaced.</returns>
+            <remarks>
+            This method won't check if a <see cref="T:LibBundle3.Nodes.ITreeNode"/> with <paramref name="nodePath"/> is exist.
+            If not, the search still runs but always return 0.
+            <para>
+            Although there's a <paramref name="nodePath"/> parameter,
+            this method doesn't require an actual <see cref="T:LibBundle3.Nodes.ITreeNode"/> (which requires <see cref="M:LibBundle3.Index.ParsePaths"/> and <see cref="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)"/>) to work.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:LibBundle3.Index.CUSTOM_BUNDLE_BASE_PATH">
+            <summary>
+            Path to create bundle (Must end with slash)
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Index.GetBundleToWrite(System.Int32@)">
+            <summary>
+            Get an available bundle with size &lt; <see cref="P:LibBundle3.Index.MaxBundleSize"/>) to write under "Bundles2" with name start with <see cref="F:LibBundle3.Index.CUSTOM_BUNDLE_BASE_PATH"/>.
+            Or create one if not found.
+            Note that the returned bundle may contain existing data (with size: <paramref name="originalSize"/>) that should not be overwritten.
+            </summary>
+            <param name="originalSize">Size of the existing data in the bundle</param>
+            <remarks>
+            Since LibBundle3_v2.0.0, all changes to files should be written to a new bundle from this function instead of the old behavior (write to the original bundle or the smallest in Bundles).
+            Remember to call <see cref="M:LibBundle3.Bundle.Dispose"/> after use to prevent memory leak.
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Index.CreateBundle(System.String)">
+            <summary>
+            Create a new bundle and add it to <see cref="P:LibBundle3.Index.Bundles"/> using <see cref="M:LibBundle3.IBundleFactory.CreateBundle(System.String)"/>
+            </summary>
+            <param name="bundlePath">Relative path of the bundle without ".bundle.bin"</param>
+        </member>
+        <member name="M:LibBundle3.Index.NameHash(System.ReadOnlySpan{System.Char})">
+            <summary>
+            Get the hash of a file path
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Index.NameHash(System.ReadOnlySpan{System.Byte})">
+            <summary>
+            Get the hash of a file path,
+            <paramref name="utf8Name"/> must be lowercased unless it comes from ggpk before patch 3.21.2
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Index.MurmurHash64A(System.ReadOnlySpan{System.Byte},System.UInt64)">
+            <summary>
+            Get the hash of a file path, <paramref name="utf8Name"/> must be lowercased
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Index.FNV1a64Hash(System.ReadOnlySpan{System.Byte})">
+            <summary>
+            Get the hash of a file path with ggpk before patch 3.21.2
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Index.Recursefiles(LibBundle3.Nodes.ITreeNode)">
+            <summary>
+            Enumerate all files under a node (DFS).
+            </summary>
+            <param name="node">Node to start recursive</param>
+        </member>
+        <member name="M:LibBundle3.Index.Recursefiles(LibBundle3.Nodes.ITreeNode,System.String)">
+            <summary>
+            Enumerate all files under a node (DFS), and call <see cref="M:System.IO.Directory.CreateDirectory(System.String)"/> for each folder.
+            </summary>
+            <param name="node">Node to start recursive</param>
+            <param name="path">Path on disk</param>
+        </member>
+        <member name="M:LibBundle3.Index.SortByBundle(System.Collections.Generic.IEnumerable{LibBundle3.Records.FileRecord})">
+            <summary>
+            Sort files by index of their bundle (<see cref="P:LibBundle3.Records.BundleRecord.BundleIndex"/>) with CountingSort (stable) to get better performance for reading.
+            </summary>
+            <remarks>
+            <code>IEnumerable&lt;FileRecord&gt;.GroupBy(f => f.BundleRecord);</code> can also achieve similar purposes in some case.
+            </remarks>
+            <seealso cref="M:System.Linq.Enumerable.GroupBy``2(System.Collections.Generic.IEnumerable{``0},System.Func{``0,``1})"/>
+        </member>
+        <member name="M:LibBundle3.Index.UnsafeGetStream">
+            <summary>
+            Get the field of the base stream of this instance.
+            Using this method may cause dangerous unexpected behavior.
+            </summary>
+        </member>
+        <member name="T:LibBundle3.Index.DirectoryRecord">
+            <summary>
+            Currently unused
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Index.DirectoryRecord.#ctor(System.UInt64,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Currently unused
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Index.DirectoryRecord.RecordLength">
+            <summary>
+            Size of the content when serializing to <see cref="T:LibBundle3.Index"/>
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Nodes.DirectoryNode.CreateInstance(System.String,LibBundle3.Nodes.IDirectoryNode)">
+            <summary>
+            See <see cref="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)"/>
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Nodes.IDirectoryNode.Children">
+            <summary>
+            The content will be filled by <see cref="M:LibBundle3.Index.BuildTree(LibBundle3.Index.CreateDirectoryInstance,LibBundle3.Index.CreateFileInstance,System.Boolean)"/> and ordered by <see cref="P:LibBundle3.Nodes.ITreeNode.Name"/>.
+            Do not modify them!
+            </summary>
+        </member>
+        <member name="T:LibBundle3.Nodes.ITreeNode">
+            <summary>
+            Do not implement this interface, use <see cref="T:LibBundle3.Nodes.IFileNode"/> and <see cref="T:LibBundle3.Nodes.IDirectoryNode"/> instead
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Nodes.ITreeNode.Parent">
+            <summary>
+            Parent node of this node, or null if this is the Root node
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Nodes.ITreeNode.GetPath(LibBundle3.Nodes.ITreeNode)">
+            <summary>
+            Get the absolute path of the <paramref name="node"/> in the tree, and ends with '/' if this is <see cref="T:LibBundle3.Nodes.IDirectoryNode"/>
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Nodes.ITreeNode.RecurseTree(LibBundle3.Nodes.ITreeNode)">
+            <summary>
+            Recurse all nodes under <paramref name="node"/> (include self)
+            </summary>
+        </member>
+        <member name="T:LibBundle3.Oodle">
+            <summary>
+            Oodle (de)compressions for bundles (needs oo2core native library to work).
+            </summary>
+            <remarks>
+            All methods here are thread-safe, but you must call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> at least once before first time using any other method <b>*on each thread*</b>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)">
+            <summary>
+            Call this method before first time using any other method <b>*on each thread*</b>
+            </summary>
+            <remarks>
+            You can re-call this method at any time to change the <paramref name="settings"/>.<br />
+            Re-calling with the same <paramref name="settings"/> does nothing.
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.GetCompressedBufferSize">
+            <summary>
+            Get the minimum size needed for the output buffer when compressing data with size <see cref="F:LibBundle3.Oodle.Settings.ChunkSize"/>,
+            usually slightly larger than <see cref="F:LibBundle3.Oodle.Settings.ChunkSize"/>.
+            </summary>
+            <remarks>
+            <para>Call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> at least once before first time using this method <b>*on each thread*</b></para>
+            <para>Note this is actually larger than the maximum size of a compressed chunk, it includes overrun padding.</para>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.GetCompressedBufferSize(System.IntPtr)">
+            <summary>
+            Get the minimum size needed for the output buffer of Compress(), usually slightly larger than <paramref name="uncompressedSize"/>.
+            </summary>
+            <param name="uncompressedSize">Size of original uncompressed data</param>
+            <remarks>
+            <para>Call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> at least once before first time using this method <b>*on each thread*</b></para>
+            <para>Note this is actually larger than the maximum size of a compressed chunk, it includes overrun padding.</para>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.Compress(System.ReadOnlySpan{System.Byte},System.Span{System.Byte})">
+            <param name="buffer">The uncompressed data to compress</param>
+            <param name="output">Buffer to save the compressed output, must be at least <see cref="M:LibBundle3.Oodle.GetCompressedBufferSize(System.IntPtr)"/> bytes</param>
+            <remarks>
+            Call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> at least once before first time using this method <b>*on each thread*</b>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.Compress(System.Byte*,System.Byte*)">
+            <param name="buffer">Pointer of the uncompressed data with size <see cref="F:LibBundle3.Oodle.Settings.ChunkSize"/></param>
+            <param name="output">Buffer to save the compressed output, must be at least <see cref="M:LibBundle3.Oodle.GetCompressedBufferSize"/> bytes</param>
+            <remarks>
+            Call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> at least once before first time using this method <b>*on each thread*</b>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.Compress(System.Byte*,System.IntPtr,System.Byte*)">
+            <param name="buffer">Pointer of the uncompressed data</param>
+            <param name="bufferSize">Size of the uncompressed data</param>
+            <param name="output">Buffer to save the compressed output, must be at least <see cref="M:LibBundle3.Oodle.GetCompressedBufferSize(System.IntPtr)"/> bytes</param>
+            <remarks>
+            Call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> at least once before first time using this method <b>*on each thread*</b>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.Decompress(System.ReadOnlySpan{System.Byte},System.Span{System.Byte})">
+            <param name="buffer">The compressed data to decompress</param>
+            <param name="output">Buffer to save the decompressed output, must have exactly the same length with the original uncompressed data</param>
+            <remarks>
+            Call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> at least once before first time using this method <b>*on each thread*</b>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.Decompress(System.Byte*,System.IntPtr,System.Byte*)">
+            <summary>
+            Decompress data with exactly uncompressed size <see cref="F:LibBundle3.Oodle.Settings.ChunkSize"/>
+            </summary>
+            <param name="buffer">Pointer of the compressed data</param>
+            <param name="bufferSize">Size of the compressed data</param>
+            <param name="output">Buffer to save the decompressed output with size at least <see cref="F:LibBundle3.Oodle.Settings.ChunkSize"/></param>
+            <remarks>
+            Call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> at least once before first time using this method <b>*on each thread*</b>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.Decompress(System.Byte*,System.IntPtr,System.Byte*,System.IntPtr)">
+            <param name="buffer">Pointer of the compressed data</param>
+            <param name="bufferSize">Size of the compressed data</param>
+            <param name="output">Buffer to save the decompressed output</param>
+            <param name="uncompressedSize">Size of the original uncompressed data</param>
+            <remarks>
+            Call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> at least once before first time using this method <b>*on each thread*</b>
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Oodle.Release">
+            <summary>
+            Release the pre-allocated memory from <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> of the current thread
+            </summary>
+            <remarks>
+            The resources will be released automatically when the thread ends, so calling this method is not necessary.<br />
+            After calling this, you must call <see cref="M:LibBundle3.Oodle.Initialize(LibBundle3.Oodle.Settings)"/> again if you want to use any other method.
+            </remarks>
+        </member>
+        <member name="T:LibBundle3.Oodle.Compressor">
+            <summary>
+            Selection of compression algorithm.
+            </summary>
+            <remarks>
+            <para>Each compressor provides a different balance of speed vs compression ratio.</para>
+            <para>New Oodle users should only use the new sea monster family of compressors (Kraken, Leviathan, Mermaid, Selkie, Hydra).</para>
+            <para>The sea monsters are all fuzz safe and use whole-block quantum (not the 16k quantum).</para>
+            </remarks>
+        </member>
+        <member name="F:LibBundle3.Oodle.Compressor.None">
+            <summary>
+            None = memcpy, pass through uncompressed bytes
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.Compressor.Kraken">
+            <summary>
+            Fast decompression and high compression ratios, amazing!
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.Compressor.Leviathan">
+            <summary>
+            Leviathan = Kraken's big brother with higher compression, slightly slower decompression.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.Compressor.Mermaid">
+            <summary>
+            Mermaid is between Kraken &amp; Selkie - crazy fast, still decent compression.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.Compressor.Selkie">
+            <summary>
+            Selkie is a super-fast relative of Mermaid.  For maximum decode speed.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.Compressor.Hydra">
+            <summary>
+            Hydra, the many-headed beast = Leviathan, Kraken, Mermaid, or Selkie
+            </summary>
+        </member>
+        <member name="T:LibBundle3.Oodle.CompressionLevel">
+            <summary>
+            Selection of compression encoder complexity
+            </summary>
+            <remarks>
+            <para>Higher numerical value = slower compression, but smaller compressed data.</para>
+            <para>The compressed stream is always decodable with the same decompressors. <see cref="T:LibBundle3.Oodle.CompressionLevel"/> controls the amount of work the encoder does to find the best compressed bit stream. <see cref="T:LibBundle3.Oodle.CompressionLevel"/> does not primary affect decode speed, it trades off encode speed for compressed bit stream quality.</para>
+            <para>It's recommended to start with <see cref="F:LibBundle3.Oodle.CompressionLevel.Normal"/>, then try up or down if you want faster encoding or smaller output files.</para>
+            <para>The Optimal levels are good for distribution when you compress rarely and decompress often; they provide very high compression ratios but are slow to encode. <see cref="F:LibBundle3.Oodle.CompressionLevel.Optimal2"/> is the recommended level to start with of the optimal levels. Optimal4 and 5 are not recommended for common use, they are very slow and provide the maximum compression ratio, but the gain over <see cref="F:LibBundle3.Oodle.CompressionLevel.Optimal3"/> is usually small.</para>
+            <para>The HyperFast levels have negative numeric <see cref="T:LibBundle3.Oodle.CompressionLevel"/> values. They are faster than <see cref="F:LibBundle3.Oodle.CompressionLevel.SuperFast"/> for when you're encoder CPU time constrained or want something closer to symmetric compression vs decompression time. The HyperFast levels are currently only available in <see cref="F:LibBundle3.Oodle.Compressor.Kraken"/>, <see cref="F:LibBundle3.Oodle.Compressor.Mermaid"/> and <see cref="F:LibBundle3.Oodle.Compressor.Selkie"/>. Higher levels of HyperFast are faster to encode, eg. <see cref="F:LibBundle3.Oodle.CompressionLevel.HyperFast4"/> is the fastest.</para>
+            </remarks>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.None">
+            <summary>
+            don't compress, just copy raw bytes
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.SuperFast">
+            <summary>
+            super fast mode, lower compression ratio
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.VeryFast">
+            <summary>
+            fastest LZ mode with still decent compression ratio
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Fast">
+            <summary>
+            fast - good for daily use
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Normal">
+            <summary>
+            standard medium speed LZ mode
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Optimal1">
+            <summary>
+            optimal parse level 1 (faster optimal encoder)
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Optimal2">
+            <summary>
+            optimal parse level 2 (recommended baseline optimal encoder)
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Optimal3">
+            <summary>
+            optimal parse level 3 (slower optimal encoder)
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Optimal4">
+            <summary>
+            optimal parse level 4 (very slow optimal encoder)
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Optimal5">
+            <summary>
+            optimal parse level 5 (don't care about encode speed, maximum compression)
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.HyperFast1">
+            <summary>
+            faster than SuperFast, less compression
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.HyperFast2">
+            <summary>
+            faster than HyperFast1, less compression
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.HyperFast3">
+            <summary>
+            faster than HyperFast2, less compression
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.HyperFast4">
+            <summary>
+            fastest, less compression
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.HyperFast">
+            <summary>
+            alias hyperfast base level
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Optimal">
+            <summary>
+            alias optimal standard level
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Max">
+            <summary>
+            maximum compression level
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.CompressionLevel.Min">
+            <summary>
+            fastest compression level
+            </summary>
+        </member>
+        <member name="T:LibBundle3.Oodle.Settings">
+            <summary>
+            Use the parameterless constructor to get default settings.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.Settings.ChunkSize">
+            <summary>
+            Max size of the uncompressed data which will be passed to <paramref name="bufferSize"/> of <see cref="M:LibBundle3.Oodle.Compress(System.Byte*,System.Byte*)"/>
+            or <paramref name="uncompressedSize"/> of <see cref="M:LibBundle3.Oodle.Decompress(System.Byte*,System.IntPtr,System.Byte*,System.IntPtr)"/>
+            </summary>
+            <remarks>
+            Passing size larger than this value to other methods will reduce the performance
+            due to the additional memory allocation during compression/decompression.
+            </remarks>
+        </member>
+        <member name="F:LibBundle3.Oodle.Settings.Compressor">
+            <summary>
+            The algorithm to use for compressing
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.Settings.CompressionLevel">
+            <summary>
+            See <see cref="T:LibBundle3.Oodle.CompressionLevel"/>
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Oodle.Settings.EnableCompressing">
+            <summary>
+            Allocates necessary memory for compressing.
+            Default is <see langword="true"/>,
+            pass <see langword="false"/> if you'll never use any overload of Compress() to save memory.
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Oodle.Settings.#ctor">
+            <summary>
+            Initialize with default settings
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Oodle.Settings.Validate">
+            <summary>
+            Validate the properties of this instance
+            </summary>
+            <exception cref="T:System.ArgumentOutOfRangeException" />
+        </member>
+        <member name="F:LibBundle3.Records.BundleRecord._Path">
+            <summary>
+            <see cref="P:LibBundle3.Records.BundleRecord.Path"/> without extension (which actually recorded in <see cref="P:LibBundle3.Records.BundleRecord.Index"/> file)
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.BundleRecord.Path">
+            <summary>
+            Path of the bundle file (which ends with ".bundle.bin") under "Bundles2" directory
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.BundleRecord.UncompressedSize">
+            <summary>
+            Size of the uncompressed content in bytes, synced with <see cref="P:LibBundle3.Bundle.UncompressedSize"/>
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.BundleRecord.BundleIndex">
+            <summary>
+            Index of the <see cref="T:LibBundle3.Records.BundleRecord"/> in <see cref="P:LibBundle3.Index.Bundles"/>
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.BundleRecord.Index">
+            <summary>
+            <see cref="P:LibBundle3.Records.BundleRecord.Index"/> instance which contains this bundle
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.BundleRecord.Files">
+            <summary>
+            Files contained in this bundle, may be changed after <see cref="M:LibBundle3.Records.FileRecord.Redirect(LibBundle3.Records.BundleRecord,System.Int32,System.Int32)"/>
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Records.BundleRecord.TryGetBundle(LibBundle3.Bundle@)">
+            <summary>
+            Try to get the bundle instance with <see cref="M:LibBundle3.IBundleFactory.GetBundle(LibBundle3.Records.BundleRecord)"/>
+            </summary>
+            <remarks>Must dispose the bundle after use</remarks>
+            <returns>Whether successfully get the instance</returns>
+        </member>
+        <member name="M:LibBundle3.Records.BundleRecord.TryGetBundle(LibBundle3.Bundle@,System.Exception@)">
+            <summary>
+            Try to get the bundle instance with <see cref="M:LibBundle3.IBundleFactory.GetBundle(LibBundle3.Records.BundleRecord)"/>
+            </summary>
+            <param name="exception">Exception thrown by <see cref="M:LibBundle3.IBundleFactory.GetBundle(LibBundle3.Records.BundleRecord)"/> if failed to get</param>
+            <remarks>Must dispose the bundle after use</remarks>
+            <returns>Whether successfully get the instance</returns>
+        </member>
+        <member name="P:LibBundle3.Records.BundleRecord.RecordLength">
+            <summary>
+            Size of the content when <see cref="M:LibBundle3.Records.BundleRecord.Serialize(System.IO.Stream)"/> to <see cref="P:LibBundle3.Records.BundleRecord.Index"/>
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Records.BundleRecord.Serialize(System.IO.Stream)">
+            <summary>
+            Function to serialize the record to <see cref="P:LibBundle3.Records.BundleRecord.Index"/>
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.FileRecord.PathHash">
+            <summary>
+            Hash of <see cref="P:LibBundle3.Records.FileRecord.Path"/> which can be caculated from <see cref="M:LibBundle3.Index.NameHash(System.ReadOnlySpan{System.Char})"/>
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.FileRecord.BundleRecord">
+            <summary>
+            Bundle which contains this file
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.FileRecord.Offset">
+            <summary>
+            Offset of the file content in data of <see cref="P:LibBundle3.Records.FileRecord.BundleRecord"/>
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.FileRecord.Size">
+            <summary>
+            Size of the file content in bytes
+            </summary>
+        </member>
+        <member name="P:LibBundle3.Records.FileRecord.Path">
+            <summary>
+            Full path of the file in <see cref="T:LibBundle3.Index"/>
+            </summary>
+            <remarks>
+            This will be <see langword="null"/> if the <see cref="M:LibBundle3.Index.ParsePaths"/> has never been called.
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Records.FileRecord.Read(LibBundle3.Bundle)">
+            <summary>
+            Read the content of the file.
+            </summary>
+            <param name="bundle">If specified, read from this bundle instance instead of creating a new one</param>
+            <remarks>
+            When reading multiple files in batches, use <see cref="M:LibBundle3.Index.Extract(System.Collections.Generic.IEnumerable{LibBundle3.Records.FileRecord},LibBundle3.Index.FileHandler)"/> instead for better performance.
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Records.FileRecord.Read(System.Range,LibBundle3.Bundle)">
+            <summary>
+            Read a part of the content of the file.
+            </summary>
+            <param name="range">The range of the content to read</param>
+            <param name="bundle">If specified, read from this bundle instance instead of creating a new one</param>
+            <remarks>
+            When reading multiple files in batches, use <see cref="M:LibBundle3.Index.Extract(System.Collections.Generic.IEnumerable{LibBundle3.Records.FileRecord},LibBundle3.Index.FileHandler)"/> instead for better performance.
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Records.FileRecord.Write(System.ReadOnlySpan{System.Byte},System.Boolean)">
+            <summary>
+            Replace the content of the file.
+            </summary>
+            <param name="saveIndex">
+            Whether to call <see cref="M:LibBundle3.Index.Save(LibBundle3.Oodle.Compressor,LibBundle3.Oodle.CompressionLevel)"/> automatically after writing.
+            This causes performance penalties when writing multiple files.
+            </param>
+            <remarks>
+            You must call <see cref="M:LibBundle3.Index.Save(LibBundle3.Oodle.Compressor,LibBundle3.Oodle.CompressionLevel)"/> (unless <paramref name="saveIndex"/>) to save changes after editing all files you want.
+            </remarks>
+        </member>
+        <member name="M:LibBundle3.Records.FileRecord.Write(LibBundle3.Records.FileRecord.WriteAction,System.Int32,System.Boolean)">
+            <inheritdoc cref="M:LibBundle3.Records.FileRecord.Write(System.ReadOnlySpan{System.Byte},System.Boolean)"/>
+            <param name="writer">
+            <see langword="delegate"/> that provide a <see cref="T:System.Span`1"/> with <paramref name="newSize"/> length
+            to let you write the new content of the file
+            </param>
+            <param name="newSize">Size in bytes of the new content</param>
+        </member>
+        <member name="M:LibBundle3.Records.FileRecord.Redirect(LibBundle3.Records.BundleRecord,System.Int32,System.Int32)">
+            <summary>
+            Redirect the <see cref="T:LibBundle3.Records.FileRecord"/> to another section in specified bundle.
+            Must call <see cref="M:LibBundle3.Index.Save(LibBundle3.Oodle.Compressor,LibBundle3.Oodle.CompressionLevel)"/> to save changes after editing all files you want.
+            </summary>
+        </member>
+        <member name="F:LibBundle3.Records.FileRecord.RecordLength">
+            <summary>
+            Size of the content when <see cref="M:LibBundle3.Records.FileRecord.Serialize(System.IO.Stream)"/> to <see cref="T:LibBundle3.Index"/>
+            </summary>
+        </member>
+        <member name="M:LibBundle3.Records.FileRecord.Serialize(System.IO.Stream)">
+            <summary>
+            Function to serialize the record to <see cref="T:LibBundle3.Index"/>
+            </summary>
+        </member>
+    </members>
+</doc>

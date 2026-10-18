@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FreiAtlas.Core\FreiAtlas.Core.csproj" />
     <ProjectReference Include="..\FreiAtlas.Host.Runtime\FreiAtlas.Host.Runtime.csproj" />
+    <ProjectReference Include="..\FreiAtlas.Patcher\FreiAtlas.Patcher.csproj" />
   </ItemGroup>
 
   <ItemGroup>
