@@ -17,6 +17,32 @@ public sealed class ExpeditionPriceSourceTests
     }
 
     [Fact]
+    public void PoeNinjaParser_ReadsLineageSupportGemsAndCategorizesCorrectly()
+    {
+        const string lineageFixture = """
+            {
+              "core": {
+                "rates": { "exalted": 718.6, "chaos": 10.74 }
+              },
+              "items": [
+                { "id": "atziris-communion", "name": "Atziri's Communion", "category": "LineageSupportGems" }
+              ],
+              "lines": [
+                { "id": "atziris-communion", "primaryValue": 575.0 }
+              ]
+            }
+            """;
+
+        var result = PoeNinjaPriceSource.ParseOverview(lineageFixture, "LineageSupportGems");
+
+        Assert.Equal(718.6m, result.ExaltedPerDivine);
+        var gem = Assert.Single(result.Entries, item => item.ItemId == "atziris-communion");
+        Assert.Equal("Atziri's Communion", gem.DisplayName);
+        Assert.Equal(575.0m, gem.DivineValue);
+        Assert.Equal("LineageSupportGems", gem.Category);
+    }
+
+    [Fact]
     public void Poe2DbParser_ConvertsExchangeRowsToDivineValuesAndAliasesEnglishNames()
     {
         var result = Poe2DbPriceSource.ParseHtml(Poe2DbFixture);
@@ -77,6 +103,35 @@ public sealed class ExpeditionPriceSourceTests
         Assert.Equal(1m, primary);
         Assert.True(snapshot.TryGet("b", "Fallback", out var fallback));
         Assert.Equal(3m, fallback);
+    }
+
+    [Fact]
+    public void PriceSnapshot_MergesMetadataFromLaterSourceWithoutChangingPrimaryPrice()
+    {
+        var snapshot = ExpeditionPriceSnapshot.Merge(
+            DateTimeOffset.Parse("2026-08-02T00:00:00Z"),
+            [
+                new ExpeditionPriceSourceResult(
+                    "poe.ninja",
+                    400m,
+                    [new ExpeditionPriceEntry("mirror", "Mirror of Kalandra", 1m) { Category = "Currency" }]),
+                new ExpeditionPriceSourceResult(
+                    "poe2scout",
+                    400m,
+                    [new ExpeditionPriceEntry(
+                        "Metadata/Items/Currency/CurrencyDuplicate",
+                        "Mirror of Kalandra",
+                        2m)
+                    {
+                        Category = "currency",
+                        MetadataPath = "Metadata/Items/Currency/CurrencyDuplicate"
+                    }])
+            ]);
+
+        var entry = Assert.Single(snapshot.Entries);
+        Assert.Equal(1m, entry.DivineValue);
+        Assert.Equal("poe.ninja", entry.Source);
+        Assert.Equal("Metadata/Items/Currency/CurrencyDuplicate", entry.MetadataPath);
     }
 
     [Fact]

@@ -127,6 +127,92 @@ public class Phase3Tests
     }
 
     [Fact]
+    public void PricePatch_WordsDatWorkflow_SuccessfullyScansModifiesAndRestores()
+    {
+        int rowCount = 2;
+        int rowSize = PricePatchService.WordsRowSize; // 64
+        int stringBase = 4 + rowCount * rowSize;
+
+        using var ms = new MemoryStream();
+        ms.Write(BitConverter.GetBytes(rowCount), 0, 4);
+
+        byte[] emptyRow = new byte[rowSize];
+        ms.Write(emptyRow, 0, emptyRow.Length);
+        ms.Write(emptyRow, 0, emptyRow.Length);
+
+        // 写入哨兵 0xBB * 8，确保字符串 offset > 0
+        ms.Write(new byte[] { 187, 187, 187, 187, 187, 187, 187, 187 }, 0, 8);
+
+        string en0 = "Mageblood";
+        string display0 = "法师之血";
+        uint en0Offset = (uint)(ms.Length - stringBase);
+        ms.Write(Encoding.Unicode.GetBytes(en0));
+        ms.Write(new byte[4]);
+
+        uint display0Offset = (uint)(ms.Length - stringBase);
+        ms.Write(Encoding.Unicode.GetBytes(display0));
+        ms.Write(new byte[4]);
+
+        string en1 = "Headhunter";
+        string display1 = "猎首";
+        uint en1Offset = (uint)(ms.Length - stringBase);
+        ms.Write(Encoding.Unicode.GetBytes(en1));
+        ms.Write(new byte[4]);
+
+        uint display1Offset = (uint)(ms.Length - stringBase);
+        ms.Write(Encoding.Unicode.GetBytes(display1));
+        ms.Write(new byte[4]);
+
+        byte[] originalDat = ms.ToArray();
+        // 填充行 0 的 en_offset (偏移 4) 和 display_offset (偏移 48)
+        Buffer.BlockCopy(BitConverter.GetBytes(en0Offset), 0, originalDat, 4 + PricePatchService.WordsEnNameOffset, 4);
+        Buffer.BlockCopy(BitConverter.GetBytes(display0Offset), 0, originalDat, 4 + PricePatchService.WordsDisplayNameOffset, 4);
+        // 填充行 1 的 en_offset (偏移 4) 和 display_offset (偏移 48)
+        Buffer.BlockCopy(BitConverter.GetBytes(en1Offset), 0, originalDat, 4 + rowSize + PricePatchService.WordsEnNameOffset, 4);
+        Buffer.BlockCopy(BitConverter.GetBytes(display1Offset), 0, originalDat, 4 + rowSize + PricePatchService.WordsDisplayNameOffset, 4);
+
+        // 1. 扫描 Words 表验证条目
+        var words = PricePatchService.ScanWordNames(originalDat);
+        Assert.Equal(2, words.Count);
+        Assert.Equal("Mageblood", words[0].EnName);
+        Assert.Equal("法师之血", words[0].DisplayName);
+        Assert.Equal("Headhunter", words[1].EnName);
+        Assert.Equal("猎首", words[1].DisplayName);
+
+        // 2. 测试分别以英文名 (Mageblood) 和中文名 (猎首) 匹配注入物价
+        var prices = new List<PriceRow>
+        {
+            new PriceRow("Mageblood", "280D"),
+            new PriceRow("猎首", "15D")
+        };
+
+        var (replacements, warnings) = PricePatchService.BuildWordReplacements(
+            words,
+            prices,
+            separator: " ",
+            keepExistingPrice: false);
+
+        Assert.Equal(2, replacements.Count);
+
+        byte[] patchedDat = PricePatchService.ApplyWordReplacementsAppend(originalDat, replacements);
+        Assert.True(patchedDat.Length > originalDat.Length);
+
+        var wordsAfterPatch = PricePatchService.ScanWordNames(patchedDat);
+        Assert.Equal(2, wordsAfterPatch.Count);
+        Assert.Equal("法师之血 [280D]", wordsAfterPatch[0].DisplayName);
+        Assert.Equal("猎首 [15D]", wordsAfterPatch[1].DisplayName);
+        Assert.True(PricePatchService.ContainsWordsPriceSuffix(patchedDat));
+
+        // 3. 验证清洗后缀并还原纯净名称
+        byte[] cleanedDat = PricePatchService.StripAllWordsPriceSuffixes(patchedDat, " ");
+        var wordsAfterClean = PricePatchService.ScanWordNames(cleanedDat);
+        Assert.Equal(2, wordsAfterClean.Count);
+        Assert.Equal("法师之血", wordsAfterClean[0].DisplayName);
+        Assert.Equal("猎首", wordsAfterClean[1].DisplayName);
+        Assert.False(PricePatchService.ContainsWordsPriceSuffix(cleanedDat));
+    }
+
+    [Fact]
     public void ColorModOverrides_LoadsAuthoritativeJson_Successfully()
     {
         Assert.True(ColorModOverrides.IsLoaded, $"Overrides 未能成功加载: {ColorModOverrides.LoadError}");
@@ -240,6 +326,35 @@ public class Phase3Tests
         Assert.Equal(p1, p2);
         // 不同游戏路径隔离存储，杜绝相互覆盖
         Assert.NotEqual(p1, pDiff);
+    }
+
+    [Fact]
+    public void PatchBackupManager_WhenBackupPathIsAFile_DoesNotThrowAndReportsUnavailable()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "frei_badbak_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string badPath = Path.Combine(tempDir, "patch_backup");
+        File.WriteAllText(badPath, "not a directory");
+
+        try
+        {
+            var mgr = new PatchBackupManager(badPath);
+
+            Assert.False(mgr.IsAvailable);
+            Assert.False(string.IsNullOrWhiteSpace(mgr.UnavailableReason));
+
+            var info = new GameModeInfo { IsValid = true, GameDirectory = tempDir, Mode = GameMode.Bundles2 };
+            Assert.False(mgr.HasBackup(info));
+            Assert.Empty(mgr.GetSnapshots(info));
+
+            var created = mgr.CreateSnapshot(info, PatchSnapshotType.Manual, "测试", "目录不可用");
+            Assert.False(created.Success);
+            Assert.Contains("不可用", created.Message);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
     }
 
     [Fact]
@@ -506,5 +621,72 @@ public class Phase3Tests
         Assert.Equal(2, postScan.Count);
         Assert.Equal("閃光的未必是金……", postScan[0].OriginalRumourText);
         Assert.Equal("[<rgb(227,158,255)>{無復活}]沒東西可喝……", postScan[1].OriginalRumourText);
+    }
+
+    [Fact]
+    public void PricePatch_DualLanguageMapping_MatchesLineageGemsAndRunesAccurately()
+    {
+        // 构造客户端繁体中文基底项 (从客户端繁中 baseitemtypes 扫描出的条目)
+        var locEntries = new List<PricePatchService.BaseItemName>
+        {
+            new()
+            {
+                RowIndex = 0,
+                MetadataPath = "Metadata/Items/Gems/SupportGems/LineageAtzirisCommunion",
+                Name = "阿茲里的共融",
+                NameStart = 100,
+                NameEnd = 112,
+                NameOffset = 100,
+                NamePointerPos = 36
+            },
+            new()
+            {
+                RowIndex = 1,
+                MetadataPath = "Metadata/Items/Runes/RuneProwessAncient",
+                Name = "古代威力符文",
+                NameStart = 200,
+                NameEnd = 212,
+                NameOffset = 200,
+                NamePointerPos = 76
+            }
+        };
+
+        // 构造客户端英文基底映射 (通过 MetadataPath 关联的英文名称索引)
+        var enMap = new Dictionary<string, PricePatchService.BaseItemName>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Atziri's Communion"] = locEntries[0],
+            ["Ancient Rune of Prowess"] = locEntries[1]
+        };
+
+        // 构造 poe.ninja 抓取到的纯英文物价条目 (无 MetadataPath)
+        var priceRows = new List<PriceRow>
+        {
+            new("Atziri's Communion", "2.5D", metadataPath: "", category: "LineageSupportGems"),
+            new("Ancient Rune of Prowess", "18E", metadataPath: "", category: "Runes")
+        };
+
+        var (replacements, warnings) = PricePatchService.BuildReplacements(
+            locEntries,
+            priceRows,
+            separator: " ",
+            keepExistingPrice: false,
+            mode: "append",
+            patchSameNameDuplicates: true,
+            enNameToLocalMap: enMap);
+
+        Assert.Empty(warnings);
+        Assert.Equal(2, replacements.Count);
+
+        // 验证血脉宝石精准匹配繁中客户端原名并生成注入文本
+        Assert.Equal("阿茲里的共融", replacements[0].OldName);
+        Assert.Equal("阿茲里的共融 [2.5D]", replacements[0].FittedName);
+        Assert.Equal("Metadata/Items/Gems/SupportGems/LineageAtzirisCommunion", replacements[0].MetadataPath);
+        Assert.Equal("LineageSupportGems", replacements[0].Category);
+
+        // 验证符文精准匹配
+        Assert.Equal("古代威力符文", replacements[1].OldName);
+        Assert.Equal("古代威力符文 [18E]", replacements[1].FittedName);
+        Assert.Equal("Metadata/Items/Runes/RuneProwessAncient", replacements[1].MetadataPath);
+        Assert.Equal("Runes", replacements[1].Category);
     }
 }

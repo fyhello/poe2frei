@@ -14,3 +14,35 @@
 .price-source { display: grid; grid-template-columns: 105px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); line-height: 1.7; }
 .price-source span { color: var(--muted); overflow-wrap: anywhere; }
 .price-warning { color: var(--warning); line-height: 1.7; }
+.price-table-band { margin-top: 18px; }
+.price-table-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.price-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.price-table-tools { display: grid; grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(130px, 180px)); gap: 10px; margin: 16px 0; }
+.price-table-tools .search-box,
+.price-table-tools .preset-select { width: 100%; height: 34px; }
+.price-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+.price-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.price-table th,
+.price-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.price-table th { color: var(--muted); font-weight: 600; background: var(--patcher-inner-bg, rgba(255, 255, 255, 0.03)); }
+.price-table tbody tr:last-child td { border-bottom: none; }
+.price-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+.price-item-name { color: var(--text); }
+.price-item-alias { margin-top: 2px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.price-amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.price-table-empty { margin: 0; padding: 24px 12px; color: var(--muted); text-align: center; }
+.price-pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.price-pager .link-button { min-height: 30px; }
+.price-pager .link-button:disabled { opacity: 0.45; cursor: not-allowed; }
+.price-patch-preview { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--patcher-inner-bg, rgba(255, 255, 255, 0.03)); }
+.price-patch-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.price-patch-preview-token { color: var(--muted); font-size: 10px; font-family: ui-monospace, monospace; }
+.price-patch-preview-facts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 10px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.price-patch-preview-facts strong { color: var(--text); }
+.price-patch-preview-warnings { margin: 10px 0 0; color: var(--warning); font-size: 12px; line-height: 1.6; }
+.price-patch-preview-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.price-patch-preview-actions .primary-button { min-height: 32px; }
+.price-patch-preview-actions .link-button { min-height: 32px; }
+@media (max-width: 900px) {
+  .price-table-tools { grid-template-columns: 1fr 1fr; }
+}

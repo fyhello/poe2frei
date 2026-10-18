@@ -398,6 +398,34 @@ public class PatcherTests
         Assert.Equal("崇高石", PricePatchService.StripExistingPriceSuffix("崇高石 [15C]", " "));
         Assert.Equal("神圣石", PricePatchService.StripExistingPriceSuffix("神圣石[2.5D]", ""));
         Assert.Equal("魔符", PricePatchService.StripExistingPriceSuffix("魔符 [<1d]", " "));
+        Assert.Equal("法师之血", PricePatchService.StripExistingPriceSuffix("法师之血 [★ 280D]", " "));
+    }
+
+    [Fact]
+    public void PricePatchService_MultiLanguageAndSimplifiedNormalization_MatchesProperly()
+    {
+        var entries = new List<PricePatchService.BaseItemName>
+        {
+            new() { RowIndex = 0, MetadataPath = "Metadata/Items/Currency/CurrencyDuplicate", Name = "卡兰德的魔镜", NameStart = 10, NameEnd = 22 },
+            new() { RowIndex = 1, MetadataPath = "Metadata/Items/Currency/CurrencyModValues", Name = "神聖石", NameStart = 30, NameEnd = 36 },
+            new() { RowIndex = 2, MetadataPath = "Metadata/Items/Gems/SkillGem", Name = "未切割的技能宝石", NameStart = 50, NameEnd = 66 }
+        };
+
+        var priceRows = new List<PriceRow>
+        {
+            // 1. 英文 DisplayName 通过 EnglishToMetadataMap 命中
+            new() { Name = "Mirror of Kalandra", Price = "280D" },
+            // 2. 简体名称输入命中繁体客户端条目 "神聖石"
+            new() { Name = "神圣石", Price = "400E" },
+            // 3. 英文 DisplayName 通过 EnglishToChineseMap 命中 "未切割的技能宝石"
+            new() { Name = "Uncut Skill Gem", Price = "1.5D" }
+        };
+
+        var (replacements, _) = PricePatchService.BuildReplacements(entries, priceRows, " ", keepExistingPrice: false, "append", true);
+        Assert.Equal(3, replacements.Count);
+        Assert.Contains(replacements, r => r.OldName == "卡兰德的魔镜" && r.RequestedName == "卡兰德的魔镜 [280D]");
+        Assert.Contains(replacements, r => r.OldName == "神聖石" && r.RequestedName == "神聖石 [400E]");
+        Assert.Contains(replacements, r => r.OldName == "未切割的技能宝石" && r.RequestedName == "未切割的技能宝石 [1.5D]");
     }
 
     [Fact]
@@ -551,6 +579,82 @@ public class PatcherTests
     }
 
     [Fact]
+    public void PricePatchService_StripExistingPriceSuffix_DoesNotStripNonPriceBrackets()
+    {
+        Assert.Equal("物品 [ABC]", PricePatchService.StripExistingPriceSuffix("物品 [ABC]", " "));
+        Assert.Equal("物品 [ABC]", PricePatchService.StripExistingPriceSuffix("物品 [ABC] [15e]", " "));
+    }
+
+    [Fact]
+    public void PriceLayerBackupStore_PersistsBaselineAndRestoresIt()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "frei_pricebackup_" + Guid.NewGuid().ToString("N"));
+        string gameDirectory = Path.Combine(root, "game");
+        Directory.CreateDirectory(gameDirectory);
+        string virtualPath = "data/balance/simplified chinese/baseitemtypes.datc64";
+        var info = new GameModeInfo
+        {
+            IsValid = true,
+            GameDirectory = gameDirectory,
+            Mode = GameMode.Bundles2
+        };
+        var store = new PriceLayerBackupStore(Path.Combine(root, "backup"));
+
+        try
+        {
+            byte[] datBytes = BuildSyntheticBaseItemsDat();
+            var baseline = store.EnsureBaseline(info, virtualPath, datBytes, out var warning);
+            Assert.True(File.Exists(baseline.BaselinePath));
+            Assert.True(string.IsNullOrEmpty(warning));
+            Assert.True(store.TryGetBaseline(info, virtualPath, datBytes, out var loaded));
+            Assert.Equal(datBytes, loaded.Bytes);
+
+            store.RecordApplied(baseline, datBytes, 1);
+            Assert.True(store.TryGetBaseline(info, virtualPath, datBytes, out _));
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void PriceLayerBackupStore_RejectsBaselineWhenMetadataSignatureChanges()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "frei_pricebackup_sig_" + Guid.NewGuid().ToString("N"));
+        string gameDirectory = Path.Combine(root, "game");
+        Directory.CreateDirectory(gameDirectory);
+        string virtualPath = "data/balance/simplified chinese/baseitemtypes.datc64";
+        var info = new GameModeInfo
+        {
+            IsValid = true,
+            GameDirectory = gameDirectory,
+            Mode = GameMode.Bundles2
+        };
+        var store = new PriceLayerBackupStore(Path.Combine(root, "backup"));
+
+        try
+        {
+            byte[] first = BuildSyntheticBaseItemsDat();
+            store.EnsureBaseline(info, virtualPath, first, out _);
+            Assert.True(store.TryGetBaseline(info, virtualPath, first, out _));
+
+            byte[] changed = BuildSyntheticBaseItemsDat(
+                "Metadata/Items/Currency/CurrencyDivine",
+                "神圣石");
+            Assert.False(store.TryGetBaseline(info, virtualPath, changed, out _));
+
+            store.EnsureBaseline(info, virtualPath, changed, out var warning);
+            Assert.False(string.IsNullOrEmpty(warning));
+            Assert.True(store.TryGetBaseline(info, virtualPath, changed, out _));
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
     public void PricePatchService_Maps_English_To_Metadata()
     {
         Assert.True(PricePatchService.EnglishToMetadataMap.ContainsKey("Divine Orb"));
@@ -558,5 +662,53 @@ public class PatcherTests
 
         Assert.True(PricePatchService.EnglishToMetadataMap.ContainsKey("Mirror of Kalandra"));
         Assert.Equal("Metadata/Items/Currency/CurrencyDuplicate", PricePatchService.EnglishToMetadataMap["Mirror of Kalandra"]);
+    }
+
+    [Fact]
+    public void PricePatchService_BuildReplacements_PopulatesDetailedFields()
+    {
+        var entries = new List<PricePatchService.BaseItemName>
+        {
+            new() { RowIndex = 0, MetadataPath = "Metadata/Items/Currency/CurrencyModValues", Name = "神圣石", NameStart = 0, NameEnd = 6 }
+        };
+        var priceRows = new List<PriceRow>
+        {
+            new("神圣石", "400E", "Metadata/Items/Currency/CurrencyModValues")
+        };
+
+        var (replacements, _) = PricePatchService.BuildReplacements(entries, priceRows, " ", keepExistingPrice: false, "append", true);
+        Assert.Single(replacements);
+        var item = replacements[0];
+        Assert.Equal("神圣石", item.OldName);
+        Assert.Equal("400E", item.Price);
+        Assert.Equal("神圣石 [400E]", item.FittedName);
+        Assert.False(item.Compacted);
+    }
+
+    private static byte[] BuildSyntheticBaseItemsDat(
+        string metadataPath = "Metadata/Items/Currency/CurrencyExalted",
+        string name = "崇高石")
+    {
+        const int rowCount = 1;
+        const int rowSize = 40;
+        const int stringBase = 4 + rowCount * rowSize;
+
+        using var stream = new MemoryStream();
+        stream.Write(BitConverter.GetBytes(rowCount));
+        stream.Write(new byte[rowSize]);
+        stream.Write(new byte[] { 187, 187, 187, 187, 187, 187, 187, 187 });
+
+        uint metadataOffset = (uint)(stream.Length - stringBase);
+        stream.Write(Encoding.Unicode.GetBytes(metadataPath));
+        stream.Write(new byte[4]);
+
+        uint nameOffset = (uint)(stream.Length - stringBase);
+        stream.Write(Encoding.Unicode.GetBytes(name));
+        stream.Write(new byte[4]);
+
+        byte[] bytes = stream.ToArray();
+        Buffer.BlockCopy(BitConverter.GetBytes(metadataOffset), 0, bytes, 4, 4);
+        Buffer.BlockCopy(BitConverter.GetBytes(nameOffset), 0, bytes, 4 + 32, 4);
+        return bytes;
     }
 }

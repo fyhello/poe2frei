@@ -186,6 +186,46 @@
             <div id="priceSources" class="price-sources"></div>
             <p class="price-hint">每小时自动更新。断网时仅使用所选区服 24 小时内的缓存；没有有效价格时显示缺价。</p>
           </section>
+          <section class="settings-band price-table-band">
+            <div class="price-table-head">
+              <h2>全部物品物价</h2>
+              <span id="priceItemCount" class="price-count">—</span>
+            </div>
+            <div class="price-table-tools">
+              <input id="priceSearch" class="search-box" type="search" placeholder="搜索物品名 / 别名 / ID">
+              <select id="priceCategoryFilter" class="preset-select" aria-label="按分类筛选">
+                <option value="">全部分类</option>
+              </select>
+              <select id="priceSourceFilter" class="preset-select" aria-label="按价格来源筛选">
+                <option value="">全部来源</option>
+              </select>
+              <select id="priceSort" class="preset-select" aria-label="价格排序">
+                <option value="price-desc">价格从高到低</option>
+                <option value="price-asc">价格从低到高</option>
+                <option value="name">按名称</option>
+              </select>
+            </div>
+            <div class="price-table-wrap">
+              <table class="price-table">
+                <thead>
+                  <tr>
+                    <th scope="col">物品名称</th>
+                    <th scope="col">分类</th>
+                    <th scope="col">价格</th>
+                    <th scope="col">神圣价值</th>
+                    <th scope="col">来源</th>
+                  </tr>
+                </thead>
+                <tbody id="priceTableBody"></tbody>
+              </table>
+              <p id="priceTableEmpty" class="price-table-empty hidden">暂无价格条目</p>
+            </div>
+            <div class="price-pager">
+              <button id="pricePrev" class="link-button" type="button" disabled>上一页</button>
+              <span id="pricePageInfo">—</span>
+              <button id="priceNext" class="link-button" type="button" disabled>下一页</button>
+            </div>
+          </section>
           <p id="priceCatalogError" class="price-warning" role="status"></p>
           <p id="priceError" class="assistant-error" role="alert"></p>
         </section>
@@ -862,55 +902,122 @@
             <!-- 模块 8: 原生物价注入 -->
             <div id="psec-price" class="patcher-section hidden">
               <div class="patcher-grid-split">
-                <div class="patcher-box" style="gap: 12px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; color: var(--text-muted); background: var(--patcher-inner-bg); padding: 8px; border-radius: 4px; border: 1px solid var(--border-color);">
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                      <input type="checkbox" checked id="chkPriceCurrency">
-                      <span style="color: var(--text);">基础通货 (神圣/崇高等)</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                      <input type="checkbox" checked id="chkPriceUnique">
-                      <span style="color: var(--text);">稀有传奇暗金装备</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                      <input type="checkbox" checked id="chkPriceMaps">
-                      <span style="color: var(--text);">异界神图与圣遗物</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                      <input type="checkbox" checked id="chkPriceCards">
-                      <span style="color: var(--text);">命运卡片与精华</span>
-                    </label>
+                <div class="patcher-box" style="gap: 10px;">
+                  <!-- 1. 顶部操作栏：读取客户端并预览放最上方 -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--patcher-inner-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <button id="btnPreviewPricePatch" class="btn-compact btn-scan-client" type="button" style="height: 30px; padding: 0 14px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" title="从当前客户端读取实际数据表并匹配物价生成预览">
+                        <span id="pricePreviewSpinner" class="hidden animate-spin">⟳</span>
+                        <span id="pricePreviewBtnText">🎮 读取客户端并预览</span>
+                      </button>
+                      <span style="color: var(--text-muted); font-size: 11px;">读取客户端双语基底表生成精准物价预览</span>
+                    </div>
+                    <span style="color: var(--text-muted); font-size: 10px;">只读预览 · 确认后在顶部点击保存写入</span>
                   </div>
 
+                  <!-- 2. 全量 14 资产分类选择胶囊（带快捷全选/反选/常用） -->
+                  <div style="background: var(--patcher-inner-bg); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); display: grid; gap: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: var(--text); font-size: 11px; font-weight: 600;">资产分类筛选 (覆盖 poe.ninja 全部 14 类)：</span>
+                      <div style="display: flex; gap: 4px;">
+                        <button id="btnPriceSelectAll" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">一键全选</button>
+                        <button id="btnPriceUnselectAll" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">全部取消</button>
+                        <button id="btnPriceSelectCommon" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">推荐常用</button>
+                      </div>
+                    </div>
+                    <div id="priceCategoryPills" style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px;">
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceCurrency" data-cat="Currency" style="cursor: pointer;">
+                        <span style="color: var(--text);">基础通货</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(96,165,250,0.3); cursor: pointer; background: rgba(96,165,250,0.08);">
+                        <input type="checkbox" checked id="chkPriceLineage" data-cat="LineageSupportGems" style="cursor: pointer;">
+                        <span style="color: #60a5fa; font-weight: 500;">传承血脉</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceRunes" data-cat="Runes" style="cursor: pointer;">
+                        <span style="color: var(--text);">符文</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceEssences" data-cat="Essences" style="cursor: pointer;">
+                        <span style="color: var(--text);">精华</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceSoulCores" data-cat="SoulCores" style="cursor: pointer;">
+                        <span style="color: var(--text);">灵魂核心</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceUncutGems" data-cat="UncutGems" style="cursor: pointer;">
+                        <span style="color: var(--text);">未切割宝石</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceIdols" data-cat="Idols" style="cursor: pointer;">
+                        <span style="color: var(--text);">神像</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceExpedition" data-cat="Expedition" style="cursor: pointer;">
+                        <span style="color: var(--text);">远征</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceBreach" data-cat="Breach" style="cursor: pointer;">
+                        <span style="color: var(--text);">裂隙</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceDelirium" data-cat="Delirium" style="cursor: pointer;">
+                        <span style="color: var(--text);">谵妄</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceRitual" data-cat="Ritual" style="cursor: pointer;">
+                        <span style="color: var(--text);">仪式</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceFragments" data-cat="Fragments" style="cursor: pointer;">
+                        <span style="color: var(--text);">碎片</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceAbyss" data-cat="Abyss" style="cursor: pointer;">
+                        <span style="color: var(--text);">深渊</span>
+                      </label>
+                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
+                        <input type="checkbox" checked id="chkPriceVerisium" data-cat="Verisium" style="cursor: pointer;">
+                        <span style="color: var(--text);">维利席姆</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- 3. 参数控制行 -->
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                     <div>
                       <label style="color: var(--text-muted); font-size: 11px;">物价后缀分隔符：</label>
-                      <select id="priceSepSelect" class="preset-select" style="width: 100%; height: 30px; margin-top: 4px;">
+                      <select id="priceSepSelect" class="preset-select" style="width: 100%; height: 28px; margin-top: 3px;">
                         <option value=" ">空格分隔 (如: 崇高石 [15E])</option>
                         <option value=" - ">中划线分隔 (如: 崇高石 - [15E])</option>
                         <option value="|">竖线分隔 (如: 崇高石|[15E])</option>
                       </select>
                     </div>
                     <div>
-                      <label style="color: var(--text-muted); font-size: 11px;">低价过滤门槛 (低于不显示)：</label>
-                      <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
-                        <input id="priceFilterMin" type="number" value="5" class="search-box" style="max-width: 80px; height: 30px;">
+                      <label style="color: var(--text-muted); font-size: 11px;">低价过滤门槛 (低于不注入)：</label>
+                      <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
+                        <input id="priceFilterMin" type="number" value="1" min="0" step="0.1" class="search-box" style="max-width: 80px; height: 28px;">
                         <span style="color: var(--text-muted); font-size: 11px;">E 以下隐藏</span>
                       </div>
                     </div>
                   </div>
 
-                  <div style="display: flex; align-items: center; justify-content: space-between; background: var(--patcher-inner-bg); padding: 8px 10px; border-radius: 4px; border: 1px solid var(--border-color);">
-                    <span style="color: var(--text-muted); font-size: 11px;">高价值物品醒目金边高亮 (高于 1D)：</span>
-                    <input type="checkbox" id="chkGoldStar" checked style="cursor: pointer;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--patcher-inner-bg); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text); font-size: 11px;">
+                      <input type="checkbox" id="chkPriceStripExisting" checked style="cursor: pointer;">
+                      应用前剥离旧价格后缀（推荐）
+                    </label>
+                    <span style="color: var(--text-muted); font-size: 11px;">单位自动 D/E（≥0.5D 自动折算为 D）</span>
                   </div>
                 </div>
 
                 <div class="preview-sticky-wrap">
-                  <span style="font-weight: 600; color: var(--text);">地面 Label 视觉效果即时模拟</span>
-                  <div style="background: var(--patcher-inner-bg); border: 1px solid var(--border-color); border-radius: 6px; height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px;">
+                  <span style="font-weight: 600; color: var(--text); font-size: 11.5px;">地面 Label 视觉效果即时模拟</span>
+                  <div style="background: var(--patcher-inner-bg); border: 1px solid var(--border-color); border-radius: 6px; height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px;">
                     <div id="simPriceUnique" class="loot-ground-label" style="border-color: #a8742b; color: #af6025;">
-                      法师之血 重革腰带 [★ 280D]
+                      法师之血 重革腰带 [280D]
                     </div>
                     <div id="simPriceDivine" class="loot-ground-label" style="border-color: #d4a754; color: #aa9e82;">
                       神圣石 [400E]
@@ -919,6 +1026,42 @@
                       重铸石 (低于门槛已隐藏物价后缀)
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <!-- 4. 预览明细表格区域：底部无多余确认按钮，表格撑满 -->
+              <div id="pricePatchPreview" class="price-patch-preview hidden" aria-live="polite">
+                <div class="price-patch-preview-head">
+                  <strong>客户端物价匹配明细预览</strong>
+                </div>
+                <div class="price-patch-preview-facts" style="gap: 12px;">
+                  <span>候选价格 <strong id="pricePreviewCandidate" style="color: #60a5fa;">0</strong></span>
+                  <span>实际匹配 <strong id="pricePreviewMatched" style="color: #34d399;">0</strong></span>
+                  <span>未匹配 <strong id="pricePreviewUnmatched" style="color: #94a3b8;">0</strong></span>
+                  <span>名称压缩 <strong id="pricePreviewCompacted" style="color: #eab308;">0</strong></span>
+                </div>
+                <p id="pricePreviewWarnings" class="price-patch-preview-warnings"></p>
+
+                <!-- 物品明细核对与快速搜索过滤 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 8px 0 6px;">
+                  <input id="pricePreviewSearch" type="text" placeholder="搜索已匹配物品名称 (如: 神圣石 / 崇高石 / 符文)..." class="search-box" style="max-width: 280px; height: 26px; font-size: 11px;">
+                  <span id="pricePreviewFilteredCount" style="color: var(--text-muted); font-size: 11px;">显示 0 / 0 条</span>
+                </div>
+
+                <div class="table-container" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.25);">
+                  <table class="compact-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 38px; text-align: center;">序号</th>
+                        <th style="width: 80px; text-align: left;">分类</th>
+                        <th style="min-width: 140px; text-align: left;">客户端原名称</th>
+                        <th style="width: 85px; text-align: center;">注入物价</th>
+                        <th style="min-width: 160px; text-align: left;">地面掉落最终呈现</th>
+                        <th style="width: 60px; text-align: center;">状态</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pricePreviewTableBody"></tbody>
+                  </table>
                 </div>
               </div>
             </div>

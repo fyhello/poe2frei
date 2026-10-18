@@ -15,21 +15,30 @@ public interface IExpeditionPriceSource
 
 public sealed class PoeNinjaPriceSource : IExpeditionPriceSource
 {
-    private const string Endpoint =
+    private const string ExchangeEndpoint =
         "https://poe.ninja/poe2/api/economy/exchange/current/overview";
-    private static readonly string[] DefaultCategories =
-        ["Currency", "Expedition", "Runes", "Verisium", "UncutGems"];
+    private const string ItemEndpoint =
+        "https://poe.ninja/poe2/api/economy/stash/current/item/overview";
+
+    private static readonly string[] DefaultExchangeCategories =
+        ["Currency", "Fragments", "Runes", "Essences", "SoulCores", "Idols", "Expedition", "Delirium", "Ritual", "Breach", "Verisium", "UncutGems", "LineageSupportGems", "Abyss"];
+    private static readonly string[] DefaultItemCategories =
+        ["UniqueWeapons", "UniqueArmours", "UniqueAccessories", "UniqueFlasks", "UniqueJewels"];
+
     private readonly HttpClient _httpClient;
-    private readonly IReadOnlyList<string> _categories;
+    private readonly IReadOnlyList<string> _exchangeCategories;
+    private readonly IReadOnlyList<string> _itemCategories;
 
     public PoeNinjaPriceSource(
         HttpClient httpClient,
         string league,
-        IEnumerable<string>? categories = null)
+        IEnumerable<string>? exchangeCategories = null,
+        IEnumerable<string>? itemCategories = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         League = league?.Trim() ?? string.Empty;
-        _categories = (categories ?? DefaultCategories).ToArray();
+        _exchangeCategories = (exchangeCategories ?? DefaultExchangeCategories).ToArray();
+        _itemCategories = (itemCategories ?? DefaultItemCategories).ToArray();
     }
 
     public string Name => "poe.ninja";
@@ -56,11 +65,13 @@ public sealed class PoeNinjaPriceSource : IExpeditionPriceSource
         var entries = new List<ExpeditionPriceEntry>();
         var diagnostics = new List<string>();
         var exaltedPerDivine = 0m;
-        foreach (var category in _categories)
+
+        // 1. 抓取通货、碎片、符文、精华、宝石等交换类行情
+        foreach (var category in _exchangeCategories)
         {
             try
             {
-                var uri = $"{Endpoint}?league={Uri.EscapeDataString(league)}&type={Uri.EscapeDataString(category)}";
+                var uri = $"{ExchangeEndpoint}?league={Uri.EscapeDataString(league)}&type={Uri.EscapeDataString(category)}";
                 var json = await _httpClient.GetStringAsync(uri, cancellationToken)
                     .ConfigureAwait(false);
                 var result = ParseOverview(json, category);
@@ -69,6 +80,31 @@ public sealed class PoeNinjaPriceSource : IExpeditionPriceSource
                     exaltedPerDivine = result.ExaltedPerDivine;
                 }
 
+                entries.AddRange(result.Entries);
+            }
+            catch (HttpRequestException exception)
+            {
+                diagnostics.Add($"{category} 请求失败：{exception.StatusCode?.ToString() ?? "网络错误"}");
+            }
+            catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                diagnostics.Add($"{category} 请求超时");
+            }
+            catch (JsonException)
+            {
+                diagnostics.Add($"{category} 响应格式无效");
+            }
+        }
+
+        // 2. 抓取暗金传奇装备行情（武器、防具、饰品、药剂、珠宝）
+        foreach (var category in _itemCategories)
+        {
+            try
+            {
+                var uri = $"{ItemEndpoint}?league={Uri.EscapeDataString(league)}&type={Uri.EscapeDataString(category)}";
+                var json = await _httpClient.GetStringAsync(uri, cancellationToken)
+                    .ConfigureAwait(false);
+                var result = ParseOverview(json, category);
                 entries.AddRange(result.Entries);
             }
             catch (HttpRequestException exception)
@@ -118,39 +154,52 @@ public sealed class PoeNinjaPriceSource : IExpeditionPriceSource
             return new ExpeditionPriceSourceResult(category, rate, entries.ToImmutable());
         }
 
+        bool isUnique = category.StartsWith("Unique", StringComparison.OrdinalIgnoreCase);
+        string normalizedCategory = isUnique ? "Unique" : category;
+
         foreach (var line in lines.EnumerateArray())
         {
-            if (line.ValueKind != JsonValueKind.Object
-                || !line.TryGetProperty("id", out var idElement))
+            if (line.ValueKind != JsonValueKind.Object)
             {
                 continue;
             }
 
-            var id = ReadString(idElement);
+            var id = line.TryGetProperty("id", out var idElement) ? ReadString(idElement) : null;
+            var name = line.TryGetProperty("name", out var lineName) ? ReadString(lineName) : null;
+            string? image = line.TryGetProperty("icon", out var icon) ? ReadString(icon) : null;
+
             if (string.IsNullOrWhiteSpace(id))
             {
-                continue;
+                id = name;
             }
 
-            var name = line.TryGetProperty("name", out var lineName)
-                       ? ReadString(lineName)
-                       : null;
-            string? image = line.TryGetProperty("icon", out var icon)
-                ? ReadString(icon)
-                : null;
-            if (items.TryGetValue(id, out var metadata))
+            if (!string.IsNullOrWhiteSpace(id) && items.TryGetValue(id, out var metadata))
             {
                 name ??= metadata.Name;
                 image ??= metadata.Image;
             }
 
-            var divineValue = ReadDecimal(line, "primaryValue");
-            if (string.IsNullOrWhiteSpace(name) || divineValue <= 0m)
+            if (string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(id))
+            {
+                name = id;
+            }
+
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name))
             {
                 continue;
             }
 
-            entries.Add(new ExpeditionPriceEntry(id, name, divineValue));
+            var divineValue = ReadDecimal(line, "primaryValue");
+            if (divineValue <= 0m)
+            {
+                continue;
+            }
+
+            entries.Add(new ExpeditionPriceEntry(id, name, divineValue)
+            {
+                Category = normalizedCategory,
+                Source = "poe.ninja"
+            });
         }
 
         return new ExpeditionPriceSourceResult(category, rate, entries.ToImmutable());
@@ -542,7 +591,7 @@ public sealed class Poe2ScoutPriceSource : IExpeditionPriceSource
 {
     public const string DefaultApiBase = "https://api.poe2scout.com";
     private static readonly string[] DefaultCategories =
-        ["currency", "expedition", "runes", "verisium", "uncutgems"];
+        ["currency", "fragments", "runes", "essences", "expedition", "delirium", "ritual", "breach", "abyss", "uncutgems", "verisium"];
     private readonly HttpClient _httpClient;
     private readonly IReadOnlyList<string> _categories;
 
@@ -610,7 +659,7 @@ public sealed class Poe2ScoutPriceSource : IExpeditionPriceSource
                               + "&page=1&perPage=250&referenceCurrency=divine";
                     var json = await _httpClient.GetStringAsync(uri, cancellationToken)
                         .ConfigureAwait(false);
-                    entries.AddRange(ParseByCategory(json, exaltedPerDivine).Entries);
+                    entries.AddRange(ParseByCategory(json, exaltedPerDivine, category).Entries);
                 }
                 catch (HttpRequestException exception)
                 {
@@ -675,7 +724,8 @@ public sealed class Poe2ScoutPriceSource : IExpeditionPriceSource
 
     public static ExpeditionPriceSourceResult ParseByCategory(
         string json,
-        decimal exaltedPerDivine)
+        decimal exaltedPerDivine,
+        string category = "")
     {
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
@@ -699,11 +749,34 @@ public sealed class Poe2ScoutPriceSource : IExpeditionPriceSource
                 continue;
             }
 
+            string normalizedCategory = category.ToLowerInvariant() switch
+            {
+                "currency" => "Currency",
+                "fragments" => "Fragments",
+                "runes" => "Runes",
+                "essences" => "Essences",
+                "expedition" => "Expedition",
+                "delirium" => "Delirium",
+                "ritual" => "Ritual",
+                "breach" => "Breach",
+                "abyss" => "Abyss",
+                "uncutgems" => "UncutGems",
+                "verisium" => "Verisium",
+                _ => category
+            };
+
             entries.Add(new ExpeditionPriceEntry(
                 itemId,
                 displayName,
                 divineValue,
-                string.IsNullOrWhiteSpace(apiId) ? [] : [apiId]));
+                string.IsNullOrWhiteSpace(apiId) ? [] : [apiId])
+            {
+                Category = normalizedCategory,
+                Source = "poe2scout",
+                MetadataPath = itemId.StartsWith("Metadata/Items/", StringComparison.OrdinalIgnoreCase)
+                    ? itemId
+                    : string.Empty
+            });
         }
 
         return new ExpeditionPriceSourceResult(

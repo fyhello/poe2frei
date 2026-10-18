@@ -210,6 +210,7 @@
 
     const btnSave = element("btnApplyCurrentWorkbench") || element("btnApplyAllWorkbench");
     if (btnSave) {
+      btnSave.textContent = "💾 保存并同步当前功能";
       btnSave.title = `仅保存并同步【${MODULE_TITLES[moduleId] || "当前功能"}】配置到游戏`;
     }
   }
@@ -812,10 +813,71 @@
   // 7. 价格即时仿真
   function updatePriceSim() {
     const sep = element("priceSepSelect")?.value || " ";
-    const simDiv = element("simPriceDivine");
-    const simEx = element("simPriceExalt");
-    if (simDiv) simDiv.innerText = `法师之血 重革腰带${sep}[★ 280D]`;
-    if (simEx) simEx.innerText = `神圣石${sep}[400E]`;
+    const simDiv = element("simPriceUnique");
+    if (simDiv) simDiv.innerText = `法师之血 重革腰带${sep}[280D]`;
+    const simDivine = element("simPriceDivine");
+    if (simDivine) simDivine.innerText = `神圣石${sep}[400E]`;
+  }
+
+  const PRICE_CATEGORY_INPUTS = {
+    chkPriceCurrency: 'Currency',
+    chkPriceLineage: 'LineageSupportGems',
+    chkPriceRunes: 'Runes',
+    chkPriceEssences: 'Essences',
+    chkPriceSoulCores: 'SoulCores',
+    chkPriceUncutGems: 'UncutGems',
+    chkPriceIdols: 'Idols',
+    chkPriceExpedition: 'Expedition',
+    chkPriceBreach: 'Breach',
+    chkPriceDelirium: 'Delirium',
+    chkPriceRitual: 'Ritual',
+    chkPriceFragments: 'Fragments',
+    chkPriceAbyss: 'Abyss',
+    chkPriceVerisium: 'Verisium'
+  };
+
+  const CATEGORY_NAMES_ZH = {
+    currency: '基础通货',
+    lineagesupportgems: '传承血脉',
+    runes: '符文',
+    essences: '精华',
+    soulcores: '灵魂核心',
+    uncutgems: '未切割宝石',
+    idols: '神像',
+    expedition: '远征',
+    breach: '裂隙',
+    delirium: '谵妄',
+    ritual: '仪式',
+    fragments: '碎片',
+    abyss: '深渊',
+    verisium: '维利席姆'
+  };
+
+  function collectPriceCategories() {
+    return Object.entries(PRICE_CATEGORY_INPUTS)
+      .filter(([id]) => element(id)?.checked)
+      .map(([, category]) => category);
+  }
+
+  function applyPriceSettings(settings) {
+    if (!settings) return;
+    const minInput = element('priceFilterMin');
+    if (minInput && settings.pricePatchMinExalted != null && Number.isFinite(Number(settings.pricePatchMinExalted))) {
+      minInput.value = Number(settings.pricePatchMinExalted);
+    }
+    const stripInput = element('chkPriceStripExisting');
+    if (stripInput && typeof settings.pricePatchStripExisting === 'boolean') {
+      stripInput.checked = settings.pricePatchStripExisting;
+    }
+    const categories = Array.isArray(settings.pricePatchCategories)
+      ? settings.pricePatchCategories
+      : null;
+    Object.entries(PRICE_CATEGORY_INPUTS).forEach(([id, category]) => {
+      const input = element(id);
+      if (!input) return;
+      input.checked = categories === null
+        || categories.some(value => String(value).toLowerCase() === category.toLowerCase());
+    });
   }
 
   // 真实读取客户端词库 (打通后端)
@@ -893,12 +955,201 @@
     });
   }
 
-  function applyPrice() {
-    showToast("正在将【原生价格全分类深度注入】配置写入 PoE2 游戏客户端，请稍候...");
-    post('applyCurrentPricesPatch', {
+  let pendingPricePreviewToken = null;
+
+  function buildPricePayload() {
+    const categories = collectPriceCategories();
+    if (categories.length === 0) {
+      showToast("请至少选择一个物价分类。");
+      return null;
+    }
+    const rawMin = element('priceFilterMin')?.value ?? '1';
+    const parsedMin = rawMin === '' ? 1 : Number(rawMin);
+    const minExalted = Number.isFinite(parsedMin) && parsedMin >= 0 ? parsedMin : 1;
+    return {
       mode: 'append',
-      separator: element('priceSepSelect')?.value || ' '
+      separator: element('priceSepSelect')?.value || ' ',
+      minExalted,
+      unitMode: 'auto',
+      stripExisting: element('chkPriceStripExisting')?.checked !== false,
+      categories
+    };
+  }
+
+  let currentPreviewItems = [];
+
+  function hidePricePreview() {
+    pendingPricePreviewToken = null;
+    currentPreviewItems = [];
+    element('pricePatchPreview')?.classList.add('hidden');
+  }
+
+  function applyPrice() {
+    if (pendingPricePreviewToken) {
+      const token = pendingPricePreviewToken;
+      hidePricePreview();
+      showToast("正在将已确认物价写入客户端...");
+      post('confirmCurrentPricesPatch', { token });
+      const btnSave = element("btnApplyCurrentWorkbench") || element("btnApplyAllWorkbench");
+      if (btnSave) {
+        btnSave.textContent = "💾 保存并同步当前功能";
+        btnSave.style.background = "";
+      }
+      return;
+    }
+
+    const payload = buildPricePayload();
+    if (!payload) return;
+    hidePricePreview();
+    showToast("正在将物价写入客户端，请稍候...");
+    post('applyCurrentPricesPatch', payload);
+  }
+
+  function resolveItemCategory(item) {
+    const rawCat = (item.category || item.Category || "").trim();
+    if (rawCat) return rawCat.toLowerCase();
+    const meta = (item.metadataPath || item.MetadataPath || "").toLowerCase();
+    if (meta.includes("lineage")) return "lineagesupportgems";
+    if (meta.includes("gem")) return "uncutgems";
+    if (meta.includes("rune")) return "runes";
+    if (meta.includes("soulcore")) return "soulcores";
+    if (meta.includes("essence")) return "essences";
+    if (meta.includes("idol")) return "idols";
+    if (meta.includes("expedition")) return "expedition";
+    if (meta.includes("breach")) return "breach";
+    if (meta.includes("delirium")) return "delirium";
+    if (meta.includes("ritual") || meta.includes("omen")) return "ritual";
+    if (meta.includes("fragment")) return "fragments";
+    if (meta.includes("abyss")) return "abyss";
+    if (meta.includes("verisium")) return "verisium";
+    const orig = (item.originalName || item.OriginalName || "");
+    if (orig.includes("血脉") || orig.includes("传承")) return "lineagesupportgems";
+    if (orig.includes("宝石")) return "uncutgems";
+    if (orig.includes("符文")) return "runes";
+    if (orig.includes("精华")) return "essences";
+    if (orig.includes("核心")) return "soulcores";
+    if (orig.includes("神像")) return "idols";
+    return "currency";
+  }
+
+  function previewPrice() {
+    const payload = buildPricePayload();
+    if (!payload) return;
+    hidePricePreview();
+    element("pricePreviewSpinner")?.classList.remove("hidden");
+    const btnText = element("pricePreviewBtnText");
+    if (btnText) btnText.innerText = "🎮 正在读取客户端...";
+    showToast("正在读取客户端实际数据表并匹配物价，请稍候...");
+    post('previewCurrentPricesPatch', payload);
+  }
+
+  function renderPricePreviewTable(filterQuery = "") {
+    const tbody = element("pricePreviewTableBody");
+    const countEl = element("pricePreviewFilteredCount");
+    const matchedEl = element("pricePreviewMatched");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const activeCategories = collectPriceCategories();
+    const activeLower = activeCategories.map(c => c.toLowerCase());
+    const q = filterQuery.trim().toLowerCase();
+    const filtered = currentPreviewItems.filter(item => {
+      const cat = resolveItemCategory(item);
+      if (activeLower.length > 0 && !activeLower.some(c => c === cat || cat.includes(c) || c.includes(cat))) {
+        return false;
+      }
+      if (!q) return true;
+      const orig = item.originalName || item.OriginalName || "";
+      const pr = item.price || item.Price || "";
+      const nw = item.newName || item.NewName || "";
+      const mp = item.metadataPath || item.MetadataPath || "";
+      return orig.toLowerCase().includes(q)
+        || pr.toLowerCase().includes(q)
+        || nw.toLowerCase().includes(q)
+        || mp.toLowerCase().includes(q);
     });
+
+    if (countEl) {
+      countEl.textContent = `显示 ${filtered.length} / ${currentPreviewItems.length} 条`;
+    }
+    if (matchedEl) {
+      matchedEl.textContent = filtered.length;
+    }
+
+    if (filtered.length === 0) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px 6px; font-size: 11px;">
+        ${currentPreviewItems.length === 0 ? "未匹配到需要注入物价的物品" : "未找到匹配当前分类或搜索条件的预览物品"}
+      </td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+
+    filtered.forEach((it, idx) => {
+      const tr = document.createElement("tr");
+      const cat = resolveItemCategory(it);
+      const catZh = CATEGORY_NAMES_ZH[cat] || cat;
+      const orig = it.originalName || it.OriginalName || "";
+      const pr = it.price || it.Price || "";
+      const nw = it.newName || it.NewName || "";
+      const isCompacted = it.compacted !== undefined ? it.compacted : it.Compacted;
+      const statusBadge = isCompacted
+        ? `<span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: rgba(234,179,8,0.2); color: #eab308; border: 1px solid rgba(234,179,8,0.4);">截断</span>`
+        : `<span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3);">正常</span>`;
+
+      tr.innerHTML = `
+        <td style="text-align: center; color: var(--text-muted); font-size: 10px;">${idx + 1}</td>
+        <td style="font-size: 11px;"><span style="font-size: 10px; padding: 1px 5px; border-radius: 3px; background: rgba(255,255,255,0.06); color: var(--text-muted); border: 1px solid var(--border-color);">${catZh}</span></td>
+        <td style="font-size: 11px; color: var(--text); font-weight: 500;">${escapeHtml(orig)}</td>
+        <td style="text-align: center; font-size: 11px; color: var(--gold-primary); font-weight: bold;">${escapeHtml(pr)}</td>
+        <td style="font-size: 11px; color: #60a5fa;">${escapeHtml(nw)}</td>
+        <td style="text-align: center;">${statusBadge}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderPricePreview(preview) {
+    element("pricePreviewSpinner")?.classList.add("hidden");
+    const btnText = element("pricePreviewBtnText");
+    if (btnText) btnText.innerText = "🎮 读取客户端并预览";
+    if (!preview || !preview.success) return;
+    pendingPricePreviewToken = preview.token;
+    currentPreviewItems = Array.isArray(preview.items) ? preview.items : (Array.isArray(preview.Items) ? preview.Items : []);
+    const panel = element('pricePatchPreview');
+    if (!panel) return;
+    panel.classList.remove('hidden');
+    element('pricePreviewCandidate').textContent = preview.candidateCount ?? 0;
+    element('pricePreviewMatched').textContent = preview.matchedCount ?? 0;
+    element('pricePreviewUnmatched').textContent = preview.unmatchedCount ?? 0;
+    element('pricePreviewCompacted').textContent = preview.compactedNames ?? 0;
+    const warnings = Array.isArray(preview.warnings) ? preview.warnings.filter(Boolean) : [];
+    element('pricePreviewWarnings').textContent = warnings.length > 0
+      ? `注意：${warnings.join('；')}`
+      : '';
+
+    // 顶部保存按钮直接高亮联动，提示用户可在顶部一键写入
+    const btnSave = element("btnApplyCurrentWorkbench") || element("btnApplyAllWorkbench");
+    if (btnSave && currentActiveModule === "price") {
+      btnSave.textContent = "🚀 确认并写入客户端";
+      btnSave.title = "预览已完成，点击立即将已确认物价写入客户端游戏文件";
+      btnSave.style.background = "#059669";
+    }
+
+    const searchInput = element('pricePreviewSearch');
+    if (searchInput) searchInput.value = "";
+    renderPricePreviewTable("");
+  }
+
+  function confirmPrice() {
+    if (!pendingPricePreviewToken) {
+      showToast("请先预览客户端匹配结果。");
+      return;
+    }
+    const token = pendingPricePreviewToken;
+    hidePricePreview();
+    showToast("正在确认注入客户端物价...");
+    post('confirmCurrentPricesPatch', { token });
   }
 
   // ── 字体预设管理与成熟默认锁定机制 ──
@@ -1735,6 +1986,54 @@
 
       // 11. 价格设置
       element('priceSepSelect')?.addEventListener('change', updatePriceSim);
+      element('btnPreviewPricePatch')?.addEventListener('click', previewPrice);
+
+      element('btnPriceSelectAll')?.addEventListener('click', () => {
+        Object.keys(PRICE_CATEGORY_INPUTS).forEach(id => {
+          const el = element(id);
+          if (el) el.checked = true;
+        });
+        if (currentPreviewItems && currentPreviewItems.length > 0) {
+          renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
+        }
+        showToast("已全选全部 14 个资产分类");
+      });
+
+      element('btnPriceUnselectAll')?.addEventListener('click', () => {
+        Object.keys(PRICE_CATEGORY_INPUTS).forEach(id => {
+          const el = element(id);
+          if (el) el.checked = false;
+        });
+        if (currentPreviewItems && currentPreviewItems.length > 0) {
+          renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
+        }
+        showToast("已取消勾选全部分类");
+      });
+
+      element('btnPriceSelectCommon')?.addEventListener('click', () => {
+        const commonIds = ['chkPriceCurrency', 'chkPriceLineage', 'chkPriceRunes', 'chkPriceEssences', 'chkPriceSoulCores', 'chkPriceUncutGems'];
+        Object.keys(PRICE_CATEGORY_INPUTS).forEach(id => {
+          const el = element(id);
+          if (el) el.checked = commonIds.includes(id);
+        });
+        if (currentPreviewItems && currentPreviewItems.length > 0) {
+          renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
+        }
+        showToast("已选用推荐常用资产分类 (通货/血脉/符文/精华/核心/未切割宝石)");
+      });
+
+      element('pricePreviewSearch')?.addEventListener('input', e => {
+        renderPricePreviewTable(e.target.value);
+      });
+
+      Object.keys(PRICE_CATEGORY_INPUTS).concat(['priceFilterMin', 'priceSepSelect', 'chkPriceStripExisting']).forEach(id => {
+        element(id)?.addEventListener('change', () => {
+          updatePriceSim();
+          if (currentPreviewItems && currentPreviewItems.length > 0) {
+            renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
+          }
+        });
+      });
 
       // 12. 传言搜索
       element('rumourSearch')?.addEventListener('input', renderRumoursTable);
@@ -1830,6 +2129,9 @@
       if (!payload) return;
       state = payload;
       renderStatus();
+      if (payload.pricePreview) {
+        renderPricePreview(payload.pricePreview);
+      }
 
       // 0. 版本快照数据动态更新
       if (Array.isArray(payload.snapshots)) {
@@ -1903,6 +2205,7 @@
         if (state.settings.chestEnhanced !== undefined) toggleModuleMaster("chests", state.settings.chestEnhanced);
         if (state.settings.rumourEnhanced !== undefined) toggleModuleMaster("rumours", state.settings.rumourEnhanced);
         if (state.settings.pricePatchEnabled !== undefined) toggleModuleMaster("price", state.settings.pricePatchEnabled);
+        applyPriceSettings(state.settings);
 
         // 1. 初始化纯净官方推荐底包 (仅由 initialColorMods 提供，绝不受用户已保存设置污染)
         if (officialDefaultSnapshot.length === 0 && Array.isArray(payload.initialColorMods) && payload.initialColorMods.length > 0) {

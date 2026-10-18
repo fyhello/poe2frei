@@ -59,6 +59,17 @@ public sealed class PatchBackupManager
         "EF_"
     ];
 
+    /// <summary>
+    /// 当前实例的备份目录是否已成功初始化并可写。
+    /// 初始化失败时不会抛出异常，而是置为 false，并给出 <see cref="UnavailableReason"/>。
+    /// </summary>
+    public bool IsAvailable { get; }
+
+    /// <summary>
+    /// 备份目录不可用时的原因说明（可用时为空）。
+    /// </summary>
+    public string? UnavailableReason { get; }
+
     public PatchBackupManager(string? customBackupDir = null)
     {
         _backupDir = customBackupDir ?? Path.Combine(
@@ -66,11 +77,38 @@ public sealed class PatchBackupManager
             "FreiAtlas",
             "patch_backup");
 
-        if (!Directory.Exists(_backupDir))
+        try
         {
+            // 目录已存在时 CreateDirectory 不会报错；这里额外做一次写入探针，
+            // 以便发现“目录存在但当前进程无权写入”的情况（如低完整性/沙箱/ACL 受限）。
             Directory.CreateDirectory(_backupDir);
+            string probePath = Path.Combine(_backupDir, ".frei_write_probe_" + Guid.NewGuid().ToString("N"));
+            using (var probe = new FileStream(probePath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                probe.WriteByte(0);
+            }
+
+            try { File.Delete(probePath); } catch { }
+            IsAvailable = true;
+        }
+        catch (Exception ex) when (IsFileSystemFailure(ex))
+        {
+            IsAvailable = false;
+            UnavailableReason =
+                $"补丁备份目录不可用：{_backupDir}。{ex.Message} " +
+                "请检查目录权限、磁盘空间，或安全软件/沙箱对该目录的拦截。";
         }
     }
+
+    private static bool IsFileSystemFailure(Exception ex) =>
+        ex is UnauthorizedAccessException
+            or IOException
+            or System.Security.SecurityException
+            or NotSupportedException
+            or ArgumentException;
+
+    private BackupRestoreResult UnavailableResult() =>
+        new(false, UnavailableReason ?? "补丁备份目录不可用，备份/还原功能已禁用。");
 
     /// <summary>
     /// 获取当前游戏目录专用的备份路径（结合目录哈希隔离，防止多客户端相互覆盖）
@@ -111,6 +149,8 @@ public sealed class PatchBackupManager
 
     public bool HasBackup(GameModeInfo info)
     {
+        if (!IsAvailable) return false;
+
         string isolatedPath = GetBackupFilePath(info);
         if (File.Exists(isolatedPath)) return true;
 
@@ -158,9 +198,16 @@ public sealed class PatchBackupManager
     {
         string dirHash = ComputeDirectoryHash(info.GameDirectory);
         string subDir = Path.Combine(_backupDir, $"snapshots_{dirHash}");
-        if (!Directory.Exists(subDir))
+        if (IsAvailable && !Directory.Exists(subDir))
         {
-            Directory.CreateDirectory(subDir);
+            try
+            {
+                Directory.CreateDirectory(subDir);
+            }
+            catch (Exception ex) when (IsFileSystemFailure(ex))
+            {
+                // 留给后续文件操作按“不可用”处理，这里不抛异常打断 UI。
+            }
         }
         return subDir;
     }
@@ -175,6 +222,8 @@ public sealed class PatchBackupManager
     /// </summary>
     public IReadOnlyList<PatchSnapshotInfo> GetSnapshots(GameModeInfo info)
     {
+        if (!IsAvailable) return [];
+
         var manifestPath = GetManifestPath(info);
         var list = new List<PatchSnapshotInfo>();
 
@@ -184,7 +233,33 @@ public sealed class PatchBackupManager
             {
                 var json = File.ReadAllText(manifestPath, Encoding.UTF8);
                 var loaded = JsonSerializer.Deserialize<List<PatchSnapshotInfo>>(json);
-                if (loaded != null) list = loaded;
+                if (loaded != null)
+                {
+                    bool needsClean = false;
+                    string snapDir = GetSnapshotsDirectory(info);
+                    foreach (var s in loaded)
+                    {
+                        if (!string.IsNullOrWhiteSpace(s.SettingsJson))
+                        {
+                            try
+                            {
+                                string sp = Path.Combine(snapDir, $"{s.Id}.settings.json");
+                                if (!File.Exists(sp))
+                                {
+                                    File.WriteAllText(sp, s.SettingsJson, Encoding.UTF8);
+                                }
+                            }
+                            catch { }
+                            s.SettingsJson = null;
+                            needsClean = true;
+                        }
+                    }
+                    list = loaded;
+                    if (needsClean)
+                    {
+                        SaveManifest(info, list);
+                    }
+                }
             }
             catch { }
         }
@@ -281,6 +356,8 @@ public sealed class PatchBackupManager
         List<string>? activeModules = null,
         Action<string>? logger = null)
     {
+        if (!IsAvailable) return UnavailableResult();
+
         var (isLocked, lockReason) = CheckResourceLock(info);
         if (isLocked)
         {
@@ -307,6 +384,17 @@ public sealed class PatchBackupManager
             string binPath = Path.Combine(snapDir, $"{snapId}.bin");
             File.WriteAllBytes(binPath, indexBytes);
 
+            // 将设置独立保存为小文件，避免 manifest.json 和 IPC 传输暴增到数十兆
+            if (!string.IsNullOrWhiteSpace(settingsJson))
+            {
+                try
+                {
+                    string settingsPath = Path.Combine(snapDir, $"{snapId}.settings.json");
+                    File.WriteAllText(settingsPath, settingsJson, Encoding.UTF8);
+                }
+                catch { }
+            }
+
             var list = GetSnapshots(info).ToList();
             list.RemoveAll(s => s.Id == snapId);
 
@@ -319,7 +407,7 @@ public sealed class PatchBackupManager
                 CreatedAt = DateTime.Now,
                 SizeBytes = indexBytes.Length,
                 EnabledModules = activeModules ?? [],
-                SettingsJson = settingsJson
+                SettingsJson = null
             };
 
             list.Add(snap);
@@ -359,6 +447,8 @@ public sealed class PatchBackupManager
             {
                 string p = Path.Combine(snapDir, $"{oldSnap.Id}.bin");
                 if (File.Exists(p)) File.Delete(p);
+                string sp = Path.Combine(snapDir, $"{oldSnap.Id}.settings.json");
+                if (File.Exists(sp)) File.Delete(sp);
                 logger?.Invoke($"自动轮转淘汰早期自动快照：{oldSnap.Name}");
             }
             catch { }
@@ -376,6 +466,8 @@ public sealed class PatchBackupManager
     {
         restoredSettingsJson = null;
 
+        if (!IsAvailable) return UnavailableResult();
+
         var snapshots = GetSnapshots(info);
         var target = snapshots.FirstOrDefault(s => s.Id == snapshotId);
         if (target == null)
@@ -388,6 +480,17 @@ public sealed class PatchBackupManager
         {
             return new BackupRestoreResult(false, $"快照索引数据文件丢失（目标位置: {binPath}）。");
         }
+
+        string settingsPath = Path.Combine(GetSnapshotsDirectory(info), $"{target.Id}.settings.json");
+        if (File.Exists(settingsPath))
+        {
+            try
+            {
+                restoredSettingsJson = File.ReadAllText(settingsPath, Encoding.UTF8);
+            }
+            catch { }
+        }
+        restoredSettingsJson ??= target.SettingsJson;
 
         var (isLocked, lockReason) = CheckResourceLock(info);
         if (isLocked)
@@ -410,7 +513,6 @@ public sealed class PatchBackupManager
                 {
                     logger?.Invoke($"正在将快照【{target.Name}】索引写回 Content.ggpk...");
                     record.Write(snapshotBytes);
-                    restoredSettingsJson = target.SettingsJson;
                     logger?.Invoke("写入完成！客户端状态已恢复至该版本。");
                     return new BackupRestoreResult(true, $"已成功恢复到版本【{target.Name}】！");
                 }
@@ -437,7 +539,6 @@ public sealed class PatchBackupManager
                     }
                 }
 
-                restoredSettingsJson = target.SettingsJson;
                 logger?.Invoke("写入完成！Bundles2 索引已恢复至该版本。");
                 return new BackupRestoreResult(true, $"已成功恢复到版本【{target.Name}】！");
             }
@@ -465,6 +566,12 @@ public sealed class PatchBackupManager
             return false;
         }
 
+        if (!IsAvailable)
+        {
+            message = UnavailableReason ?? "补丁备份目录不可用，无法删除快照。";
+            return false;
+        }
+
         var list = GetSnapshots(info).ToList();
         var target = list.FirstOrDefault(s => s.Id == snapshotId);
         if (target == null)
@@ -486,6 +593,8 @@ public sealed class PatchBackupManager
         {
             string binPath = Path.Combine(GetSnapshotsDirectory(info), $"{target.Id}.bin");
             if (File.Exists(binPath)) File.Delete(binPath);
+            string sp = Path.Combine(GetSnapshotsDirectory(info), $"{target.Id}.settings.json");
+            if (File.Exists(sp)) File.Delete(sp);
         }
         catch { }
 
@@ -498,6 +607,12 @@ public sealed class PatchBackupManager
     /// </summary>
     public bool EnsureBackup(GameModeInfo info, Action<string>? logger = null)
     {
+        if (!IsAvailable)
+        {
+            logger?.Invoke(UnavailableReason ?? "补丁备份目录不可用，无法生成备份。");
+            return false;
+        }
+
         var backupPath = GetBackupFilePath(info);
         if (File.Exists(backupPath))
         {
@@ -605,6 +720,8 @@ public sealed class PatchBackupManager
     /// </summary>
     public BackupRestoreResult Restore(GameModeInfo info, Action<string>? logger = null)
     {
+        if (!IsAvailable) return UnavailableResult();
+
         // 优先尝试从快照系统中还原 clean_official
         var res = RestoreSnapshot(info, "clean_official", out _, logger);
         if (res.Success) return res;
