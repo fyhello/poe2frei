@@ -118,6 +118,7 @@ public static class GameInstallDetector
             info.IsChina = false;
             info.LanguageCode = "zh-TW"; // 国际服中文以繁体为准或由用户选择
             info.BaseItemsPath = "data/balance/traditional chinese/baseitemtypes.datc64";
+            info.WordsPath = "data/balance/traditional chinese/words.datc64";
             info.EndgameMapsPath = "data/balance/traditional chinese/endgamemaps.datc64";
             info.WorldAreasPath = "data/balance/traditional chinese/worldareas.datc64";
             info.ChestsPath = "data/balance/traditional chinese/chests.datc64";
@@ -147,6 +148,7 @@ public static class GameInstallDetector
                 info.IsChina = true;
                 info.LanguageCode = "zh-CN";
                 info.BaseItemsPath = "data/balance/simplified chinese/baseitemtypes.datc64";
+                info.WordsPath = "data/balance/simplified chinese/words.datc64";
                 info.EndgameMapsPath = "data/balance/simplified chinese/endgamemaps.datc64";
                 info.WorldAreasPath = "data/balance/simplified chinese/worldareas.datc64";
                 info.ChestsPath = "data/balance/simplified chinese/chests.datc64";
@@ -158,6 +160,7 @@ public static class GameInstallDetector
                 info.IsChina = false;
                 info.LanguageCode = "zh-TW";
                 info.BaseItemsPath = "data/balance/traditional chinese/baseitemtypes.datc64";
+                info.WordsPath = "data/balance/traditional chinese/words.datc64";
                 info.EndgameMapsPath = "data/balance/traditional chinese/endgamemaps.datc64";
                 info.WorldAreasPath = "data/balance/traditional chinese/worldareas.datc64";
                 info.ChestsPath = "data/balance/traditional chinese/chests.datc64";

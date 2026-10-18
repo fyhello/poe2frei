@@ -18,6 +18,7 @@ public sealed class GameModeInfo
     public string EndgameMapsPath { get; set; } = string.Empty;
     public string WorldAreasPath { get; set; } = string.Empty;
     public string ChestsPath { get; set; } = string.Empty;
+    public string WordsPath { get; set; } = string.Empty;
     public string ArchnemesisModsPath { get; set; } = string.Empty;
     public bool IsValid { get; set; }
     public string ErrorMessage { get; set; } = string.Empty;

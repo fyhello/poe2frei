@@ -80,7 +80,23 @@ public sealed record ApplyMapBeamPatchWebCommand(
 
 public sealed record ApplyPricePatchWebCommand(string? CsvPath, string Mode, string Separator) : WebCommand;
 
-public sealed record ApplyCurrentPricesPatchWebCommand(string Mode, string Separator) : WebCommand;
+public sealed record ApplyCurrentPricesPatchWebCommand(
+    string Mode,
+    string Separator,
+    decimal MinExalted = 1m,
+    string UnitMode = "auto",
+    bool StripExisting = true,
+    IReadOnlyList<string>? Categories = null) : WebCommand;
+
+public sealed record PreviewCurrentPricesPatchWebCommand(
+    string Mode,
+    string Separator,
+    decimal MinExalted = 1m,
+    string UnitMode = "auto",
+    bool StripExisting = true,
+    IReadOnlyList<string>? Categories = null) : WebCommand;
+
+public sealed record ConfirmCurrentPricesPatchWebCommand(string Token) : WebCommand;
 
 public sealed record CleanPricePatchWebCommand(string Separator) : WebCommand;
 

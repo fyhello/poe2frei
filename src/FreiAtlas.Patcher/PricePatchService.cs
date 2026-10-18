@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -14,14 +15,16 @@ public sealed class PriceRow
     public string Name { get; set; } = string.Empty;
     public string Price { get; set; } = string.Empty;
     public string NewName { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
 
     public PriceRow() { }
 
-    public PriceRow(string name, string price, string metadataPath = "")
+    public PriceRow(string name, string price, string metadataPath = "", string category = "")
     {
         Name = name;
         Price = price;
         MetadataPath = metadataPath;
+        Category = category;
     }
 }
 
@@ -31,6 +34,21 @@ public sealed class PriceRow
 /// </summary>
 public sealed class PricePatchService
 {
+    public const int WordsRowSize = 64;
+    public const int WordsEnNameOffset = 4;
+    public const int WordsDisplayNameOffset = 48;
+
+    public sealed class WordItemName
+    {
+        public int RowIndex { get; init; }
+        public string EnName { get; init; } = string.Empty;
+        public string DisplayName { get; init; } = string.Empty;
+        public int DisplayOffset { get; init; }
+        public int DisplayPointerPos { get; init; }
+        public int DisplayStart { get; init; }
+        public int DisplayEnd { get; init; }
+    }
+
     public sealed record DatLayout(int RowCount, int RowSize, int StringBase);
 
     public sealed class BaseItemName
@@ -56,6 +74,7 @@ public sealed class PricePatchService
         public string FittedName { get; init; } = string.Empty;
         public string MetadataPath { get; init; } = string.Empty;
         public string Price { get; init; } = string.Empty;
+        public string Category { get; init; } = string.Empty;
         public int SlotChars => (NameEnd - NameStart) / 2;
         public bool Compacted => !string.Equals(RequestedName, FittedName, StringComparison.Ordinal);
     }
@@ -72,9 +91,43 @@ public sealed class PricePatchService
         public List<string> Warnings { get; set; } = [];
     }
 
+    /// <summary>
+    /// 物价注入预览明细项，用于在前端列表中清晰展示
+    /// </summary>
+    public sealed class PricePreviewItem
+    {
+        public int RowIndex { get; set; }
+        public string OriginalName { get; set; } = string.Empty;
+        public string Price { get; set; } = string.Empty;
+        public string NewName { get; set; } = string.Empty;
+        public string MetadataPath { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public bool Compacted { get; set; }
+    }
+
+    /// <summary>只读预览结果：读取真实客户端 dat 后匹配出的计划统计与明细列表，不写文件。</summary>
+    public sealed class PricePatchPreview
+    {
+        public string Token { get; set; } = Guid.NewGuid().ToString("N");
+        public bool Success { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty;
+        public string TargetPath { get; set; } = string.Empty;
+        public int CandidateCount { get; set; }
+        public int MatchedCount { get; set; }
+        public int FullTextNames { get; set; }
+        public int CompactedNames { get; set; }
+        public int UnmatchedCount => Math.Max(0, CandidateCount - MatchedCount);
+        public string ClientSha256 { get; set; } = string.Empty;
+        public string MetadataSignature { get; set; } = string.Empty;
+        public string PriceRowsHash { get; set; } = string.Empty;
+        public List<string> Warnings { get; set; } = [];
+        public List<PricePreviewItem> Items { get; set; } = [];
+        public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+    }
+
     private static readonly byte[] MetadataMarker = Encoding.Unicode.GetBytes("Metadata/Items/");
     private static readonly Regex PriceRe = new(@"^\s*\[?([0-9]+(?:\.[0-9]+)?)([A-Za-z]+)\]?\s*$", RegexOptions.Compiled);
-    private const string PriceSuffixPattern = @"\[?(?:<1|[0-9]+(?:\.[0-9]+)?)[a-zA-Z]+\]?";
+    private const string PriceSuffixPattern = @"\[?(?:★\s*)?(?:<1|[0-9]+(?:\.[0-9]+)?)[cCeEdD]\]?";
 
     public static readonly Dictionary<string, string> EnglishToMetadataMap = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -100,14 +153,90 @@ public sealed class PricePatchService
         ["Scroll of Wisdom"] = "Metadata/Items/Currency/CurrencyIdentification",
         ["Portal Scroll"] = "Metadata/Items/Currency/CurrencyPortal",
         ["Artificer's Orb"] = "Metadata/Items/Currency/CurrencyItemRerollSocketColours",
-        ["Lesser Jeweller's Orb"] = "Metadata/Items/Currency/CurrencySocketCount3"
+        ["Lesser Jeweller's Orb"] = "Metadata/Items/Currency/CurrencySocketCount3",
+        ["Ancient Orb"] = "Metadata/Items/Currency/CurrencyRerollUnique",
+        ["Orb of Unmaking"] = "Metadata/Items/Currency/CurrencyPassiveRefund",
+        ["Albino Rhoa Feather"] = "Metadata/Items/Currency/CurrencyAlbinoRhoaFeather",
+        ["Fracturing Orb"] = "Metadata/Items/Currency/CurrencyFractureItem",
+        ["Greater Iron Rune"] = "Metadata/Items/Runes/RuneGreaterIron",
+        ["Iron Rune"] = "Metadata/Items/Runes/RuneIron",
+        ["Desert Rune"] = "Metadata/Items/Runes/RuneDesert",
+        ["Glacial Rune"] = "Metadata/Items/Runes/RuneGlacial",
+        ["Storm Rune"] = "Metadata/Items/Runes/RuneStorm",
+        ["Stone Rune"] = "Metadata/Items/Runes/RuneStone",
+        ["Vision Rune"] = "Metadata/Items/Runes/RuneVision",
+        ["Body Rune"] = "Metadata/Items/Runes/RuneBody",
+        ["Mind Rune"] = "Metadata/Items/Runes/RuneMind",
+        ["Rebirth Rune"] = "Metadata/Items/Runes/RuneRebirth",
+        ["Inspiration Rune"] = "Metadata/Items/Runes/RuneInspiration"
     };
 
-    private readonly PatchEngine _engine;
+    public static readonly Dictionary<string, string> EnglishToChineseMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Mirror of Kalandra"] = "卡兰德的魔镜",
+        ["Divine Orb"] = "神圣石",
+        ["Exalted Orb"] = "崇高石",
+        ["Chaos Orb"] = "混沌石",
+        ["Orb of Annulment"] = "无效石",
+        ["Orb of Chance"] = "机会石",
+        ["Orb of Alchemy"] = "点金石",
+        ["Regal Orb"] = "富豪石",
+        ["Vaal Orb"] = "瓦尔克石",
+        ["Gemcutter's Prism"] = "宝石匠的棱镜",
+        ["Glassblower's Bauble"] = "玻璃弹珠",
+        ["Blacksmith's Whetstone"] = "磨刀石",
+        ["Armourer's Scrap"] = "护甲片",
+        ["Orb of Transmutation"] = "蜕变石",
+        ["Orb of Augmentation"] = "增幅石",
+        ["Orb of Alteration"] = "改造石",
+        ["Ancient Orb"] = "远古石",
+        ["Ancient Infuser"] = "远古灌注器",
+        ["Greater Iron Rune"] = "高级铁符文",
+        ["Iron Rune"] = "铁符文",
+        ["Uncut Skill Gem"] = "未切割的技能宝石",
+        ["Uncut Support Gem"] = "未切割的辅助宝石",
+        ["Uncut Spirit Gem"] = "未切割的精魂宝石"
+    };
 
-    public PricePatchService(PatchEngine engine)
+    private static readonly Dictionary<char, char> TradToSimpCharMap = new()
+    {
+        ['聖'] = '圣', ['鏡'] = '镜', ['寶'] = '宝', ['體'] = '体',
+        ['術'] = '术', ['階'] = '阶', ['導'] = '导', ['圖'] = '图',
+        ['連'] = '连', ['煉'] = '炼', ['點'] = '点', ['數'] = '数',
+        ['極'] = '极', ['終'] = '终', ['開'] = '开', ['關'] = '关',
+        ['斷'] = '断', ['擴'] = '扩', ['張'] = '张', ['強'] = '强',
+        ['屬'] = '属', ['靈'] = '灵', ['魂'] = '魂', ['擊'] = '击',
+        ['電'] = '电', ['傷'] = '伤', ['護'] = '护', ['閃'] = '闪',
+        ['避'] = '避', ['異'] = '异', ['遠'] = '远', ['頂'] = '顶',
+        ['級'] = '级', ['藥'] = '药', ['劑'] = '剂', ['銘'] = '铭',
+        ['傳'] = '传', ['雙'] = '双', ['與'] = '与', ['無'] = '无',
+        ['庫'] = '库', ['殘'] = '残', ['熾'] = '炽', ['熱'] = '热',
+        ['劇'] = '剧', ['滅'] = '灭'
+    };
+
+    public static string NormalizeSimplified(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+        var chars = text.ToCharArray();
+        bool changed = false;
+        for (int i = 0; i < chars.Length; i++)
+        {
+            if (TradToSimpCharMap.TryGetValue(chars[i], out char simp))
+            {
+                chars[i] = simp;
+                changed = true;
+            }
+        }
+        return changed ? new string(chars) : text;
+    }
+
+    private readonly PatchEngine _engine;
+    private readonly PriceLayerBackupStore _backupStore;
+
+    public PricePatchService(PatchEngine engine, string? backupRoot = null)
     {
         _engine = engine;
+        _backupStore = new PriceLayerBackupStore(backupRoot);
     }
 
     private byte[]? ReadBaseItemsFile(GameModeInfo info, out string actualPath)
@@ -140,6 +269,87 @@ public sealed class PricePatchService
         var bytes = ReadBaseItemsFile(info, out _);
         if (bytes == null || bytes.Length == 0) return [];
         return ScanBaseItemNames(bytes);
+    }
+
+    public Dictionary<string, BaseItemName>? BuildEnglishToLocalBaseItemMap(
+        GameModeInfo info,
+        List<BaseItemName> localEntries,
+        string separator = " ")
+    {
+        try
+        {
+            string[] enCandidatePaths = [
+                "data/balance/baseitemtypes.datc64",
+                "data/baseitemtypes.datc64"
+            ];
+
+            byte[]? enBytes = null;
+            foreach (var p in enCandidatePaths)
+            {
+                enBytes = _engine.ReadGameFile(info, p, out _);
+                if (enBytes != null && enBytes.Length > 0) break;
+            }
+
+            if (enBytes == null || enBytes.Length == 0) return null;
+
+            var enEntries = ScanBaseItemNames(enBytes);
+            var localByMeta = new Dictionary<string, BaseItemName>(StringComparer.OrdinalIgnoreCase);
+            foreach (var loc in localEntries)
+            {
+                if (!string.IsNullOrEmpty(loc.MetadataPath))
+                {
+                    localByMeta[loc.MetadataPath] = loc;
+                }
+            }
+
+            var map = new Dictionary<string, BaseItemName>(StringComparer.OrdinalIgnoreCase);
+            foreach (var en in enEntries)
+            {
+                string enClean = StripExistingPriceSuffix(en.Name, separator);
+                if (!string.IsNullOrEmpty(enClean) && localByMeta.TryGetValue(en.MetadataPath, out var locMatch))
+                {
+                    map[enClean] = locMatch;
+                }
+            }
+
+            return map.Count > 0 ? map : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private byte[]? ReadWordsFile(GameModeInfo info, out string actualPath)
+    {
+        string[] candidatePaths = [
+            info.WordsPath,
+            "data/balance/traditional chinese/words.datc64",
+            "data/balance/simplified chinese/words.datc64",
+            "data/balance/chinese/words.datc64",
+            "data/traditional chinese/words.datc64",
+            "data/simplified chinese/words.datc64",
+            "data/balance/words.datc64",
+            "data/words.datc64"
+        ];
+
+        actualPath = string.Empty;
+        foreach (var p in candidatePaths.Where(p => !string.IsNullOrEmpty(p)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var bytes = _engine.ReadGameFile(info, p, out actualPath);
+            if (bytes != null && bytes.Length > 0)
+            {
+                return bytes;
+            }
+        }
+        return null;
+    }
+
+    public List<WordItemName> ScanClientWords(GameModeInfo info)
+    {
+        var bytes = ReadWordsFile(info, out _);
+        if (bytes == null || bytes.Length == 0) return [];
+        return ScanWordNames(bytes);
     }
 
     /// <summary>
@@ -193,7 +403,146 @@ public sealed class PricePatchService
     }
 
     /// <summary>
-    /// 应用客户端物价直接注入补丁
+    /// 只读预览：读取真实客户端 dat、扫描真实行并构建匹配计划，不创建备份、不写文件。
+    /// </summary>
+    public PricePatchPreview PreviewPatch(
+        GameModeInfo info,
+        List<PriceRow> priceRows,
+        string mode = "append",
+        string separator = " ",
+        bool keepExistingPrice = false,
+        bool patchSameNameDuplicates = true,
+        Action<string>? progress = null)
+    {
+        var preview = new PricePatchPreview { CandidateCount = priceRows.Count };
+
+        try
+        {
+            progress?.Invoke("正在读取客户端 BaseItemTypes 数据表...");
+            byte[]? rawBytes = ReadBaseItemsFile(info, out string targetPath);
+            if (rawBytes == null || rawBytes.Length == 0)
+            {
+                preview.ErrorMessage = "未在客户端中找到匹配的 BaseItemTypes 数据表文件。";
+                return preview;
+            }
+
+            preview.TargetPath = targetPath;
+            preview.ClientSha256 = ComputeSha256(rawBytes);
+            preview.MetadataSignature = ComputeMetadataSignature(rawBytes);
+            preview.PriceRowsHash = ComputePriceRowsHash(priceRows);
+
+            byte[] sourceBytes = rawBytes;
+            if (!keepExistingPrice)
+            {
+                if (_backupStore.TryGetBaseline(info, targetPath, rawBytes, out var baseline))
+                {
+                    sourceBytes = baseline.Bytes;
+                }
+                else if (ContainsPriceSuffix(rawBytes))
+                {
+                    sourceBytes = StripAllPriceSuffixes(rawBytes);
+                }
+            }
+
+            progress?.Invoke("正在扫描客户端基础物品并匹配价格...");
+            var entries = ScanBaseItemNames(sourceBytes);
+            var enMap = BuildEnglishToLocalBaseItemMap(info, entries, separator);
+            var (replacements, warnings) = BuildReplacements(
+                entries,
+                priceRows,
+                separator,
+                keepExistingPrice,
+                mode,
+                patchSameNameDuplicates,
+                enMap);
+
+            // 2. 扫描 Words.datc64（暗金传奇装备）
+            progress?.Invoke("正在读取客户端 Words 数据表（暗金装备）...");
+            byte[]? wordsRawBytes = ReadWordsFile(info, out string wordsTargetPath);
+            List<NameReplacement> wordsReplacements = [];
+            if (wordsRawBytes != null && wordsRawBytes.Length > 0)
+            {
+                byte[] wordsSourceBytes = wordsRawBytes;
+                if (!keepExistingPrice)
+                {
+                    if (_backupStore.TryGetBaseline(info, wordsTargetPath, wordsRawBytes, out var wordsBaseline))
+                    {
+                        wordsSourceBytes = wordsBaseline.Bytes;
+                    }
+                    else if (ContainsWordsPriceSuffix(wordsRawBytes))
+                    {
+                        wordsSourceBytes = StripAllWordsPriceSuffixes(wordsRawBytes);
+                    }
+                }
+
+                var wordsEntries = ScanWordNames(wordsSourceBytes);
+                var (wReplacements, wWarnings) = BuildWordReplacements(
+                    wordsEntries,
+                    priceRows,
+                    separator,
+                    keepExistingPrice);
+                wordsReplacements = wReplacements;
+                warnings.AddRange(wWarnings);
+            }
+
+            int totalMatched = replacements.Count + wordsReplacements.Count;
+            preview.MatchedCount = totalMatched;
+            preview.FullTextNames = replacements.Count(r => !r.Compacted) + wordsReplacements.Count(r => !r.Compacted);
+            preview.CompactedNames = replacements.Count(r => r.Compacted) + wordsReplacements.Count(r => r.Compacted);
+            preview.Warnings.AddRange(warnings);
+
+            var previewItems = new List<PricePreviewItem>(totalMatched);
+            previewItems.AddRange(replacements.Select(r => new PricePreviewItem
+            {
+                RowIndex = r.RowIndex,
+                OriginalName = r.OldName,
+                Price = r.Price,
+                NewName = r.FittedName,
+                MetadataPath = r.MetadataPath,
+                Category = r.Category,
+                Compacted = r.Compacted
+            }));
+            previewItems.AddRange(wordsReplacements.Select(r => new PricePreviewItem
+            {
+                RowIndex = r.RowIndex,
+                OriginalName = r.OldName,
+                Price = r.Price,
+                NewName = r.FittedName,
+                MetadataPath = r.MetadataPath,
+                Category = string.IsNullOrWhiteSpace(r.Category) ? "Unique" : r.Category,
+                Compacted = r.Compacted
+            }));
+
+            preview.Items = previewItems;
+            preview.Success = true;
+            progress?.Invoke($"预览完成：已匹配 {totalMatched} 个客户端物品（基础通货 {replacements.Count}，暗金装备 {wordsReplacements.Count}）。");
+        }
+        catch (Exception ex)
+        {
+            preview.ErrorMessage = ex.Message;
+            progress?.Invoke($"预览失败：{ex.Message}");
+        }
+
+        return preview;
+    }
+
+    private static string ComputePriceRowsHash(IEnumerable<PriceRow> priceRows)
+    {
+        string text = string.Join(
+            '\n',
+            priceRows
+                .OrderBy(row => row.MetadataPath, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.Name, StringComparer.Ordinal)
+                .ThenBy(row => row.Price, StringComparer.Ordinal)
+                .Select(row => $"{row.MetadataPath}|{row.Name}|{row.Price}|{row.NewName}"));
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+    }
+
+    private static string ComputeSha256(byte[] bytes)
+        => Convert.ToHexString(SHA256.HashData(bytes));
+
+    /// <summary>
+    /// 应用客户端物价直接注入补丁（协同处理 BaseItemTypes 与 Words 表）
     /// </summary>
     public PricePatchResult ApplyPatch(
         GameModeInfo info,
@@ -208,6 +557,7 @@ public sealed class PricePatchService
 
         try
         {
+            // 1. 定位并注入 BaseItemTypes 数据表（通货、符文、宝石）
             progress?.Invoke("正在定位游戏 BaseItemTypes 数据表...");
             byte[]? rawBytes = ReadBaseItemsFile(info, out string targetPath);
             if (rawBytes == null || rawBytes.Length == 0)
@@ -217,41 +567,114 @@ public sealed class PricePatchService
                 return result;
             }
 
-            progress?.Invoke($"已读取 {targetPath}，正在解析条目...");
-            var entries = ScanBaseItemNames(rawBytes);
-            progress?.Invoke($"已解析 {entries.Count} 个基础物品条目，正在构建物价映射...");
-
-            var (replacements, warnings) = BuildReplacements(entries, priceRows, separator, keepExistingPrice, mode, patchSameNameDuplicates);
-            result.Warnings = warnings;
-
-            if (replacements.Count == 0)
+            progress?.Invoke("正在准备 BaseItemTypes 价格层干净基线...");
+            PriceLayerBaseline baseline = _backupStore.EnsureBaseline(info, targetPath, rawBytes, out var backupWarning);
+            if (!string.IsNullOrWhiteSpace(backupWarning))
             {
-                progress?.Invoke("未匹配到需要注入物价的物品，跳过写入。");
-                result.Success = true;
-                return result;
+                result.Warnings.Add(backupWarning);
             }
 
-            progress?.Invoke($"正在为 {replacements.Count} 个物品注入地面参考物价（模式：{mode}）...");
-            byte[] patchedBytes = mode == "append"
-                ? ApplyReplacementsAppend(rawBytes, replacements)
-                : ApplyReplacementsFixed(rawBytes, replacements);
+            byte[] sourceBytes = keepExistingPrice ? rawBytes : baseline.Bytes;
+            var entries = ScanBaseItemNames(sourceBytes);
+            var enMap = BuildEnglishToLocalBaseItemMap(info, entries, separator);
+            var (replacements, warnings) = BuildReplacements(entries, priceRows, separator, keepExistingPrice, mode, patchSameNameDuplicates, enMap);
+            result.Warnings.AddRange(warnings);
 
-            bool ok = _engine.WriteGameFiles(info, [(targetPath, patchedBytes)]);
-            if (ok)
+            int basePatchedCount = 0;
+            if (replacements.Count > 0)
             {
-                result.Success = true;
-                result.PatchedNames = replacements.Count;
-                result.FullTextNames = replacements.Count(r => !r.Compacted);
-                result.CompactedNames = replacements.Count(r => r.Compacted);
-                result.SourceSize = rawBytes.Length;
-                result.PatchedSize = patchedBytes.Length;
-                progress?.Invoke($"客户端物价补丁应用成功！（已注入 {replacements.Count} 个物品物价）");
+                progress?.Invoke($"正在为 {replacements.Count} 个基础物品注入地面参考物价（模式：{mode}）...");
+                byte[] patchedBytes = mode == "append"
+                    ? ApplyReplacementsAppend(sourceBytes, replacements)
+                    : ApplyReplacementsFixed(sourceBytes, replacements);
+
+                if (!_engine.WriteGameFiles(info, [(targetPath, patchedBytes)]))
+                {
+                    result.ErrorMessage = "写入 BaseItemTypes 物价补丁文件失败。";
+                    progress?.Invoke(result.ErrorMessage);
+                    return result;
+                }
+
+                byte[]? verifyBytes = _engine.ReadGameFile(info, targetPath, out _);
+                if (verifyBytes == null || !VerifyPatchedNames(verifyBytes, replacements))
+                {
+                    string restoreMessage = RestoreBaseline(info, targetPath, baseline);
+                    result.ErrorMessage = "BaseItemTypes 物价写入后校验失败，已尝试还原备份。" + restoreMessage;
+                    progress?.Invoke(result.ErrorMessage);
+                    return result;
+                }
+
+                try
+                {
+                    _backupStore.RecordApplied(baseline, patchedBytes, replacements.Count);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    result.Warnings.Add("BaseItemTypes 补丁已应用，但价格层备份清单更新失败：" + exception.Message);
+                }
+
+                basePatchedCount = replacements.Count;
             }
-            else
+
+            // 2. 定位并注入 Words 数据表（全量暗金传奇装备）
+            int wordsPatchedCount = 0;
+            byte[]? wordsRawBytes = ReadWordsFile(info, out string wordsTargetPath);
+            if (wordsRawBytes != null && wordsRawBytes.Length > 0)
             {
-                result.ErrorMessage = "写入物价补丁文件失败。";
-                progress?.Invoke(result.ErrorMessage);
+                progress?.Invoke("正在准备 Words 数据表暗金装备价格层基线...");
+                PriceLayerBaseline wordsBaseline = _backupStore.EnsureBaseline(info, wordsTargetPath, wordsRawBytes, out var wordsWarning);
+                if (!string.IsNullOrWhiteSpace(wordsWarning))
+                {
+                    result.Warnings.Add(wordsWarning);
+                }
+
+                byte[] wordsSourceBytes = keepExistingPrice ? wordsRawBytes : wordsBaseline.Bytes;
+                var wordsEntries = ScanWordNames(wordsSourceBytes);
+                var (wordsReplacements, wordsWarnings) = BuildWordReplacements(wordsEntries, priceRows, separator, keepExistingPrice);
+                result.Warnings.AddRange(wordsWarnings);
+
+                if (wordsReplacements.Count > 0)
+                {
+                    progress?.Invoke($"正在为 {wordsReplacements.Count} 个暗金装备注入地面参考物价...");
+                    byte[] wordsPatchedBytes = ApplyWordReplacementsAppend(wordsSourceBytes, wordsReplacements);
+
+                    if (!_engine.WriteGameFiles(info, [(wordsTargetPath, wordsPatchedBytes)]))
+                    {
+                        result.ErrorMessage = "写入 Words 暗金装备物价补丁失败。";
+                        progress?.Invoke(result.ErrorMessage);
+                        return result;
+                    }
+
+                    byte[]? verifyWords = _engine.ReadGameFile(info, wordsTargetPath, out _);
+                    if (verifyWords == null || !VerifyPatchedWordNames(verifyWords, wordsReplacements))
+                    {
+                        string restoreMessage = RestoreBaseline(info, wordsTargetPath, wordsBaseline);
+                        result.ErrorMessage = "Words 暗金物价写入后校验失败，已尝试还原备份。" + restoreMessage;
+                        progress?.Invoke(result.ErrorMessage);
+                        return result;
+                    }
+
+                    try
+                    {
+                        _backupStore.RecordApplied(wordsBaseline, wordsPatchedBytes, wordsReplacements.Count);
+                    }
+                    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                    {
+                        result.Warnings.Add("Words 补丁已应用，但备份清单更新失败：" + exception.Message);
+                    }
+
+                    wordsPatchedCount = wordsReplacements.Count;
+                }
             }
+
+            int totalPatched = basePatchedCount + wordsPatchedCount;
+            result.Success = true;
+            result.PatchedNames = totalPatched;
+            result.FullTextNames = replacements.Count(r => !r.Compacted);
+            result.CompactedNames = replacements.Count(r => r.Compacted);
+            result.SourceSize = rawBytes.Length + (wordsRawBytes?.Length ?? 0);
+            result.PatchedSize = result.SourceSize;
+            progress?.Invoke($"客户端物价注入完成！（基础物品 {basePatchedCount}，暗金装备 {wordsPatchedCount}，共 {totalPatched} 个）");
         }
         catch (Exception ex)
         {
@@ -262,8 +685,37 @@ public sealed class PricePatchService
         return result;
     }
 
+    private static bool VerifyPatchedNames(byte[] bytes, List<NameReplacement> replacements)
+    {
+        var rows = ScanBaseItemNames(bytes).ToDictionary(item => item.RowIndex);
+        foreach (var replacement in replacements)
+        {
+            if (!rows.TryGetValue(replacement.RowIndex, out var row)
+                || !string.Equals(row.Name, replacement.FittedName, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private string RestoreBaseline(GameModeInfo info, string targetPath, PriceLayerBaseline baseline)
+    {
+        try
+        {
+            return _engine.WriteGameFiles(info, [(targetPath, baseline.Bytes)])
+                ? "价格层已还原。"
+                : "价格层还原失败，请使用客户端校验或备份快照恢复。";
+        }
+        catch (Exception exception)
+        {
+            return "价格层还原异常：" + exception.Message;
+        }
+    }
+
     /// <summary>
-    /// 清除所有已注入的物价后缀，恢复纯净名称
+    /// 清除所有已注入的物价后缀，优先还原价格层干净基线（双表协同）
     /// </summary>
     public PricePatchResult CleanPatch(GameModeInfo info, string separator = " ", Action<string>? progress = null)
     {
@@ -271,43 +723,52 @@ public sealed class PricePatchService
 
         try
         {
+            int totalCleaned = 0;
+
+            // 1. 清洗 BaseItemTypes
             progress?.Invoke("正在定位 BaseItemTypes 数据表以准备清洗物价...");
             byte[]? rawBytes = ReadBaseItemsFile(info, out string targetPath);
-            if (rawBytes == null || rawBytes.Length == 0)
+            if (rawBytes != null && rawBytes.Length > 0)
             {
-                result.ErrorMessage = "未在客户端中找到匹配的 BaseItemTypes 数据表文件。";
-                progress?.Invoke(result.ErrorMessage);
-                return result;
+                if (_backupStore.TryGetBaseline(info, targetPath, rawBytes, out var baseline))
+                {
+                    progress?.Invoke("已找到 BaseItemTypes 价格层干净基线，正在还原...");
+                    if (_engine.WriteGameFiles(info, [(targetPath, baseline.Bytes)]))
+                    {
+                        try { _backupStore.RecordCleaned(baseline); } catch { }
+                    }
+                }
+                else if (ContainsPriceSuffix(rawBytes))
+                {
+                    progress?.Invoke("正在剥离 BaseItemTypes 旧物价后缀...");
+                    byte[] cleaned = StripAllPriceSuffixes(rawBytes, separator);
+                    _engine.WriteGameFiles(info, [(targetPath, cleaned)]);
+                }
             }
 
-            var entries = ScanBaseItemNames(rawBytes);
-            var (replacements, warnings) = BuildReplacements(entries, [], separator, keepExistingPrice: false, "append", patchSameNameDuplicates: true);
-            result.Warnings = warnings;
-
-            if (replacements.Count == 0)
+            // 2. 清洗 Words (暗金装备)
+            byte[]? wordsRawBytes = ReadWordsFile(info, out string wordsTargetPath);
+            if (wordsRawBytes != null && wordsRawBytes.Length > 0)
             {
-                progress?.Invoke("数据表中未发现物价后缀，无需清洗。");
-                result.Success = true;
-                return result;
+                if (_backupStore.TryGetBaseline(info, wordsTargetPath, wordsRawBytes, out var wordsBaseline))
+                {
+                    progress?.Invoke("已找到 Words 暗金装备价格层干净基线，正在还原...");
+                    if (_engine.WriteGameFiles(info, [(wordsTargetPath, wordsBaseline.Bytes)]))
+                    {
+                        try { _backupStore.RecordCleaned(wordsBaseline); } catch { }
+                    }
+                }
+                else if (ContainsWordsPriceSuffix(wordsRawBytes))
+                {
+                    progress?.Invoke("正在剥离 Words 表暗金装备物价后缀...");
+                    byte[] cleanedWords = StripAllWordsPriceSuffixes(wordsRawBytes, separator);
+                    _engine.WriteGameFiles(info, [(wordsTargetPath, cleanedWords)]);
+                }
             }
 
-            progress?.Invoke($"正在清洗 {replacements.Count} 个物品的物价后缀并恢复纯净名称...");
-            byte[] cleanedBytes = ApplyReplacementsAppend(rawBytes, replacements);
-
-            bool ok = _engine.WriteGameFiles(info, [(targetPath, cleanedBytes)]);
-            if (ok)
-            {
-                result.Success = true;
-                result.PatchedNames = replacements.Count;
-                result.SourceSize = rawBytes.Length;
-                result.PatchedSize = cleanedBytes.Length;
-                progress?.Invoke($"物价后缀清洗成功！（已还原 {replacements.Count} 个物品）");
-            }
-            else
-            {
-                result.ErrorMessage = "写入清洗文件失败。";
-                progress?.Invoke(result.ErrorMessage);
-            }
+            result.Success = true;
+            result.PatchedNames = totalCleaned;
+            progress?.Invoke("客户端物价后缀清洗成功，已彻底还原纯净原版名称！");
         }
         catch (Exception ex)
         {
@@ -316,6 +777,358 @@ public sealed class PricePatchService
         }
 
         return result;
+    }
+
+    /// <summary>判断 dat 中是否已有价格后缀。</summary>
+    public static bool ContainsPriceSuffix(byte[] data)
+    {
+        try
+        {
+            return ScanBaseItemNames(data)
+                .Any(item => StripExistingPriceSuffix(item.Name, "") != item.Name);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    /// <summary>计算不包含名称后缀的结构指纹，用于判断游戏更新后旧备份是否仍然适用。</summary>
+    public static string ComputeMetadataSignature(byte[] data)
+    {
+        var builder = new StringBuilder();
+        foreach (var item in ScanBaseItemNames(data))
+        {
+            builder.Append(item.RowIndex)
+                .Append(':')
+                .Append(item.MetadataPath)
+                .Append('\n');
+        }
+
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
+    }
+
+    /// <summary>剥离 dat 中所有已存在的价格后缀，得到干净基线。</summary>
+    public static byte[] StripAllPriceSuffixes(byte[] data, string separator = "")
+    {
+        var entries = ScanBaseItemNames(data);
+        var (replacements, _) = BuildReplacements(
+            entries,
+            [],
+            separator,
+            keepExistingPrice: false,
+            "append",
+            patchSameNameDuplicates: true);
+        return replacements.Count == 0 ? data : ApplyReplacementsAppend(data, replacements);
+    }
+
+    /// <summary>判断 Words.datc64 中是否已有价格后缀。</summary>
+    public static bool ContainsWordsPriceSuffix(byte[] data)
+    {
+        try
+        {
+            return ScanWordNames(data)
+                .Any(item => StripExistingPriceSuffix(item.DisplayName, "") != item.DisplayName);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    /// <summary>计算 Words.datc64 结构指纹，用于判断游戏更新后旧备份是否仍然适用。</summary>
+    public static string ComputeWordsMetadataSignature(byte[] data)
+    {
+        var builder = new StringBuilder();
+        foreach (var item in ScanWordNames(data))
+        {
+            builder.Append(item.RowIndex)
+                .Append(':')
+                .Append(item.EnName)
+                .Append('\n');
+        }
+
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
+    }
+
+    /// <summary>剥离 Words.datc64 中所有已存在的价格后缀，得到干净基线。</summary>
+    public static byte[] StripAllWordsPriceSuffixes(byte[] data, string separator = "")
+    {
+        var entries = ScanWordNames(data);
+        var (replacements, _) = BuildWordReplacements(
+            entries,
+            [],
+            separator,
+            keepExistingPrice: false);
+        return replacements.Count == 0 ? data : ApplyWordReplacementsAppend(data, replacements);
+    }
+
+    public static DatLayout DetectWordsLayout(byte[] data)
+    {
+        if (data.Length < 4 + WordsRowSize)
+        {
+            throw new InvalidDataException("Words.datc64 文件太小。");
+        }
+
+        int rowCount = BitConverter.ToInt32(data, 0);
+        if (rowCount <= 0)
+        {
+            throw new InvalidDataException($"Words.datc64 行数无效：{rowCount}。");
+        }
+
+        int stringBase = 4 + rowCount * WordsRowSize;
+        if (stringBase >= data.Length)
+        {
+            throw new InvalidDataException("Words.datc64 字符串基址超出文件范围。");
+        }
+
+        return new DatLayout(rowCount, WordsRowSize, stringBase);
+    }
+
+    public static List<WordItemName> ScanWordNames(byte[] data)
+    {
+        var layout = DetectWordsLayout(data);
+        var list = new List<WordItemName>(layout.RowCount);
+
+        for (int i = 0; i < layout.RowCount; i++)
+        {
+            int rowStart = 4 + i * layout.RowSize;
+            if (rowStart + layout.RowSize > data.Length) break;
+
+            uint enOffset = BitConverter.ToUInt32(data, rowStart + WordsEnNameOffset);
+            int displayPtrPos = rowStart + WordsDisplayNameOffset;
+            uint displayOffset = BitConverter.ToUInt32(data, displayPtrPos);
+
+            if (enOffset == 0 || enOffset == 4278124286u || displayOffset == 0 || displayOffset == 4278124286u)
+            {
+                continue;
+            }
+
+            int enStart = layout.StringBase + (int)enOffset;
+            int displayStart = layout.StringBase + (int)displayOffset;
+
+            if (enStart >= 0 && enStart < data.Length - 1 && displayStart >= 0 && displayStart < data.Length - 1)
+            {
+                string enName = ReadUtf16LeZ(data, enStart);
+                string displayName = ReadUtf16LeZ(data, displayStart);
+                int displayEnd = displayStart + displayName.Length * 2;
+
+                if (!string.IsNullOrEmpty(enName) && !string.IsNullOrEmpty(displayName))
+                {
+                    list.Add(new WordItemName
+                    {
+                        RowIndex = i,
+                        EnName = enName,
+                        DisplayName = displayName,
+                        DisplayOffset = (int)displayOffset,
+                        DisplayPointerPos = displayPtrPos,
+                        DisplayStart = displayStart,
+                        DisplayEnd = displayEnd
+                    });
+                }
+            }
+        }
+
+        return list;
+    }
+
+    public static string NormalizeAlphanumeric(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var sb = new StringBuilder(value.Length);
+        foreach (char c in value)
+        {
+            if (char.IsLetterOrDigit(c))
+            {
+                sb.Append(char.ToLowerInvariant(c));
+            }
+        }
+        return sb.ToString();
+    }
+
+    public static (List<NameReplacement> Replacements, List<string> Warnings) BuildWordReplacements(
+        List<WordItemName> words,
+        List<PriceRow> priceRows,
+        string separator,
+        bool keepExistingPrice)
+    {
+        var enMap = new Dictionary<string, WordItemName>(StringComparer.OrdinalIgnoreCase);
+        var displayMap = new Dictionary<string, WordItemName>(StringComparer.Ordinal);
+        var displaySimpMap = new Dictionary<string, WordItemName>(StringComparer.Ordinal);
+
+        foreach (var w in words)
+        {
+            string normEn = NormalizeAlphanumeric(w.EnName);
+            if (!string.IsNullOrEmpty(normEn) && !enMap.ContainsKey(normEn))
+            {
+                enMap[normEn] = w;
+            }
+
+            string cleanDisplay = StripExistingPriceSuffix(w.DisplayName, separator);
+            if (!string.IsNullOrEmpty(cleanDisplay) && !displayMap.ContainsKey(cleanDisplay))
+            {
+                displayMap[cleanDisplay] = w;
+            }
+
+            string simpDisplay = NormalizeSimplified(cleanDisplay);
+            if (!string.IsNullOrEmpty(simpDisplay) && !displaySimpMap.ContainsKey(simpDisplay))
+            {
+                displaySimpMap[simpDisplay] = w;
+            }
+        }
+
+        var replacements = new List<NameReplacement>();
+        var warnings = new List<string>();
+        var handledRowIndices = new HashSet<int>();
+
+        foreach (var pr in priceRows)
+        {
+            if (string.IsNullOrEmpty(pr.Price) && string.IsNullOrEmpty(pr.NewName)) continue;
+            if (string.IsNullOrWhiteSpace(pr.Name)) continue;
+
+            WordItemName? target = null;
+
+            // 1. 英文名称归一化对齐（例如 "Mageblood", "Headhunter"）
+            string normQuery = NormalizeAlphanumeric(pr.Name);
+            if (!string.IsNullOrEmpty(normQuery) && enMap.TryGetValue(normQuery, out var byEn))
+            {
+                target = byEn;
+            }
+
+            // 2. 显示名中文直接对齐（如 "法师之血"）
+            if (target == null && displayMap.TryGetValue(pr.Name, out var byDisplay))
+            {
+                target = byDisplay;
+            }
+
+            // 3. 繁简归一化对齐（如 "法師之血" 与 "法师之血"）
+            if (target == null)
+            {
+                string simpQuery = NormalizeSimplified(pr.Name);
+                if (displaySimpMap.TryGetValue(simpQuery, out var bySimp))
+                {
+                    target = bySimp;
+                }
+            }
+
+            if (target == null) continue;
+            if (!handledRowIndices.Add(target.RowIndex)) continue;
+
+            string clean = StripExistingPriceSuffix(target.DisplayName, separator);
+            string priceText = pr.Price.Trim();
+            if (!priceText.StartsWith('[') && !string.IsNullOrEmpty(priceText))
+            {
+                priceText = $"[{priceText}]";
+            }
+
+            string requested = !string.IsNullOrEmpty(pr.NewName)
+                ? pr.NewName
+                : $"{clean}{separator}{priceText}";
+
+            replacements.Add(new NameReplacement
+            {
+                RowIndex = target.RowIndex,
+                NameStart = target.DisplayStart,
+                NameEnd = target.DisplayEnd,
+                NameOffset = target.DisplayOffset,
+                NamePointerPos = target.DisplayPointerPos,
+                OldName = target.DisplayName,
+                RequestedName = requested,
+                FittedName = requested,
+                MetadataPath = "Unique/" + target.EnName,
+                Category = string.IsNullOrWhiteSpace(pr.Category) ? "Unique" : pr.Category,
+                Price = pr.Price
+            });
+        }
+
+        // 若需要清除未匹配条目的现有价格后缀
+        if (!keepExistingPrice)
+        {
+            foreach (var w in words)
+            {
+                if (handledRowIndices.Contains(w.RowIndex)) continue;
+                string clean = StripExistingPriceSuffix(w.DisplayName, separator);
+                if (clean != w.DisplayName)
+                {
+                    handledRowIndices.Add(w.RowIndex);
+                    replacements.Add(new NameReplacement
+                    {
+                        RowIndex = w.RowIndex,
+                        NameStart = w.DisplayStart,
+                        NameEnd = w.DisplayEnd,
+                        NameOffset = w.DisplayOffset,
+                        NamePointerPos = w.DisplayPointerPos,
+                        OldName = w.DisplayName,
+                        RequestedName = clean,
+                        FittedName = clean,
+                        MetadataPath = "Unique/" + w.EnName,
+                        Price = string.Empty
+                    });
+                }
+            }
+        }
+
+        return (replacements, warnings);
+    }
+
+    public static byte[] ApplyWordReplacementsAppend(byte[] data, List<NameReplacement> replacements)
+    {
+        var layout = DetectWordsLayout(data);
+        using var memoryStream = new MemoryStream();
+        memoryStream.Write(data, 0, data.Length);
+        var dedup = new Dictionary<string, uint>(StringComparer.Ordinal);
+
+        foreach (var r in replacements.OrderBy(x => x.RowIndex))
+        {
+            uint stringOffset;
+            if (r.FittedName == r.OldName)
+            {
+                stringOffset = (uint)r.NameOffset;
+            }
+            else if (dedup.TryGetValue(r.FittedName, out uint cached))
+            {
+                stringOffset = cached;
+            }
+            else
+            {
+                if ((memoryStream.Length - layout.StringBase) % 2 != 0L)
+                {
+                    memoryStream.WriteByte(0);
+                }
+
+                stringOffset = (uint)(memoryStream.Length - layout.StringBase);
+                byte[] bytes = Encoding.Unicode.GetBytes(r.FittedName);
+                memoryStream.Write(bytes, 0, bytes.Length);
+                memoryStream.WriteByte(0);
+                memoryStream.WriteByte(0);
+                memoryStream.WriteByte(0);
+                memoryStream.WriteByte(0);
+                dedup[r.FittedName] = stringOffset;
+            }
+
+            byte[] pointerBytes = BitConverter.GetBytes(stringOffset);
+            long curPos = memoryStream.Position;
+            memoryStream.Position = r.NamePointerPos;
+            memoryStream.Write(pointerBytes, 0, 4);
+            memoryStream.Position = curPos;
+        }
+
+        return memoryStream.ToArray();
+    }
+
+    private static bool VerifyPatchedWordNames(byte[] bytes, List<NameReplacement> replacements)
+    {
+        var rows = ScanWordNames(bytes).ToDictionary(item => item.RowIndex);
+        foreach (var replacement in replacements)
+        {
+            if (!rows.TryGetValue(replacement.RowIndex, out var row)
+                || !string.Equals(row.DisplayName, replacement.FittedName, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static DatLayout DetectBaseItemLayout(byte[] data)
@@ -421,27 +1234,56 @@ public sealed class PricePatchService
         return list;
     }
 
+    public static string NormalizeLookupKey(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+        var sb = new StringBuilder(text.Length);
+        foreach (char c in text)
+        {
+            if (char.IsLetterOrDigit(c))
+            {
+                sb.Append(char.ToLowerInvariant(c));
+            }
+        }
+        return sb.ToString();
+    }
+
     public static (List<NameReplacement> Replacements, List<string> Warnings) BuildReplacements(
         List<BaseItemName> entries,
         List<PriceRow> priceRows,
         string separator,
         bool keepExistingPrice,
         string mode,
-        bool patchSameNameDuplicates)
+        bool patchSameNameDuplicates,
+        IReadOnlyDictionary<string, BaseItemName>? enNameToLocalMap = null)
     {
         var metaMap = new Dictionary<string, BaseItemName>(StringComparer.OrdinalIgnoreCase);
         var nameMap = new Dictionary<string, List<BaseItemName>>(StringComparer.Ordinal);
+
+        static void AddToNameMap(Dictionary<string, List<BaseItemName>> map, string key, BaseItemName item)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            if (!map.TryGetValue(key, out var list))
+            {
+                list = [];
+                map[key] = list;
+            }
+            if (!list.Contains(item))
+            {
+                list.Add(item);
+            }
+        }
 
         foreach (var entry in entries)
         {
             metaMap[entry.MetadataPath] = entry;
             string clean = StripExistingPriceSuffix(entry.Name, separator);
-            if (!nameMap.TryGetValue(clean, out var list))
+            AddToNameMap(nameMap, clean, entry);
+            string simplified = NormalizeSimplified(clean);
+            if (!string.Equals(clean, simplified, StringComparison.Ordinal))
             {
-                list = [];
-                nameMap[clean] = list;
+                AddToNameMap(nameMap, simplified, entry);
             }
-            list.Add(entry);
         }
 
         var replacements = new List<NameReplacement>();
@@ -471,14 +1313,53 @@ public sealed class PricePatchService
                 {
                     targets.Add(target);
                 }
-                else if (!string.IsNullOrEmpty(pr.Name) && nameMap.TryGetValue(pr.Name, out var byName))
+            }
+
+            // 1. 若通过客户端提取的双语映射表找到了该英文名对应的基底物品，直接采用
+            if (targets.Count == 0 && !string.IsNullOrEmpty(pr.Name) && enNameToLocalMap != null)
+            {
+                if (enNameToLocalMap.TryGetValue(pr.Name, out var enMatch))
+                {
+                    targets.Add(enMatch);
+                }
+                else
+                {
+                    string normEn = NormalizeLookupKey(pr.Name);
+                    foreach (var pair in enNameToLocalMap)
+                    {
+                        if (NormalizeLookupKey(pair.Key) == normEn)
+                        {
+                            targets.Add(pair.Value);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (targets.Count == 0 && !string.IsNullOrEmpty(pr.Name))
+            {
+                // 2. 直接名称匹配
+                if (nameMap.TryGetValue(pr.Name, out var byName))
                 {
                     targets = byName;
                 }
-            }
-            else if (!string.IsNullOrEmpty(pr.Name) && nameMap.TryGetValue(pr.Name, out var byName))
-            {
-                targets = byName;
+                // 3. 繁简归一化匹配 (例如繁中客户端 "神聖石" 与输入 "神圣石" 自动对齐)
+                else if (nameMap.TryGetValue(NormalizeSimplified(pr.Name), out var bySimp))
+                {
+                    targets = bySimp;
+                }
+                // 4. 英文名对照转官方中文名匹配
+                else if (EnglishToChineseMap.TryGetValue(pr.Name, out var mappedZh))
+                {
+                    if (nameMap.TryGetValue(mappedZh, out var byZh))
+                    {
+                        targets = byZh;
+                    }
+                    else if (nameMap.TryGetValue(NormalizeSimplified(mappedZh), out var byZhSimp))
+                    {
+                        targets = byZhSimp;
+                    }
+                }
             }
 
             if (targets.Count == 0) continue;
@@ -512,6 +1393,7 @@ public sealed class PricePatchService
                     RequestedName = requested,
                     FittedName = fitted,
                     MetadataPath = item.MetadataPath,
+                    Category = InferCategory(pr.Category, item.MetadataPath),
                     Price = pr.Price
                 });
             }
@@ -756,5 +1638,35 @@ public sealed class PricePatchService
             if (match) return i;
         }
         return -1;
+    }
+
+    public static string InferCategory(string category, string metadataPath)
+    {
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            return category;
+        }
+
+        if (string.IsNullOrWhiteSpace(metadataPath))
+        {
+            return "Currency";
+        }
+
+        string lower = metadataPath.ToLowerInvariant();
+        if (lower.Contains("lineage")) return "LineageSupportGems";
+        if (lower.Contains("gem")) return "UncutGems";
+        if (lower.Contains("rune")) return "Runes";
+        if (lower.Contains("soulcore")) return "SoulCores";
+        if (lower.Contains("expedition")) return "Expedition";
+        if (lower.Contains("verisium")) return "Verisium";
+        if (lower.Contains("fragment")) return "Fragments";
+        if (lower.Contains("essence")) return "Essences";
+        if (lower.Contains("idol")) return "Idols";
+        if (lower.Contains("abyss")) return "Abyss";
+        if (lower.Contains("delirium")) return "Delirium";
+        if (lower.Contains("ritual") || lower.Contains("omen")) return "Ritual";
+        if (lower.Contains("breach")) return "Breach";
+        if (lower.Contains("unique")) return "Unique";
+        return "Currency";
     }
 }

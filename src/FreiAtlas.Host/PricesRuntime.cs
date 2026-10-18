@@ -28,7 +28,7 @@ public sealed class PricesRuntime : IDisposable, IAsyncDisposable
         _client.DefaultRequestHeaders.UserAgent.ParseAdd("FreiAtlas/1.0");
         _service = new ExpeditionPriceService(new ExpeditionPriceServiceOptions(
             cachePath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "FreiAtlas", "Cache", "expedition-prices-v3.json"), leagueId: settings.LeagueId), BuildSources);
+                "FreiAtlas", "Cache", "expedition-prices-v4.json"), leagueId: settings.LeagueId), BuildSources);
     }
 
     public ExpeditionPriceSnapshot CurrentBook => _service.Current;

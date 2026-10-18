@@ -121,6 +121,8 @@ public sealed class WebMessageRouter
             "applyMapBeamPatch" => RouteApplyMapBeamPatch(payload),
             "applyPricePatch" => RouteApplyPricePatch(payload),
             "applyCurrentPricesPatch" => RouteApplyCurrentPricesPatch(payload),
+            "previewCurrentPricesPatch" => RoutePreviewCurrentPricesPatch(payload),
+            "confirmCurrentPricesPatch" => RouteConfirmCurrentPricesPatch(payload),
             "cleanPricePatch" => RouteCleanPricePatch(payload),
             "restoreAllPatches" => new RestoreAllPatchesWebCommand(),
             "getPatcherSnapshots" => new GetPatcherSnapshotsWebCommand(),
@@ -435,9 +437,70 @@ public sealed class WebMessageRouter
 
     private static WebCommand? RouteApplyCurrentPricesPatch(JsonElement payload)
     {
+        var options = ParseCurrentPriceOptions(payload);
+        return new ApplyCurrentPricesPatchWebCommand(
+            options.Mode,
+            options.Separator,
+            options.MinExalted,
+            options.UnitMode,
+            options.StripExisting,
+            options.Categories);
+    }
+
+    private static WebCommand? RoutePreviewCurrentPricesPatch(JsonElement payload)
+    {
+        var options = ParseCurrentPriceOptions(payload);
+        return new PreviewCurrentPricesPatchWebCommand(
+            options.Mode,
+            options.Separator,
+            options.MinExalted,
+            options.UnitMode,
+            options.StripExisting,
+            options.Categories);
+    }
+
+    private static WebCommand? RouteConfirmCurrentPricesPatch(JsonElement payload)
+    {
+        if (!payload.TryGetProperty("token", out var token)
+            || token.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(token.GetString()))
+        {
+            return null;
+        }
+
+        return new ConfirmCurrentPricesPatchWebCommand(token.GetString()!);
+    }
+
+    private static (string Mode, string Separator, decimal MinExalted, string UnitMode, bool StripExisting, List<string>? Categories)
+        ParseCurrentPriceOptions(JsonElement payload)
+    {
         string mode = payload.TryGetProperty("mode", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() ?? "append" : "append";
         string separator = payload.TryGetProperty("separator", out var s) && s.ValueKind == JsonValueKind.String ? s.GetString() ?? " " : " ";
-        return new ApplyCurrentPricesPatchWebCommand(mode, separator);
+        decimal minExalted = payload.TryGetProperty("minExalted", out var min)
+                             && min.ValueKind == JsonValueKind.Number
+                             && min.TryGetDecimal(out var minValue)
+            ? minValue
+            : 1m;
+        string unitMode = payload.TryGetProperty("unitMode", out var u) && u.ValueKind == JsonValueKind.String
+            ? u.GetString() ?? "auto"
+            : "auto";
+        bool stripExisting = payload.TryGetProperty("stripExisting", out var strip)
+                             && strip.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? strip.GetBoolean()
+            : true;
+        List<string>? categories = null;
+        if (payload.TryGetProperty("categories", out var categoryElement)
+            && categoryElement.ValueKind == JsonValueKind.Array)
+        {
+            categories = categoryElement.EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.String)
+                .Select(item => item.GetString() ?? string.Empty)
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        return (mode, separator, minExalted, unitMode, stripExisting, categories);
     }
 
     private static WebCommand? RouteCleanPricePatch(JsonElement payload)

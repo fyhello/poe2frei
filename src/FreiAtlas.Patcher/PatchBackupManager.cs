@@ -233,7 +233,33 @@ public sealed class PatchBackupManager
             {
                 var json = File.ReadAllText(manifestPath, Encoding.UTF8);
                 var loaded = JsonSerializer.Deserialize<List<PatchSnapshotInfo>>(json);
-                if (loaded != null) list = loaded;
+                if (loaded != null)
+                {
+                    bool needsClean = false;
+                    string snapDir = GetSnapshotsDirectory(info);
+                    foreach (var s in loaded)
+                    {
+                        if (!string.IsNullOrWhiteSpace(s.SettingsJson))
+                        {
+                            try
+                            {
+                                string sp = Path.Combine(snapDir, $"{s.Id}.settings.json");
+                                if (!File.Exists(sp))
+                                {
+                                    File.WriteAllText(sp, s.SettingsJson, Encoding.UTF8);
+                                }
+                            }
+                            catch { }
+                            s.SettingsJson = null;
+                            needsClean = true;
+                        }
+                    }
+                    list = loaded;
+                    if (needsClean)
+                    {
+                        SaveManifest(info, list);
+                    }
+                }
             }
             catch { }
         }
@@ -358,6 +384,17 @@ public sealed class PatchBackupManager
             string binPath = Path.Combine(snapDir, $"{snapId}.bin");
             File.WriteAllBytes(binPath, indexBytes);
 
+            // 将设置独立保存为小文件，避免 manifest.json 和 IPC 传输暴增到数十兆
+            if (!string.IsNullOrWhiteSpace(settingsJson))
+            {
+                try
+                {
+                    string settingsPath = Path.Combine(snapDir, $"{snapId}.settings.json");
+                    File.WriteAllText(settingsPath, settingsJson, Encoding.UTF8);
+                }
+                catch { }
+            }
+
             var list = GetSnapshots(info).ToList();
             list.RemoveAll(s => s.Id == snapId);
 
@@ -370,7 +407,7 @@ public sealed class PatchBackupManager
                 CreatedAt = DateTime.Now,
                 SizeBytes = indexBytes.Length,
                 EnabledModules = activeModules ?? [],
-                SettingsJson = settingsJson
+                SettingsJson = null
             };
 
             list.Add(snap);
@@ -410,6 +447,8 @@ public sealed class PatchBackupManager
             {
                 string p = Path.Combine(snapDir, $"{oldSnap.Id}.bin");
                 if (File.Exists(p)) File.Delete(p);
+                string sp = Path.Combine(snapDir, $"{oldSnap.Id}.settings.json");
+                if (File.Exists(sp)) File.Delete(sp);
                 logger?.Invoke($"自动轮转淘汰早期自动快照：{oldSnap.Name}");
             }
             catch { }
@@ -442,6 +481,17 @@ public sealed class PatchBackupManager
             return new BackupRestoreResult(false, $"快照索引数据文件丢失（目标位置: {binPath}）。");
         }
 
+        string settingsPath = Path.Combine(GetSnapshotsDirectory(info), $"{target.Id}.settings.json");
+        if (File.Exists(settingsPath))
+        {
+            try
+            {
+                restoredSettingsJson = File.ReadAllText(settingsPath, Encoding.UTF8);
+            }
+            catch { }
+        }
+        restoredSettingsJson ??= target.SettingsJson;
+
         var (isLocked, lockReason) = CheckResourceLock(info);
         if (isLocked)
         {
@@ -463,7 +513,6 @@ public sealed class PatchBackupManager
                 {
                     logger?.Invoke($"正在将快照【{target.Name}】索引写回 Content.ggpk...");
                     record.Write(snapshotBytes);
-                    restoredSettingsJson = target.SettingsJson;
                     logger?.Invoke("写入完成！客户端状态已恢复至该版本。");
                     return new BackupRestoreResult(true, $"已成功恢复到版本【{target.Name}】！");
                 }
@@ -490,7 +539,6 @@ public sealed class PatchBackupManager
                     }
                 }
 
-                restoredSettingsJson = target.SettingsJson;
                 logger?.Invoke("写入完成！Bundles2 索引已恢复至该版本。");
                 return new BackupRestoreResult(true, $"已成功恢复到版本【{target.Name}】！");
             }
@@ -545,6 +593,8 @@ public sealed class PatchBackupManager
         {
             string binPath = Path.Combine(GetSnapshotsDirectory(info), $"{target.Id}.bin");
             if (File.Exists(binPath)) File.Delete(binPath);
+            string sp = Path.Combine(GetSnapshotsDirectory(info), $"{target.Id}.settings.json");
+            if (File.Exists(sp)) File.Delete(sp);
         }
         catch { }
 

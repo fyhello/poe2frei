@@ -156,23 +156,45 @@ public sealed class PatcherFacade
     /// <summary>
     /// 在每次打补丁写入前自动拍摄快照（自动保留最近 5 版）
     /// </summary>
-    public void AutoSnapshotBeforePatch(GameModeInfo info, string? settingsJson = null, List<string>? activeModules = null)
+    public BackupRestoreResult AutoSnapshotBeforePatch(
+        GameModeInfo info,
+        string? patchActionName = null,
+        string? settingsJson = null,
+        List<string>? activeModules = null,
+        Action<string>? logger = null)
     {
         try
         {
             // 确保官方底包已优先固化
-            _backupManager.EnsureBackup(info);
+            _backupManager.EnsureBackup(info, logger);
             // 记录当前自动快照
             string timeStr = DateTime.Now.ToString("MM-dd HH:mm");
-            _backupManager.CreateSnapshot(
+            string actionText = string.IsNullOrWhiteSpace(patchActionName) ? "应用补丁" : patchActionName.Trim();
+            string title = $"[自动] {actionText}前 ({timeStr})";
+            string desc = $"写入【{actionText}】前自动生成的还原点 (系统自动保留最近 5 版)";
+
+            return _backupManager.CreateSnapshot(
                 info,
                 PatchSnapshotType.Auto,
-                $"[自动] 应用补丁前 ({timeStr})",
-                "每次写入补丁前自动生成的还原点 (系统自动保留最近 5 版)",
+                title,
+                desc,
                 settingsJson,
-                activeModules);
+                activeModules,
+                logger);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            logger?.Invoke($"自动创建快照失败：{ex.Message}");
+            return new BackupRestoreResult(false, $"自动创建快照失败：{ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// 兼容性重载：在每次打补丁写入前自动拍摄快照
+    /// </summary>
+    public void AutoSnapshotBeforePatch(GameModeInfo info, string? settingsJson, List<string>? activeModules)
+    {
+        AutoSnapshotBeforePatch(info, patchActionName: null, settingsJson, activeModules);
     }
 
     public bool ApplyFont(
@@ -328,12 +350,37 @@ public sealed class PatcherFacade
     }
 
 
+    public PricePatchService.PricePatchPreview PreviewPricePatch(
+        List<PriceRow> priceRows,
+        string mode = "append",
+        string separator = " ",
+        string? preferredDirectory = null,
+        Action<string>? progress = null,
+        bool keepExistingPrice = false)
+    {
+        if (IsGameRunning())
+        {
+            progress?.Invoke("检测到游戏正在运行中，请先退出游戏后再预览。");
+            return new PricePatchService.PricePatchPreview { ErrorMessage = "游戏运行中" };
+        }
+
+        var info = GetGameInfo(preferredDirectory);
+        if (!info.IsValid)
+        {
+            progress?.Invoke($"未检测到游戏目录：{info.ErrorMessage}");
+            return new PricePatchService.PricePatchPreview { ErrorMessage = info.ErrorMessage };
+        }
+
+        return _priceService.PreviewPatch(info, priceRows, mode, separator, keepExistingPrice, patchSameNameDuplicates: true, progress);
+    }
+
     public PricePatchService.PricePatchResult ApplyPricePatch(
         List<PriceRow> priceRows,
         string mode = "append",
         string separator = " ",
         string? preferredDirectory = null,
-        Action<string>? progress = null)
+        Action<string>? progress = null,
+        bool keepExistingPrice = false)
     {
         if (IsGameRunning())
         {
@@ -348,7 +395,7 @@ public sealed class PatcherFacade
             return new PricePatchService.PricePatchResult { ErrorMessage = info.ErrorMessage };
         }
 
-        return _priceService.ApplyPatch(info, priceRows, mode, separator, keepExistingPrice: false, patchSameNameDuplicates: true, progress);
+        return _priceService.ApplyPatch(info, priceRows, mode, separator, keepExistingPrice, patchSameNameDuplicates: true, progress);
     }
 
     public PricePatchService.PricePatchResult CleanPricePatch(

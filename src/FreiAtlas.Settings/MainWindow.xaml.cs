@@ -43,6 +43,16 @@ public partial class MainWindow : Window
     private PatcherFacade? _patcher;
     private string? _patcherMessage;
     private string? _patcherError;
+    private PendingPricePatch? _pendingPricePatch;
+
+    private sealed record PendingPricePatch(
+        PricePatchService.PricePatchPreview Preview,
+        List<PriceRow> Rows,
+        string Mode,
+        string Separator,
+        bool KeepExistingPrice,
+        string? GameDirectory,
+        DateTimeOffset PriceFetchedAtUtc);
 
     public MainWindow()
     {
@@ -247,6 +257,12 @@ public partial class MainWindow : Window
                     break;
                 case ApplyCurrentPricesPatchWebCommand applyCurrentPrices:
                     await HandleApplyCurrentPricesPatchAsync(applyCurrentPrices);
+                    break;
+                case PreviewCurrentPricesPatchWebCommand previewCurrentPrices:
+                    await HandlePreviewCurrentPricesPatchAsync(previewCurrentPrices);
+                    break;
+                case ConfirmCurrentPricesPatchWebCommand confirmCurrentPrices:
+                    await HandleConfirmCurrentPricesPatchAsync(confirmCurrentPrices);
                     break;
                 case CleanPricePatchWebCommand cleanPrice:
                     await HandleCleanPricePatchAsync(cleanPrice);
@@ -551,7 +567,26 @@ public partial class MainWindow : Window
         {
             version = 1,
             type = "pricesSnapshot",
-            payload = new { settings = _settingsStore.Prices, state = _prices.Current, error = _pricesError }
+            payload = new
+            {
+                settings = _settingsStore.Prices,
+                state = _prices.Current,
+                items = _prices.CurrentBook.Entries.Select(entry => new
+                {
+                    itemId = entry.ItemId,
+                    name = entry.DisplayName,
+                    aliases = entry.Aliases,
+                    category = entry.Category,
+                    source = entry.Source,
+                    divineValue = entry.DivineValue,
+                    exaltedValue = decimal.Round(
+                        entry.DivineValue * (_prices.CurrentBook.ExaltedPerDivine > 0m
+                            ? _prices.CurrentBook.ExaltedPerDivine
+                            : 400m),
+                        4)
+                }).ToArray(),
+                error = _pricesError
+            }
         }, JsonOptions);
         if (!force && json == _lastPricesJson) return;
         _lastPricesJson = json;
@@ -663,7 +698,7 @@ public partial class MainWindow : Window
 
         SendPatcherSnapshot(message: "正在准备应用字体补丁，请稍候...");
         string? progressLog = null;
-        RecordAutoSnapshot();
+        RecordAutoSnapshot("字体补丁写入");
         bool success = await Task.Run(() => _patcher.ApplyFont(
             cmd.FontFamily,
             cmd.FontSizeDelta,
@@ -718,7 +753,7 @@ public partial class MainWindow : Window
 
         SendPatcherSnapshot(message: "正在准备应用 UI 配色补丁，请稍候...");
         string? progressLog = null;
-        RecordAutoSnapshot();
+        RecordAutoSnapshot("UI配色写入");
         bool success = await Task.Run(() => _patcher.ApplyUiColors(
             entries,
             _settingsStore.ClientPatch.CustomGameDirectory,
@@ -757,7 +792,7 @@ public partial class MainWindow : Window
         {
             SendPatcherSnapshot(message: "正在准备应用传言增强补丁，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot();
+            RecordAutoSnapshot("传言强化写入");
             var customItems = cmd.Items?.Select(r => new EndgameMapRumourItem
             {
                 RowIndex = r.RowIndex,
@@ -812,7 +847,7 @@ public partial class MainWindow : Window
         {
             SendPatcherSnapshot(message: "正在准备应用保险箱掉落标注补丁，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot();
+            RecordAutoSnapshot("宝箱标注写入");
             Dictionary<string, string>? customMappings = cmd.Items?
                 .Where(c => c.Enabled && !string.IsNullOrWhiteSpace(c.OriginalName))
                 .ToDictionary(c => c.OriginalName, c => c.ModifiedName);
@@ -860,7 +895,7 @@ public partial class MainWindow : Window
         {
             SendPatcherSnapshot(message: "正在准备应用高价值宿敌怪高亮补丁，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot();
+            RecordAutoSnapshot("特殊名称补丁写入");
             bool success = await Task.Run(() => _patcher.ApplyNamePatch(
                 NamePatchKind.ArchnemesisMods,
                 _settingsStore.ClientPatch.CustomGameDirectory,
@@ -908,7 +943,7 @@ public partial class MainWindow : Window
         {
             SendPatcherSnapshot(message: "正在准备应用装备与地图词缀多色彩染色补丁，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot();
+            RecordAutoSnapshot("词缀变色写入");
             var entries = cmd.Rules?.Select(ColorModEntry.FromRuleItem).ToList();
 
             bool success = await Task.Run(() => _patcher.ApplyColorMods(
@@ -955,7 +990,7 @@ public partial class MainWindow : Window
         {
             SendPatcherSnapshot(message: "正在准备生成异界神图醒目光柱，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot();
+            RecordAutoSnapshot("神图光柱写入");
             var targets = cmd.Targets?.Select(t => new MapBeamTarget(t.MapName, t.DisplayName, t.Color, t.Enabled)).ToList();
 
             bool success = await Task.Run(() => _patcher.ApplyMapBeams(
@@ -991,60 +1026,36 @@ public partial class MainWindow : Window
             return;
         }
 
+        decimal minExalted = cmd.MinExalted > 0m ? cmd.MinExalted : 1m;
+        string unitMode = string.IsNullOrWhiteSpace(cmd.UnitMode) ? "auto" : cmd.UnitMode.Trim().ToLowerInvariant();
+        bool stripExisting = cmd.StripExisting;
+
         _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
         {
             PricePatchEnabled = true,
             PricePatchMode = cmd.Mode,
-            PricePatchSeparator = cmd.Separator
+            PricePatchSeparator = cmd.Separator,
+            PricePatchMinExalted = minExalted,
+            PricePatchUnitMode = unitMode,
+            PricePatchStripExisting = stripExisting,
+            PricePatchCategories = cmd.Categories
         });
 
-        var book = _prices?.CurrentBook;
-        if (book == null || book.ItemCount == 0)
+        // 直接注入会绕过预览计划，作废旧预览，避免之后误确认旧结果。
+        _pendingPricePatch = null;
+
+        var (priceRows, _, error) = BuildCurrentPriceRows(minExalted, unitMode, cmd.Categories);
+        if (error is not null)
         {
-            SendPatcherSnapshot(error: "当前尚未拉取到赛季物价快照，请先在【赛季价格】页面点击刷新物价或稍后重试。");
+            SendPatcherSnapshot(error: error);
             return;
         }
 
-        SendPatcherSnapshot(message: $"正在从当前赛季物价快照（{book.ItemCount} 个物品）中提取并换算价格标签...");
+        RecordAutoSnapshot("物价补丁写入");
 
-        List<PriceRow> priceRows = [];
-        decimal exPerDiv = book.ExaltedPerDivine > 0m ? book.ExaltedPerDivine : 400m;
-
-        foreach (var (itemName, divVal) in book.AllValues)
-        {
-            if (divVal <= 0m || string.IsNullOrWhiteSpace(itemName)) continue;
-
-            string suffix;
-            if (divVal >= 1.0m)
-            {
-                suffix = $"[{divVal:0.##}D]";
-            }
-            else
-            {
-                decimal exVal = divVal * exPerDiv;
-                if (exVal >= 0.1m)
-                {
-                    suffix = $"[{exVal:0.#}E]";
-                }
-                else
-                {
-                    continue; // 价值极低不占用后缀
-                }
-            }
-
-            priceRows.Add(new PriceRow(itemName, suffix));
-        }
-
-        if (priceRows.Count == 0)
-        {
-            SendPatcherSnapshot(error: "未筛选出有价值的物品物价，无需注入。");
-            return;
-        }
-
-        SendPatcherSnapshot(message: $"已生成 {priceRows.Count} 条换算物价，正在注入客户端地面掉落名称...");
+        SendPatcherSnapshot(message: $"已生成 {priceRows.Count} 条换算物价，正在读取客户端并注入地面掉落名称...");
 
         string? progressLog = null;
-        RecordAutoSnapshot();
         var res = await Task.Run(() => _patcher.ApplyPricePatch(
             priceRows,
             cmd.Mode,
@@ -1054,15 +1065,187 @@ public partial class MainWindow : Window
             {
                 progressLog = msg;
                 Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-            }));
+            },
+            keepExistingPrice: !stripExisting));
 
         if (res.Success)
         {
-            SendPatcherSnapshot(message: progressLog ?? $"实时赛季物价成功注入客户端！（已注入 {res.PatchedNames} 个物品）");
+            SendPatcherSnapshot(message: progressLog ?? $"实时物价成功注入客户端！（已注入 {res.PatchedNames} 个物品）");
         }
         else
         {
             SendPatcherSnapshot(error: res.ErrorMessage.Length > 0 ? res.ErrorMessage : "实时物价注入客户端失败。");
+        }
+    }
+
+    private (List<PriceRow> Rows, DateTimeOffset FetchedAtUtc, string? Error) BuildCurrentPriceRows(
+        decimal minExalted,
+        string unitMode,
+        IReadOnlyList<string>? categories)
+    {
+        var book = _prices?.CurrentBook;
+        if (book == null || book.ItemCount == 0)
+        {
+            return ([], default, "当前尚未拉取到物价快照，请先在【物价设置】页面点击刷新物价或稍后重试。");
+        }
+
+        var rows = PriceAnnotationBuilder.BuildRows(
+            book.Entries,
+            book.ExaltedPerDivine,
+            minExalted,
+            unitMode,
+            categories);
+        return rows.Count == 0
+            ? ([], book.FetchedAtUtc, $"未筛选出达到 {minExalted:0.##}E 的物品物价，无需注入。")
+            : (rows, book.FetchedAtUtc, null);
+    }
+
+    private async Task HandlePreviewCurrentPricesPatchAsync(PreviewCurrentPricesPatchWebCommand cmd)
+    {
+        if (_patcher is null || _settingsStore is null) return;
+        if (PatcherFacade.IsGameRunning())
+        {
+            SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再预览。");
+            return;
+        }
+
+        decimal minExalted = cmd.MinExalted > 0m ? cmd.MinExalted : 1m;
+        string unitMode = string.IsNullOrWhiteSpace(cmd.UnitMode) ? "auto" : cmd.UnitMode.Trim().ToLowerInvariant();
+        bool stripExisting = cmd.StripExisting;
+
+        _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+        {
+            PricePatchEnabled = true,
+            PricePatchMode = cmd.Mode,
+            PricePatchSeparator = cmd.Separator,
+            PricePatchMinExalted = minExalted,
+            PricePatchUnitMode = unitMode,
+            PricePatchStripExisting = stripExisting,
+            PricePatchCategories = cmd.Categories
+        });
+
+        var (rows, fetchedAtUtc, error) = BuildCurrentPriceRows(minExalted, unitMode, cmd.Categories);
+        if (error is not null)
+        {
+            _pendingPricePatch = null;
+            SendPatcherSnapshot(error: error);
+            return;
+        }
+
+        SendPatcherSnapshot(message: "正在读取客户端实际数据表并匹配物价...");
+        string? progressLog = null;
+        var preview = await Task.Run(() => _patcher.PreviewPricePatch(
+            rows,
+            cmd.Mode,
+            cmd.Separator,
+            _settingsStore.ClientPatch.CustomGameDirectory,
+            msg =>
+            {
+                progressLog = msg;
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            },
+            keepExistingPrice: !stripExisting));
+
+        if (!preview.Success)
+        {
+            _pendingPricePatch = null;
+            SendPatcherSnapshot(error: string.IsNullOrWhiteSpace(preview.ErrorMessage)
+                ? "读取客户端并预览失败。"
+                : preview.ErrorMessage);
+            return;
+        }
+
+        _pendingPricePatch = new PendingPricePatch(
+            preview,
+            rows,
+            cmd.Mode,
+            cmd.Separator,
+            !stripExisting,
+            _settingsStore.ClientPatch.CustomGameDirectory,
+            fetchedAtUtc);
+
+        SendPatcherSnapshot(
+            message: progressLog ?? $"预览完成：客户端可匹配 {preview.MatchedCount} 个物品，请确认后再注入。",
+            pricePreview: preview);
+    }
+
+    private async Task HandleConfirmCurrentPricesPatchAsync(ConfirmCurrentPricesPatchWebCommand cmd)
+    {
+        if (_patcher is null || _settingsStore is null) return;
+        var pending = _pendingPricePatch;
+        if (pending is null || !string.Equals(pending.Preview.Token, cmd.Token, StringComparison.Ordinal))
+        {
+            SendPatcherSnapshot(error: "预览已失效，请重新点击预览后再确认注入。");
+            return;
+        }
+
+        if (DateTimeOffset.UtcNow - pending.Preview.CreatedAtUtc > TimeSpan.FromMinutes(10))
+        {
+            _pendingPricePatch = null;
+            SendPatcherSnapshot(error: "预览已超过 10 分钟，请重新预览。");
+            return;
+        }
+
+        if (PatcherFacade.IsGameRunning())
+        {
+            SendPatcherSnapshot(error: "检测到游戏正在运行中，请先完全关闭游戏客户端后再确认注入。");
+            return;
+        }
+
+        var book = _prices?.CurrentBook;
+        if (book is null || book.FetchedAtUtc != pending.PriceFetchedAtUtc)
+        {
+            _pendingPricePatch = null;
+            SendPatcherSnapshot(error: "物价数据已刷新，预览结果已失效，请重新预览。");
+            return;
+        }
+
+        SendPatcherSnapshot(message: "正在复核客户端文件与预览结果...");
+        var recheck = await Task.Run(() => _patcher.PreviewPricePatch(
+            pending.Rows,
+            pending.Mode,
+            pending.Separator,
+            pending.GameDirectory,
+            progress: null,
+            keepExistingPrice: pending.KeepExistingPrice));
+
+        if (!recheck.Success
+            || !string.Equals(recheck.ClientSha256, pending.Preview.ClientSha256, StringComparison.Ordinal)
+            || !string.Equals(recheck.MetadataSignature, pending.Preview.MetadataSignature, StringComparison.Ordinal)
+            || !string.Equals(recheck.PriceRowsHash, pending.Preview.PriceRowsHash, StringComparison.Ordinal)
+            || recheck.MatchedCount != pending.Preview.MatchedCount)
+        {
+            _pendingPricePatch = null;
+            SendPatcherSnapshot(error: "客户端文件或价格数据已变化，预览结果已失效，请重新预览。");
+            return;
+        }
+
+        RecordAutoSnapshot("物价补丁写入");
+
+        string? progressLog = null;
+        var result = await Task.Run(() => _patcher.ApplyPricePatch(
+            pending.Rows,
+            pending.Mode,
+            pending.Separator,
+            pending.GameDirectory,
+            msg =>
+            {
+                progressLog = msg;
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            },
+            keepExistingPrice: pending.KeepExistingPrice));
+
+        _pendingPricePatch = null;
+        if (result.Success)
+        {
+            _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with { PricePatchEnabled = true });
+            SendPatcherSnapshot(message: progressLog ?? $"已确认注入 {result.PatchedNames} 个客户端物品物价。");
+        }
+        else
+        {
+            SendPatcherSnapshot(error: string.IsNullOrWhiteSpace(result.ErrorMessage)
+                ? "确认注入失败。"
+                : result.ErrorMessage);
         }
     }
 
@@ -1098,8 +1281,9 @@ public partial class MainWindow : Window
             return;
         }
 
+        RecordAutoSnapshot("物价补丁写入");
+
         string? progressLog = null;
-        RecordAutoSnapshot();
         var res = await Task.Run(() => _patcher.ApplyPricePatch(
             priceRows,
             cmd.Mode,
@@ -1113,6 +1297,7 @@ public partial class MainWindow : Window
 
         if (res.Success)
         {
+            _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with { PricePatchEnabled = true });
             SendPatcherSnapshot(message: progressLog ?? $"客户端原生掉落物价注入成功！（已注入 {res.PatchedNames} 个物品）");
         }
         else
@@ -1130,6 +1315,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        RecordAutoSnapshot("物价清洗");
+
         SendPatcherSnapshot(message: "正在清洗数据表中的物价后缀...");
         string? progressLog = null;
         var res = await Task.Run(() => _patcher.CleanPricePatch(
@@ -1143,6 +1330,7 @@ public partial class MainWindow : Window
 
         if (res.Success)
         {
+            _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with { PricePatchEnabled = false });
             SendPatcherSnapshot(message: progressLog ?? $"物价后缀清洗成功！（已清洗 {res.PatchedNames} 个物品）");
         }
         else
@@ -1185,11 +1373,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RecordAutoSnapshot()
+    private BackupRestoreResult? RecordAutoSnapshot(string? patchActionName = null)
     {
-        if (_patcher is null || _settingsStore is null) return;
+        if (_patcher is null || _settingsStore is null) return null;
         var info = _patcher.GetGameInfo(_settingsStore.ClientPatch.CustomGameDirectory);
-        if (!info.IsValid) return;
+        if (!info.IsValid) return null;
 
         var patch = _settingsStore.ClientPatch;
         var activeModules = new List<string>();
@@ -1201,7 +1389,7 @@ public partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(patch.FontFamily)) activeModules.Add("自定义字体");
 
         string settingsJson = JsonSerializer.Serialize(patch, JsonOptions);
-        _patcher.AutoSnapshotBeforePatch(info, settingsJson, activeModules);
+        return _patcher.AutoSnapshotBeforePatch(info, patchActionName, settingsJson, activeModules);
     }
 
     private async Task HandleCreatePatcherSnapshotAsync(CreatePatcherSnapshotWebCommand cmd)
@@ -1432,7 +1620,8 @@ public partial class MainWindow : Window
         IReadOnlyList<EndgameMapRumourItem>? clientRumours = null,
         IReadOnlyList<NamePatchItem>? clientChests = null,
         FontSettingsInfo? fontSettings = null,
-        IReadOnlyList<PricePatchService.BaseItemName>? clientBaseItems = null)
+        IReadOnlyList<PricePatchService.BaseItemName>? clientBaseItems = null,
+        PricePatchService.PricePatchPreview? pricePreview = null)
     {
         if (SettingsWebView.CoreWebView2 is null || _settingsStore is null) return;
         if (_patcher is null)
@@ -1454,7 +1643,18 @@ public partial class MainWindow : Window
         var gameInfo = _patcher.GetGameInfo(_settingsStore.ClientPatch.CustomGameDirectory);
         var isRunning = PatcherFacade.IsGameRunning();
         var hasBackup = _patcher.HasBackup(_settingsStore.ClientPatch.CustomGameDirectory);
-        var snapshots = _patcher.GetSnapshots(_settingsStore.ClientPatch.CustomGameDirectory);
+        var snapshots = _patcher.GetSnapshots(_settingsStore.ClientPatch.CustomGameDirectory)
+            .Select(s => new
+            {
+                id = s.Id,
+                type = s.Type,
+                name = s.Name,
+                description = s.Description,
+                createdAt = s.CreatedAt,
+                sizeBytes = s.SizeBytes,
+                enabledModules = s.EnabledModules
+            })
+            .ToList();
 
         _cachedInstalledFonts ??= _patcher.GetInstalledFonts();
 
@@ -1484,7 +1684,8 @@ public partial class MainWindow : Window
                 initialColorMods = ColorModService.GetBuiltinEntries(),
                 scannedEntries = scannedEntries,
                 message = _patcherMessage,
-                error = _patcherError
+                error = _patcherError,
+                pricePreview = pricePreview
             }
         }, JsonOptions);
 

@@ -9,7 +9,17 @@ public sealed record ExpeditionPriceEntry(
     string ItemId,
     string DisplayName,
     decimal DivineValue,
-    ImmutableArray<string> Aliases = default);
+    ImmutableArray<string> Aliases = default)
+{
+    /// <summary>价格源返回的分类（如 Currency/Expedition/Runes）。</summary>
+    public string Category { get; init; } = string.Empty;
+
+    /// <summary>价格来源名称（如 poe.ninja/poe2scout）。</summary>
+    public string Source { get; init; } = string.Empty;
+
+    /// <summary>客户端 BaseItemTypes 的 metadata 路径（价格源能提供时用于跨语言精确匹配）。</summary>
+    public string MetadataPath { get; init; } = string.Empty;
+}
 
 public sealed record ExpeditionPriceSourceResult(
     string SourceName,
@@ -23,16 +33,19 @@ public sealed record ExpeditionPriceSourceResult(
 public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
 {
     private readonly ImmutableDictionary<string, decimal> _values;
+    private readonly ImmutableArray<ExpeditionPriceEntry> _entries;
 
     private ExpeditionPriceSnapshot(
         DateTimeOffset fetchedAtUtc,
         decimal exaltedPerDivine,
         ImmutableDictionary<string, decimal> values,
+        ImmutableArray<ExpeditionPriceEntry> entries,
         string leagueId = "")
     {
         FetchedAtUtc = fetchedAtUtc;
         ExaltedPerDivine = exaltedPerDivine > 0m ? exaltedPerDivine : 400m;
         _values = values;
+        _entries = entries.IsDefault ? [] : entries;
         LeagueId = leagueId;
     }
 
@@ -40,14 +53,18 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
 
     public decimal ExaltedPerDivine { get; }
 
-    public int ItemCount => _values.Count;
+    /// <summary>唯一条目数（不再把 ItemId/别名重复计入）。</summary>
+    public int ItemCount => _entries.Length;
 
     public ImmutableDictionary<string, decimal> AllValues => _values;
+
+    /// <summary>价格表中用于展示的唯一条目。</summary>
+    public ImmutableArray<ExpeditionPriceEntry> Entries => _entries;
 
     public string LeagueId { get; }
 
     public static ExpeditionPriceSnapshot Empty { get; } =
-        new(DateTimeOffset.MinValue, 400m, ImmutableDictionary<string, decimal>.Empty);
+        new(DateTimeOffset.MinValue, 400m, ImmutableDictionary<string, decimal>.Empty, []);
 
     public static ExpeditionPriceSnapshot Merge(
         DateTimeOffset fetchedAtUtc,
@@ -56,6 +73,8 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
     {
         ArgumentNullException.ThrowIfNull(sources);
         var values = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var entries = ImmutableArray.CreateBuilder<ExpeditionPriceEntry>();
+        var entryIndexByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var exaltedPerDivine = 0m;
         foreach (var source in sources)
         {
@@ -78,11 +97,33 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
                     continue;
                 }
 
-                foreach (var key in EnumerateKeys(entry))
+                var displayName = Normalize(entry.DisplayName);
+                var key = displayName.Length > 0
+                    ? "name:" + displayName + "|" + Normalize(entry.Category).ToLowerInvariant()
+                    : "id:" + Normalize(entry.ItemId);
+                if (entryIndexByKey.TryGetValue(key, out int index))
                 {
-                    if (!values.ContainsKey(key))
+                    // 同名条目来自不同来源时，优先补齐 poe2scout 提供的 metadata 路径。
+                    var existing = entries[index];
+                    if (string.IsNullOrWhiteSpace(existing.MetadataPath)
+                        && !string.IsNullOrWhiteSpace(entry.MetadataPath))
                     {
-                        values.Add(key, entry.DivineValue);
+                        entries[index] = existing with { MetadataPath = entry.MetadataPath };
+                    }
+                }
+                else
+                {
+                    entryIndexByKey[key] = entries.Count;
+                    entries.Add(NormalizeEntry(entry.Source.Length == 0
+                        ? entry with { Source = source.SourceName }
+                        : entry));
+                }
+
+                foreach (var alias in EnumerateKeys(entry))
+                {
+                    if (!values.ContainsKey(alias))
+                    {
+                        values.Add(alias, entry.DivineValue);
                     }
                 }
             }
@@ -92,6 +133,7 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
             fetchedAtUtc,
             exaltedPerDivine,
             values.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase),
+            entries.ToImmutable(),
             leagueId);
     }
 
@@ -137,7 +179,8 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
             LeagueId = LeagueId,
             FetchedAtUtc = FetchedAtUtc,
             ExaltedPerDivine = ExaltedPerDivine,
-            Values = _values.ToDictionary(item => item.Key, item => item.Value, StringComparer.OrdinalIgnoreCase)
+            Values = _values.ToDictionary(item => item.Key, item => item.Value, StringComparer.OrdinalIgnoreCase),
+            Items = _entries.ToList()
         };
         File.WriteAllText(
             temporaryPath,
@@ -173,6 +216,11 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
                 return false;
             }
 
+            var entries = document.Items is { Count: > 0 }
+                ? document.Items.Select(NormalizeEntry).ToImmutableArray()
+                : document.Values
+                    .Select(item => new ExpeditionPriceEntry(item.Key, item.Key, item.Value, []))
+                    .ToImmutableArray();
             snapshot = new ExpeditionPriceSnapshot(
                 document.FetchedAtUtc,
                 document.ExaltedPerDivine,
@@ -180,6 +228,7 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
                     item => Normalize(item.Key),
                     item => item.Value,
                     StringComparer.OrdinalIgnoreCase),
+                entries,
                 document.LeagueId ?? string.Empty);
             if (snapshot.IsExpired(now, lifetime))
             {
@@ -228,6 +277,9 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
     private static string Normalize(string value)
         => value.Trim();
 
+    private static ExpeditionPriceEntry NormalizeEntry(ExpeditionPriceEntry entry)
+        => entry.Aliases.IsDefault ? entry with { Aliases = [] } : entry;
+
     private sealed class CacheDocument
     {
         public string? LeagueId { get; set; }
@@ -237,6 +289,8 @@ public sealed class ExpeditionPriceSnapshot : IExpeditionPriceBook
         public decimal ExaltedPerDivine { get; set; }
 
         public Dictionary<string, decimal>? Values { get; set; }
+
+        public List<ExpeditionPriceEntry>? Items { get; set; }
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new()
