@@ -1414,3 +1414,57 @@ table.compact-table tr:hover td {
   color: #93c5fd;
   font-weight: 600;
 }
+
+/*
+ * 布局工具类。
+ *
+ * 补丁页里大量元素用内联 style 重复写同一组 flex 布局，其中
+ * 「横向排列 + 垂直居中 + 间距 6px」这类组合出现了 30 余次。
+ * 抽成工具类后，HTML 只需一个 class，主题切换与后续调整也集中在一处。
+ *
+ * 只收敛高频、语义明确的组合；逐元素的微调仍保留内联，
+ * 强行归一反而会掩盖各自的差异。
+ */
+.fx-row-4,
+.fx-row-5,
+.fx-row-6,
+.fx-row-8,
+.fx-row-10 {
+  display: flex;
+  align-items: center;
+}
+
+.fx-row-4 { gap: 4px; }
+.fx-row-5 { gap: 5px; }
+.fx-row-6 { gap: 6px; }
+.fx-row-8 { gap: 8px; }
+.fx-row-10 { gap: 10px; }
+
+/* 横向两端对齐 */
+.fx-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 纵向排列 */
+.fx-col-6,
+.fx-col-8,
+.fx-col-10 {
+  display: flex;
+  flex-direction: column;
+}
+
+.fx-col-6 { gap: 6px; }
+.fx-col-8 { gap: 8px; }
+.fx-col-10 { gap: 10px; }
+
+/* 纯文本色，用于替代重复的 color: var(--text) */
+.fx-text {
+  color: var(--text);
+}
+
+.fx-text-muted {
+  color: var(--text-muted);
+}
+

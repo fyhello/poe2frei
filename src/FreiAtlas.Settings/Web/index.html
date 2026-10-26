@@ -576,14 +576,14 @@
             <div id="psec-effectpatch" class="patcher-section hidden">
               <div class="patcher-box" style="width: 100%;">
                 <div class="section-title-bar" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
+                  <div class="fx-row-8">
                     <span style="font-size: 16px;">⚡</span>
                     <div>
                       <strong style="color: var(--text); font-size: 14px;">游戏特效与性能优化</strong>
                       <span style="color: var(--muted); font-size: 11px; display: block;">独立勾选各项特效与画面规则，按需自由组合，提升高压场景与密集战斗的画面流畅度</span>
                     </div>
                   </div>
-                  <div style="display: flex; gap: 6px;">
+                  <div class="fx-row-6">
                     <button id="btnRestoreEffectRules" class="btn-compact" style="color: #f87171; border-color: rgba(239,68,68,0.3);" title="从原始备份完全还原画面与技能特效">↺ 还原全部优化</button>
                     <button id="btnApplyEffectRules" class="primary-button" style="height: 26px; padding: 0 12px; font-size: 11px; font-weight: bold;">💾 保存并应用</button>
                   </div>
@@ -592,11 +592,11 @@
                 <div class="effect-options-list" style="display: flex; flex-direction: column; gap: 10px;">
                   <!-- 卡片 1: 小地图全开 -->
                   <div class="effect-opt-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-minimap_visibility" class="effect-rule-checkbox" data-rule="minimap_visibility" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">小地图全开</strong>
                             <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">✅ 高清轮廓区分</span>
                           </div>
@@ -611,11 +611,11 @@
 
                   <!-- 卡片 2: 视距拉远 (支持自由调节倍率) -->
                   <div class="effect-opt-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-view_distance" class="effect-rule-checkbox" data-rule="view_distance" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">视距拉远</strong>
                             <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">✅ 实机验证通过</span>
                           </div>
@@ -636,11 +636,11 @@
 
                   <!-- 卡片 3: 怪物死亡特效秒消 / 尸体清理 -->
                   <div class="effect-opt-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-monster_dead" class="effect-rule-checkbox" data-rule="monster_dead_base,monster_dead_child,monster_dead_revive" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">怪物死亡特效秒消 / 尸体清理</strong>
                             <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">✅ 实机验证通过</span>
                           </div>
@@ -652,11 +652,11 @@
 
                   <!-- 卡片 4: 人物技能和装备特效屏蔽 (POE2) -->
                   <div class="effect-opt-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-spell_block_master" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">人物技能和装备特效屏蔽 (POE2)</strong>
                             <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">🪄 110 项全收录</span>
                             <span id="badgeSpellSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
@@ -675,11 +675,11 @@
 
                   <!-- 卡片 5: 环境去黑暗，全局亮度调整 -->
                   <div class="effect-opt-card" style="border-color: rgba(250, 204, 21, 0.35);">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-remove_dark" class="effect-rule-checkbox" data-rule="remove_dark" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">环境去黑暗，全局亮度调整</strong>
                             <span class="hub-badge" style="color: #facc15; border-color: rgba(250, 204, 21, 0.35); font-size: 10px; padding: 1px 6px;">☀️ 8 档可调</span>
                             <span id="badgeRemoveDarkSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
@@ -698,11 +698,11 @@
 
                   <!-- 卡片 5.5: 环境去雾 -->
                   <div class="effect-opt-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-fog_only" class="effect-rule-checkbox" data-rule="fog_env_objects,fog_affliction_attachment,fog_weather_d_fog" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">环境去雾</strong>
                             <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">🌫️ 3项规则</span>
                           </div>
@@ -714,11 +714,11 @@
 
                   <!-- 卡片 5.6: 异界去雾显线 (POE2) -->
                   <div class="effect-opt-card" style="border-color: rgba(56, 189, 248, 0.35);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-remove_fog2" class="effect-rule-checkbox" data-rule="fog2_worldmap_blend,fog2_worldmap_output,fog2_worldmap_min,fog2_worldmap_max,fog2_windeffects" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">异界去雾显线 (POE2)</strong>
                             <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.35); font-size: 10px; padding: 1px 6px;">🗺️ 异界图鉴</span>
                           </div>
@@ -730,11 +730,11 @@
 
                   <!-- 卡片 6: 关闭泛光 (Bloom) -->
                   <div class="effect-opt-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-bloom" class="effect-rule-checkbox" data-rule="dark_bloom_cutoff,dark_bloom_gather" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">关闭泛光 (Bloom)</strong>
                             <span class="hub-badge" style="color: var(--muted); border-color: var(--line); font-size: 10px; padding: 1px 6px;">⚪ 已实施·视觉无感</span>
                           </div>
@@ -745,11 +745,11 @@
                   </div>
                   <!-- 卡片 7: 后处理精简（7 条，只改常量） -->
                   <div class="effect-opt-card" style="border-color: rgba(56,189,248,0.25);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-postprocess" class="effect-rule-checkbox" data-rule="pp_bloom_cutoff,pp_bloom_gather,pp_blur,pp_screenspace_shadows,pp_depth_minmax,pp_depth_of_field,pp_ambient_occlusion" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">后处理精简</strong>
                             <span class="hub-badge" style="color: #fbbf24; border-color: rgba(251,191,36,0.3); font-size: 10px; padding: 1px 6px;">🧪 待验证</span>
                           </div>
@@ -769,11 +769,11 @@
                   </div>
                   <!-- 卡片 8: 环境雾关闭（.fxgraph JSON 节点改写） -->
                   <div class="effect-opt-card" style="border-color: rgba(56,189,248,0.25);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-fog_env_disable" class="effect-rule-checkbox" data-rule="fog_env_disable" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">环境雾关闭</strong>
                             <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">⚡ 需实机验证</span>
                           </div>
@@ -790,11 +790,11 @@
                     </div>
                   </div>
                   <!-- 卡片 9: 泥人优化 (外层卡片带主开关，右上角齿轮设置按钮) -->
-                  <div class="effect-opt-card" style="border-color: rgba(251, 146, 60, 0.35);">                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div class="effect-opt-card" style="border-color: rgba(251, 146, 60, 0.35);">                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-mudman" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">泥人</strong>
                             <span class="hub-badge" style="color: #fb923c; border-color: rgba(251, 146, 60, 0.35); font-size: 10px; padding: 1px 6px;">⚡ 极致优化</span>
                             <span id="badgeMudManSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
@@ -813,11 +813,11 @@
 
                   <!-- 卡片 10: 头顶血条 -->
                   <div class="effect-opt-card" style="border-color: rgba(239, 68, 68, 0.35);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div class="fx-between">
                       <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
                         <input type="checkbox" id="chkOpt-healthbar" style="margin-top: 3px; cursor: pointer;">
                         <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
+                          <div class="fx-row-6">
                             <strong class="effect-opt-title">头顶血条</strong>
                             <span class="hub-badge" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.35); font-size: 10px; padding: 1px 6px;">⚔️ 战斗信息</span>
                             <span id="badgeHealthBarSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
@@ -837,7 +837,7 @@
             <div id="psec-mtxpatch" class="patcher-section hidden">
               <div class="patcher-box" style="width: 100%;">
                 <div class="section-title-bar" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
+                  <div class="fx-row-8">
                     <span style="font-size: 18px;">👑</span>
                     <div>
                       <strong style="color: #fbbf24; font-size: 14px;">PoE 2 全量商城外观特效替换 (MTX)</strong>
@@ -876,7 +876,7 @@
                     <button class="mtx-tab-btn" data-tab="CharacterEffects">背饰·翻滚·光效 (146)</button>
                     <button class="mtx-tab-btn" data-tab="Misc">杂项·变身·指针 (14)</button>
                   </div>
-                  <div class="mtx-search-box" style="display: flex; align-items: center; gap: 6px;">
+                  <div class="mtx-search-box fx-row-6">
                     <input type="text" id="txtMtxSearch" placeholder="🔍 搜索特效名称、系列或部位..." style="height: 28px; width: 220px; font-size: 12px; background: var(--control, rgba(0,0,0,0.1)); border: 1px solid var(--line, #2d3345); border-radius: 4px; padding: 0 8px; color: var(--text);">
                     <button id="btnClearMtxSearch" class="secondary-button" style="height: 28px; padding: 0 8px; font-size: 11px;">✕</button>
                   </div>
@@ -884,7 +884,7 @@
 
                 <!-- 选装指示器 -->
                 <div class="mtx-selected-summary" style="display: flex; gap: 12px; font-size: 12px; color: var(--muted, #94a3b8); margin-bottom: 12px; background: var(--surface-2, rgba(0,0,0,0.05)); border: 1px solid var(--line, rgba(0,0,0,0.1)); padding: 8px 12px; border-radius: 4px; flex-wrap: wrap; align-items: center;">
-                  <strong style="color: var(--text);">已选方案:</strong>
+                  <strong class="fx-text">已选方案:</strong>
                   <div>防具套装: <span id="lblSelectedArmour" style="color: #fbbf24; font-weight: bold;">(未选择)</span></div>
                   <div>传送门: <span id="lblSelectedPortal" style="color: #a855f7; font-weight: bold;">(未选择)</span></div>
                   <div>宠物: <span id="lblSelectedPet" style="color: #34d399; font-weight: bold;">(未选择)</span></div>
@@ -910,7 +910,7 @@
                   <!-- 词缀专属预设与客户端词库管理工具栏 -->
                   <div class="patcher-preset-bar" style="margin-bottom: 0;">
                     <div class="preset-left">
-                      <span style="color: var(--text-muted); font-size: 11px;">规则预设：</span>
+                      <span class="fx-text-muted">规则预设：</span>
                       <select id="presetSelect" class="preset-select" style="min-width: 170px;">
                         <option value="default">🌟 默认预设 (官方推荐)</option>
                       </select>
@@ -943,7 +943,7 @@
                       </select>
                     </div>
 
-                    <div style="display: flex; gap: 6px;">
+                    <div class="fx-row-6">
                       <button id="btnOpenAddModal" class="btn-compact btn-compact-accent">
                         ✨ + 添加自定义规则
                       </button>
@@ -990,7 +990,7 @@
                       <button id="btnNextPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">下一页</button>
                       <button id="btnLastPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">尾页</button>
                     </div>
-                    <div style="display: flex; gap: 4px;">
+                    <div class="fx-row-4">
                       <button id="btnBatchCheckAll" class="btn-compact" style="font-size: 10px; height: 22px;" title="将当前筛选的所有词缀批量设为开启">一键全选</button>
                       <button id="btnBatchUncheckAll" class="btn-compact" style="font-size: 10px; height: 22px;" title="将当前筛选的所有词缀批量设为关闭">一键全不选</button>
                       <button id="btnBatchWhole" class="btn-compact" style="font-size: 10px; height: 22px;">一键整句</button>
@@ -1001,7 +1001,7 @@
 
                 <!-- 右侧 Tooltip 仿真 -->
                 <div class="preview-sticky-wrap">
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div class="fx-between">
                     <span style="font-weight: 600; color: var(--text); font-size: 11.5px;">游戏内装备 Tooltip 实时变色</span>
                     <select id="cardTypeSelect" class="preset-select" style="height: 22px; font-size: 10px;">
                       <option value="map">异界地图预览</option>
@@ -1065,7 +1065,7 @@
                       先读取客户端索引，只展示当前客户端真实存在的图标。勾选后点击顶部「保存并同步当前功能」写入。
                     </div>
                   </div>
-                  <div style="display: flex; align-items: center; gap: 6px;">
+                  <div class="fx-row-6">
                     <button id="btnScanIconPatch" class="btn-compact btn-scan-client" title="读取当前游戏客户端索引，比对内置图标是否适用">
                       <span id="iconPatchSpinner" class="hidden animate-spin">⟳</span>
                       <span>🎮 读取客户端图标</span>
@@ -1107,7 +1107,7 @@
                       <strong style="color: var(--text); font-size: 12px;">高价值保险箱识别与致命陷阱防猝死</strong>
                       <div style="color: var(--text-muted); font-size: 10px;">从游戏客户端实际数据提取，按关键词语义规则识别打标</div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
+                    <div class="fx-row-6">
                       <button id="btnScanChests" class="btn-compact btn-scan-client" title="从当前游戏客户端提取 chests.datc64 真实宝箱条目并按语义规则打标">
                         <span id="scanChestsSpinner" class="hidden animate-spin">⟳</span>
                         <span>🎮 读取客户端宝箱</span>
@@ -1123,7 +1123,7 @@
                     <strong style="color: #f87171; font-size: 11px;">⚠️ 致命开箱陷阱词缀警示：</strong>
                     <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted); line-height: 1.6;">
                       死尸爆炸、冰霜新星、点燃、冰冻等致命开箱词缀的染色警示，
-                      请在 <strong style="color: var(--text);">词缀染色</strong> 模块中配置 ——
+                      请在 <strong class="fx-text">词缀染色</strong> 模块中配置 ——
                       那里会列出客户端实际存在的全部 <code style="color: #60a5fa;">chest_display_*</code> 词缀并默认标红。
                     </div>
                   </div>
@@ -1161,7 +1161,7 @@
                       <strong style="color: var(--text); font-size: 12px;">异界地图传言标注 (Endgame Map Rumours)</strong>
                       <div style="color: var(--text-muted); font-size: 10px;">从游戏客户端实际数据提取，按规则闭环识别与精准注入</div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
+                    <div class="fx-row-6">
                       <button id="btnScanRumours" class="btn-compact btn-scan-client" title="从当前游戏客户端提取 EndgameMaps.datc64 实际传言数据">
                         <span id="scanRumoursSpinner" class="hidden animate-spin">⟳</span>
                         <span>🎮 读取客户端传言</span>
@@ -1226,7 +1226,7 @@
                       <strong style="color: var(--text); font-size: 12px;">游戏字体与排版引擎 (Font Settings)</strong>
                       <div style="color: var(--text-muted); font-size: 10px;">成熟补丁精细基准兜底，双文件协同清除语言覆盖冲突</div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
+                    <div class="fx-row-6">
                       <button id="btnScanFontSettings" class="btn-compact btn-scan-client" title="从客户端实际读取 uisettings*.xml 当前生效模板">
                         <span id="scanFontSpinner" class="hidden animate-spin">⟳</span>
                         <span>🎮 读取客户端字体配置</span>
@@ -1241,7 +1241,7 @@
                   <!-- 字体预设栏：默认预设锁定兜底，支持另存自定义预设 -->
                   <div class="patcher-preset-bar" style="margin-bottom: 0;">
                     <div class="preset-left">
-                      <span style="color: var(--text-muted); font-size: 11px;">排版预设：</span>
+                      <span class="fx-text-muted">排版预设：</span>
                       <select id="fontPresetSelect" class="preset-select" style="min-width: 195px;">
                         <option value="default">🌟 成熟推荐预设 (官方标准兜底)</option>
                       </select>
@@ -1260,14 +1260,14 @@
                   <div id="clientFontInfoCard" class="hidden" style="background: var(--patcher-inner-bg); border: 1px solid rgba(52,211,153,0.3); border-radius: 4px; padding: 8px 10px; font-size: 11px; color: var(--text-muted);">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                       <span style="color: #34d399; font-weight: 600;">当前客户端生效文件：<span id="cfiFileName">-</span></span>
-                      <span>当前 Typeface：<strong id="cfiCurrentTypeface" style="color: var(--text);">-</strong></span>
+                      <span>当前 Typeface：<strong class="fx-text" id="cfiCurrentTypeface">-</strong></span>
                     </div>
                     <div>Fallback 回落字体链条：<span id="cfiFallbackChain" style="color: var(--text-secondary); word-break: break-all;">-</span></div>
                   </div>
 
                   <!-- 字体选择器 -->
                   <div style="background: var(--patcher-inner-bg); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-color); display: grid; gap: 6px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <label style="color: var(--text); font-size: 11.5px; font-weight: 600;">目标游戏字体 (系统已安装)：</label>
                       <span id="fontCountHint" style="color: var(--text-muted); font-size: 10px;">枚举系统中...</span>
                     </div>
@@ -1289,7 +1289,7 @@
                     </div>
 
                     <!-- 1. 掉落物与物品标签 -->
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <div>
                         <span style="color: var(--text); font-size: 11px; font-weight: 500;">📦 地面掉落与物品标签：</span>
                         <div style="color: var(--text-muted); font-size: 9.5px;">地面高亮标签、物品堆叠数量角标、悬浮标题</div>
@@ -1306,7 +1306,7 @@
                     </div>
 
                     <!-- 2. 正文与技能描述 -->
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <div>
                         <span style="color: var(--text); font-size: 11px; font-weight: 500;">💬 通用正文与技能描述：</span>
                         <div style="color: var(--text-muted); font-size: 9.5px;">天赋树说明、技能石词缀、NPC 任务对话正文</div>
@@ -1322,7 +1322,7 @@
                     </div>
 
                     <!-- 3. 窗口标题与大字顶栏 -->
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <div>
                         <span style="color: var(--text); font-size: 11px; font-weight: 500;">🏷️ 界面窗口大标题 (防爆框)：</span>
                         <div style="color: var(--text-muted); font-size: 9.5px;">窗口 Header、结算大标题（中文字体下已内建防爆框）</div>
@@ -1337,7 +1337,7 @@
                     </div>
 
                     <!-- 4. 状态与微型数值角标 -->
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <div>
                         <span style="color: var(--text); font-size: 11px; font-weight: 500;">🔢 微型角标与价格标签：</span>
                         <div style="color: var(--text-muted); font-size: 9.5px;">查价标签 [★ 15C]、倒计时、紧凑堆叠微小字</div>
@@ -1354,7 +1354,7 @@
 
                   <!-- 全局整平微调与加粗 -->
                   <div style="display: grid; gap: 8px; background: var(--patcher-inner-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <div>
                         <strong style="color: var(--text); font-size: 11.5px;">全局整体平移档位 (Global Scale)：</strong>
                         <div style="color: var(--text-muted); font-size: 10px;">在当前预设与细分设定的基础上，整盘平移缩放</div>
@@ -1427,7 +1427,7 @@
                 <div class="patcher-box" style="gap: 10px;">
                   <!-- 1. 顶部操作栏：读取客户端并预览放最上方 -->
                   <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--patcher-inner-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-                    <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="fx-row-8">
                       <button id="btnPreviewPricePatch" class="btn-compact btn-scan-client" type="button" style="height: 30px; padding: 0 14px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" title="从当前客户端读取实际数据表并匹配物价生成预览">
                         <span id="pricePreviewSpinner" class="hidden animate-spin">⟳</span>
                         <span id="pricePreviewBtnText">🎮 读取客户端并预览</span>
@@ -1435,16 +1435,16 @@
                       <button id="btnCleanPricePatch" class="btn-compact" type="button" style="height: 30px; padding: 0 14px; font-size: 11.5px; color: #f87171; border-color: rgba(239,68,68,0.4);" title="剥离已写入客户端的价格后缀，恢复为纯物品名">
                         🧹 清除物价
                       </button>
-                      <span style="color: var(--text-muted); font-size: 11px;">读取客户端双语基底表生成精准物价预览</span>
+                      <span class="fx-text-muted">读取客户端双语基底表生成精准物价预览</span>
                     </div>
                     <span style="color: var(--text-muted); font-size: 10px;">只读预览 · 确认后在顶部点击保存写入</span>
                   </div>
 
                   <!-- 2. 全量 14 资产分类选择胶囊（带快捷全选/反选/常用） -->
                   <div style="background: var(--patcher-inner-bg); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); display: grid; gap: 6px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fx-between">
                       <span style="color: var(--text); font-size: 11px; font-weight: 600;">资产分类筛选 (覆盖 poe.ninja 全部 14 类)：</span>
-                      <div style="display: flex; gap: 4px;">
+                      <div class="fx-row-4">
                         <button id="btnPriceSelectAll" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">一键全选</button>
                         <button id="btnPriceUnselectAll" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">全部取消</button>
                         <button id="btnPriceSelectCommon" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">推荐常用</button>
@@ -1453,7 +1453,7 @@
                     <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px;">
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceCurrency" data-cat="Currency" style="cursor: pointer;">
-                        <span style="color: var(--text);">基础通货</span>
+                        <span class="fx-text">基础通货</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(96,165,250,0.3); cursor: pointer; background: rgba(96,165,250,0.08);">
                         <input type="checkbox" checked id="chkPriceLineage" data-cat="LineageSupportGems" style="cursor: pointer;">
@@ -1461,51 +1461,51 @@
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceRunes" data-cat="Runes" style="cursor: pointer;">
-                        <span style="color: var(--text);">符文</span>
+                        <span class="fx-text">符文</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceEssences" data-cat="Essences" style="cursor: pointer;">
-                        <span style="color: var(--text);">精华</span>
+                        <span class="fx-text">精华</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceSoulCores" data-cat="SoulCores" style="cursor: pointer;">
-                        <span style="color: var(--text);">灵魂核心</span>
+                        <span class="fx-text">灵魂核心</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceUncutGems" data-cat="UncutGems" style="cursor: pointer;">
-                        <span style="color: var(--text);">未切割宝石</span>
+                        <span class="fx-text">未切割宝石</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceIdols" data-cat="Idols" style="cursor: pointer;">
-                        <span style="color: var(--text);">神像</span>
+                        <span class="fx-text">神像</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceExpedition" data-cat="Expedition" style="cursor: pointer;">
-                        <span style="color: var(--text);">远征</span>
+                        <span class="fx-text">远征</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceBreach" data-cat="Breach" style="cursor: pointer;">
-                        <span style="color: var(--text);">裂隙</span>
+                        <span class="fx-text">裂隙</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceDelirium" data-cat="Delirium" style="cursor: pointer;">
-                        <span style="color: var(--text);">谵妄</span>
+                        <span class="fx-text">谵妄</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceRitual" data-cat="Ritual" style="cursor: pointer;">
-                        <span style="color: var(--text);">仪式</span>
+                        <span class="fx-text">仪式</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceFragments" data-cat="Fragments" style="cursor: pointer;">
-                        <span style="color: var(--text);">碎片</span>
+                        <span class="fx-text">碎片</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceAbyss" data-cat="Abyss" style="cursor: pointer;">
-                        <span style="color: var(--text);">深渊</span>
+                        <span class="fx-text">深渊</span>
                       </label>
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceVerisium" data-cat="Verisium" style="cursor: pointer;">
-                        <span style="color: var(--text);">维利席姆</span>
+                        <span class="fx-text">维利席姆</span>
                       </label>
                     </div>
                   </div>
@@ -1513,7 +1513,7 @@
                   <!-- 3. 参数控制行 -->
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                     <div>
-                      <label style="color: var(--text-muted); font-size: 11px;">物价后缀分隔符：</label>
+                      <label class="fx-text-muted">物价后缀分隔符：</label>
                       <select id="priceSepSelect" class="preset-select" style="width: 100%; height: 28px; margin-top: 3px;">
                         <option value=" ">空格分隔 (如: 崇高石 [15E])</option>
                         <option value=" - ">中划线分隔 (如: 崇高石 - [15E])</option>
@@ -1521,10 +1521,10 @@
                       </select>
                     </div>
                     <div>
-                      <label style="color: var(--text-muted); font-size: 11px;">低价过滤门槛 (低于不注入)：</label>
+                      <label class="fx-text-muted">低价过滤门槛 (低于不注入)：</label>
                       <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
                         <input id="priceFilterMin" type="number" value="1" min="0" step="0.1" class="search-box" style="max-width: 80px; height: 28px;">
-                        <span style="color: var(--text-muted); font-size: 11px;">E 以下隐藏</span>
+                        <span class="fx-text-muted">E 以下隐藏</span>
                       </div>
                     </div>
                   </div>
@@ -1534,7 +1534,7 @@
                       <input type="checkbox" id="chkPriceStripExisting" checked style="cursor: pointer;">
                       应用前剥离旧价格后缀（推荐）
                     </label>
-                    <span style="color: var(--text-muted); font-size: 11px;">单位自动 D/E（≥0.5D 自动折算为 D）</span>
+                    <span class="fx-text-muted">单位自动 D/E（≥0.5D 自动折算为 D）</span>
                   </div>
                 </div>
 
@@ -1570,7 +1570,7 @@
                 <!-- 物品明细核对与快速搜索过滤 -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin: 8px 0 6px;">
                   <input id="pricePreviewSearch" type="text" placeholder="搜索已匹配物品名称 (如: 神圣石 / 崇高石 / 符文)..." class="search-box" style="max-width: 280px; height: 26px; font-size: 11px;">
-                  <span id="pricePreviewFilteredCount" style="color: var(--text-muted); font-size: 11px;">显示 0 / 0 条</span>
+                  <span class="fx-text-muted" id="pricePreviewFilteredCount">显示 0 / 0 条</span>
                 </div>
 
                 <div class="table-container" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.25);">
@@ -1617,7 +1617,7 @@
       <div style="display: grid; gap: 8px;">
         <div style="position: relative;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-            <label style="color: var(--text-muted); font-size: 11px;">词缀完整文本或关键词：</label>
+            <label class="fx-text-muted">词缀完整文本或关键词：</label>
             <span id="dictSuggestHint" style="color: #34d399; font-size: 10px;">✓ 已连接官方词库自动补全</span>
           </div>
           <input id="modalRuleText" type="text" placeholder="输入关键词 (如: 反射, 免疫, 偷取, 暴击, 抗性)..." class="search-box" style="max-width: 100%; height: 32px;" autocomplete="off">
@@ -1626,7 +1626,7 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           <div>
-            <label style="color: var(--text-muted); font-size: 11px;">归属分类：</label>
+            <label class="fx-text-muted">归属分类：</label>
             <select id="modalRuleGroup" class="preset-select" style="width: 100%; height: 30px;">
               <option value="通用">通用装备</option>
               <option value="地图" selected>异界地图</option>
@@ -1635,7 +1635,7 @@
             </select>
           </div>
           <div>
-            <label style="color: var(--text-muted); font-size: 11px;">染色方式：</label>
+            <label class="fx-text-muted">染色方式：</label>
             <select id="modalRuleStyle" class="preset-select" style="width: 100%; height: 30px;">
               <option value="Whole">整句着色 (推荐反伤/减益)</option>
               <option value="NumberOnly">仅高亮数值 (推荐数值加成)</option>
@@ -1645,14 +1645,14 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           <div>
-            <label style="color: var(--text-muted); font-size: 11px;">高亮颜色：</label>
+            <label class="fx-text-muted">高亮颜色：</label>
             <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
               <input id="modalRuleColor" type="color" value="#e64545" style="width: 32px; height: 28px; background: none; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer;">
               <span id="modalColorHex" style="font-family: monospace; font-size: 11px; color: var(--gold-primary);">#e64545</span>
             </div>
           </div>
           <div>
-            <label style="color: var(--text-muted); font-size: 11px;">标签微标：</label>
+            <label class="fx-text-muted">标签微标：</label>
             <input id="modalRuleTag" type="text" value="自定义" class="search-box" style="max-width: 100%; height: 30px; margin-top: 3px;">
           </div>
         </div>
@@ -1694,7 +1694,7 @@
         <button id="btnCloseSavePresetModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
       </div>
       <div style="display: grid; gap: 8px;">
-        <label style="color: var(--text-muted); font-size: 11px;">请输入预设方案名称：</label>
+        <label class="fx-text-muted">请输入预设方案名称：</label>
         <input id="inpNewPresetName" type="text" placeholder="例如：专家保命方案 / 冰法速刷..." class="search-box" style="max-width: 100%; height: 32px;" autocomplete="off">
         <p id="savePresetError" style="color: var(--danger); font-size: 11px; margin: 0; min-height: 16px;"></p>
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
@@ -1747,7 +1747,7 @@
         <div style="font-size: 11px; color: var(--text-muted);">
           ℹ️ 每次仅备份 115MB 原始索引文件，不占用磁盘。打补丁前自动保留最近 5 版轮转，手动版本永久保留。
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div class="fx-row-8">
           <button id="btnTriggerCreateSnapInCenter" class="primary-button" style="height: 28px; padding: 0 12px; font-size: 11px;">
             💾 备份当前版本
           </button>
@@ -1764,7 +1764,7 @@
   <div id="spellBlockSettingsModal" class="modal-overlay hidden">
     <div class="modal-dialog" style="width: 780px; max-width: 95%;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="fx-row-8">
           <span style="font-size: 16px;">🪄</span>
           <strong style="color: var(--text); font-size: 14px;">人物技能与装备特效屏蔽 (POE2)</strong>
           <span class="hub-badge" style="color: var(--accent); border-color: rgba(56,189,248,0.3); font-size: 11px; padding: 1px 6px;">110 项全收录</span>
@@ -1804,7 +1804,7 @@
   <div id="mudManSettingsModal" class="modal-overlay hidden">
     <div class="modal-dialog" style="width: 540px; max-width: 92%;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="fx-row-8">
           <span style="font-size: 16px;">🥔</span>
           <strong style="color: var(--text); font-size: 14px;">泥人档位设置</strong>
         </div>
@@ -1820,7 +1820,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="0" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">低级（技能除外）</strong>
                 <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">改动最轻</span>
               </div>
@@ -1833,7 +1833,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="1" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">中级（包括技能）</strong>
                 <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">常用</span>
               </div>
@@ -1846,7 +1846,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="2" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">高级（包括模型）</strong>
               </div>
               <span class="effect-opt-desc">在中级基础上清掉全部粒子与拖尾，画面元素最少。</span>
@@ -1858,7 +1858,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="3" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">低级 + 大幅压缩材质</strong>
                 <span class="hub-badge" style="color: #fb923c; border-color: rgba(251,146,60,0.35); font-size: 10px; padding: 1px 6px;">🥔 显存</span>
               </div>
@@ -1871,7 +1871,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="4" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">中级 + 大幅压缩材质</strong>
                 <span class="hub-badge" style="color: #fb923c; border-color: rgba(251,146,60,0.35); font-size: 10px; padding: 1px 6px;">🥔 推荐</span>
               </div>
@@ -1884,7 +1884,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="5" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">高级 + 大幅压缩材质</strong>
                 <span class="hub-badge" style="color: #f87171; border-color: rgba(248,113,113,0.35); font-size: 10px; padding: 1px 6px;">压到最狠</span>
               </div>
@@ -1910,7 +1910,7 @@
   <div id="removeDarkSettingsModal" class="modal-overlay hidden">
     <div class="modal-dialog" style="width: 540px; max-width: 92%;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="fx-row-8">
           <span style="font-size: 16px;">☀️</span>
           <strong style="color: var(--text); font-size: 14px;">环境去黑暗，全局亮度调整</strong>
         </div>
@@ -1923,7 +1923,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="0.1" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">0.1</strong>
                 <span class="hub-badge" style="color: #94a3b8; border-color: rgba(148,163,184,0.3); font-size: 10px; padding: 1px 6px;">极低曝光</span>
               </div>
@@ -1936,7 +1936,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="0.3" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">0.3</strong>
                 <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">偏暗柔和</span>
               </div>
@@ -1949,7 +1949,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="0.5" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">0.5</strong>
                 <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">适中曝光</span>
               </div>
@@ -1962,7 +1962,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="1.0" checked style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">1.0</strong>
                 <span class="hub-badge" style="color: #facc15; border-color: rgba(250,204,21,0.35); font-size: 10px; padding: 1px 6px;">默认推荐</span>
               </div>
@@ -1975,7 +1975,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="1.5" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">1.5</strong>
                 <span class="hub-badge" style="color: #fb923c; border-color: rgba(251,146,60,0.35); font-size: 10px; padding: 1px 6px;">高亮曝光</span>
               </div>
@@ -1988,7 +1988,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="990.5" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">包含光影-增强1</strong>
                 <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.35); font-size: 10px; padding: 1px 6px;">保留光影 · 0.5x</span>
               </div>
@@ -2001,7 +2001,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="991" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">包含光影-增强2</strong>
                 <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.35); font-size: 10px; padding: 1px 6px;">保留光影 · 1.0x</span>
               </div>
@@ -2014,7 +2014,7 @@
           <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
             <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="991.5" style="margin-top: 3px; cursor: pointer;">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="fx-row-6">
                 <strong class="effect-opt-title">包含光影-增强3</strong>
                 <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.35); font-size: 10px; padding: 1px 6px;">保留光影 · 1.5x</span>
               </div>
@@ -2039,7 +2039,7 @@
   <div id="minimapColorModal" class="modal-overlay hidden">
     <div class="modal-dialog" style="width: 560px; max-width: 95%;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="fx-row-8">
           <span style="font-size: 16px;">🗺️</span>
           <strong style="color: var(--text); font-size: 14px;">小地图颜色设置</strong>
         </div>
@@ -2053,8 +2053,8 @@
       <div style="display: flex; flex-direction: column; gap: 14px; max-height: 420px; overflow-y: auto; padding-right: 4px;">
         <!-- 已探索区域色 -->
         <div class="color-setting-row" style="display: flex; flex-direction: column; gap: 6px; background: var(--card-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line);">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="fx-between">
+            <div class="fx-row-8">
               <span style="font-size: 12px; font-weight: 600; color: var(--text); width: 85px;">已探索区域色:</span>
               <input type="color" id="mmColorExploredPicker" style="width: 48px; height: 26px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; padding: 0; background: none;">
             </div>
@@ -2080,8 +2080,8 @@
 
         <!-- 边界色 -->
         <div class="color-setting-row" style="display: flex; flex-direction: column; gap: 6px; background: var(--card-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line);">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="fx-between">
+            <div class="fx-row-8">
               <span style="font-size: 12px; font-weight: 600; color: var(--text); width: 85px;">边界色:</span>
               <input type="color" id="mmColorBorderPicker" style="width: 48px; height: 26px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; padding: 0; background: none;">
             </div>
@@ -2107,8 +2107,8 @@
 
         <!-- 探索中色 -->
         <div class="color-setting-row" style="display: flex; flex-direction: column; gap: 6px; background: var(--card-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line);">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="fx-between">
+            <div class="fx-row-8">
               <span style="font-size: 12px; font-weight: 600; color: var(--text); width: 85px;">探索中色:</span>
               <input type="color" id="mmColorExploringPicker" style="width: 48px; height: 26px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; padding: 0; background: none;">
             </div>
@@ -2134,19 +2134,19 @@
 
         <!-- 边界发光 / 探索中发光 / 可见阈值 滑块 -->
         <div style="display: flex; flex-direction: column; gap: 10px; background: var(--card-bg); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line);">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div class="fx-between">
             <span style="font-size: 12px; font-weight: 500; color: var(--text); width: 85px;">边界发光:</span>
             <input type="range" id="mmBorderGlow" min="0" max="50" step="1" value="13" style="flex: 1; margin: 0 12px;">
             <span id="valBorderGlow" style="font-size: 12px; width: 32px; text-align: right; font-variant-numeric: tabular-nums;">13</span>
           </div>
 
-          <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div class="fx-between">
             <span style="font-size: 12px; font-weight: 500; color: var(--text); width: 85px;">探索中发光:</span>
             <input type="range" id="mmExploringGlow" min="0" max="20" step="1" value="1" style="flex: 1; margin: 0 12px;">
             <span id="valExploringGlow" style="font-size: 12px; width: 32px; text-align: right; font-variant-numeric: tabular-nums;">1</span>
           </div>
 
-          <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div class="fx-between">
             <span style="font-size: 12px; font-weight: 500; color: var(--text); width: 85px;">可见阈值:</span>
             <input type="range" id="mmVisibilityThreshold" min="0.05" max="0.50" step="0.01" value="0.18" style="flex: 1; margin: 0 12px;">
             <span id="valVisibilityThreshold" style="font-size: 12px; width: 32px; text-align: right; font-variant-numeric: tabular-nums;">0.18</span>

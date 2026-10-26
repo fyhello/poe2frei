@@ -3062,926 +3062,968 @@
     }
   }
 
-  window.patcherUi = {
-    hideOverlay: hideEffectOperationOverlay,
-    receiveBusyState,
-    initialize() {
-      // 1. 卡片点击进入工作台
-      document.querySelectorAll(".hub-card").forEach(card => {
-        card.addEventListener("click", () => {
-          const mod = card.dataset.module;
-          if (mod) openWorkbench(mod);
-        });
+  /** 1. 卡片点击进入工作台 */
+  function bindHubCards() {
+    document.querySelectorAll(".hub-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const mod = card.dataset.module;
+        if (mod) openWorkbench(mod);
       });
+    });
+  }
 
-      // 2. 卡片独立开关
-      Object.keys(moduleMasters).forEach(mod => {
-        const toggle = element("masterToggle-" + mod);
-        toggle?.addEventListener("click", e => e.stopPropagation());
-        toggle?.addEventListener("change", e => toggleModuleMaster(mod, e.target.checked, e));
-      });
+  /** 2. 卡片独立开关 */
+  function bindModuleMasters() {
+    Object.keys(moduleMasters).forEach(mod => {
+      const toggle = element("masterToggle-" + mod);
+      toggle?.addEventListener("click", e => e.stopPropagation());
+      toggle?.addEventListener("change", e => toggleModuleMaster(mod, e.target.checked, e));
+    });
+  }
 
-      // 3. 工作台返回与直达下拉
-      element("btnBackToHub")?.addEventListener("click", backToHub);
-      element("wbModuleSelect")?.addEventListener("change", e => openWorkbench(e.target.value));
+  /** 3. 工作台返回与直达下拉 */
+  function bindWorkbenchNavigation() {
+    element("btnBackToHub")?.addEventListener("click", backToHub);
+    element("wbModuleSelect")?.addEventListener("change", e => openWorkbench(e.target.value));
+  }
 
-      // 4. 路径更新
-      element('btnSetGameDir')?.addEventListener('click', () => {
-        const path = element('patcherGameDir')?.value?.trim();
-        post('setPatcherGameDir', { path });
-      });
+  /** 4. 路径更新 */
+  function bindGameDirInput() {
+    element('btnSetGameDir')?.addEventListener('click', () => {
+      const path = element('patcherGameDir')?.value?.trim();
+      post('setPatcherGameDir', { path });
+    });
+  }
 
-      // 5. 快照版本管理与还原纯净客户端
-      element('btnBackupCurrentVersion')?.addEventListener('click', openCreateSnapshotModal);
-      element('btnTriggerCreateSnapInCenter')?.addEventListener('click', openCreateSnapshotModal);
-      element('btnCloseCreateSnapshotModal')?.addEventListener('click', () => element('createSnapshotModal')?.classList.add('hidden'));
-      element('btnCancelCreateSnapshot')?.addEventListener('click', () => element('createSnapshotModal')?.classList.add('hidden'));
-      element('btnConfirmCreateSnapshot')?.addEventListener('click', () => {
-        const name = element('inpSnapshotName')?.value?.trim();
-        const desc = element('inpSnapshotDesc')?.value?.trim() || '';
-        if (!name) {
-          if (element('createSnapshotError')) element('createSnapshotError').innerText = '快照名称不能为空';
-          return;
-        }
-        showToast(`正在创建版本快照「${name}」...`);
-        post('createPatcherSnapshot', { name, description: desc });
-        element('createSnapshotModal')?.classList.add('hidden');
-      });
-      element('inpSnapshotName')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') element('btnConfirmCreateSnapshot')?.click();
-      });
+  /** 5. 快照版本管理与还原纯净客户端 */
+  function bindSnapshotControls() {
+    element('btnBackupCurrentVersion')?.addEventListener('click', openCreateSnapshotModal);
+    element('btnTriggerCreateSnapInCenter')?.addEventListener('click', openCreateSnapshotModal);
+    element('btnCloseCreateSnapshotModal')?.addEventListener('click', () => element('createSnapshotModal')?.classList.add('hidden'));
+    element('btnCancelCreateSnapshot')?.addEventListener('click', () => element('createSnapshotModal')?.classList.add('hidden'));
+    element('btnConfirmCreateSnapshot')?.addEventListener('click', () => {
+      const name = element('inpSnapshotName')?.value?.trim();
+      const desc = element('inpSnapshotDesc')?.value?.trim() || '';
+      if (!name) {
+        if (element('createSnapshotError')) element('createSnapshotError').innerText = '快照名称不能为空';
+        return;
+      }
+      showToast(`正在创建版本快照「${name}」...`);
+      post('createPatcherSnapshot', { name, description: desc });
+      element('createSnapshotModal')?.classList.add('hidden');
+    });
+    element('inpSnapshotName')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') element('btnConfirmCreateSnapshot')?.click();
+    });
 
-      element('btnOpenSnapshotsModal')?.addEventListener('click', () => {
-        element('snapshotCenterModal')?.classList.remove('hidden');
-        post('getPatcherSnapshots');
-      });
-      element('btnCloseSnapshotCenterModal')?.addEventListener('click', () => {
-        element('snapshotCenterModal')?.classList.add('hidden');
-      });
+    element('btnOpenSnapshotsModal')?.addEventListener('click', () => {
+      element('snapshotCenterModal')?.classList.remove('hidden');
+      post('getPatcherSnapshots');
+    });
+    element('btnCloseSnapshotCenterModal')?.addEventListener('click', () => {
+      element('snapshotCenterModal')?.classList.add('hidden');
+    });
 
-      const handleRestore = () => {
-        if (confirm('确定要恢复为出厂纯净客户端吗？此操作将秒级还原所有由 FreiAtlas 打上的补丁文件，并重置各补丁开关。')) {
-          showToast('正在恢复纯净客户端...');
-          post('restoreAllPatches');
-        }
-      };
-      element('btnRestorePatches')?.addEventListener('click', handleRestore);
+    const handleRestore = () => {
+      if (confirm('确定要恢复为出厂纯净客户端吗？此操作将秒级还原所有由 FreiAtlas 打上的补丁文件，并重置各补丁开关。')) {
+        showToast('正在恢复纯净客户端...');
+        post('restoreAllPatches');
+      }
+    };
+    element('btnRestorePatches')?.addEventListener('click', handleRestore);
 
-      // 官方纯净简中汉化一键应用
-      element('btnApplyTranslationPatch')?.addEventListener('click', () => {
-        // 国服原生简中，直接拦截（按钮已置灰，这里防御绕过 UI 的调用）
-        if (state?.isChina) {
-          showToast('国服客户端原生已是简体中文，无需应用汉化补丁');
-          return;
-        }
-        if (confirm('确定要对当前客户端应用【官方纯净简中汉化】吗？\n\n• 全量改写 CSD 词缀与属性描述文件\n• 注入官方基础物品与暗金译名，并汉化核心数据表\n• 纯净解耦，不与字体、物价强行捆绑\n• 全程受快照保护，可随时一键恢复纯净底包')) {
-          showToast('正在开始注入官方简中汉化补丁，请稍候...');
-          post('applyTranslationPatch');
-        }
-      });
+    // 官方纯净简中汉化一键应用
+    element('btnApplyTranslationPatch')?.addEventListener('click', () => {
+      // 国服原生简中，直接拦截（按钮已置灰，这里防御绕过 UI 的调用）
+      if (state?.isChina) {
+        showToast('国服客户端原生已是简体中文，无需应用汉化补丁');
+        return;
+      }
+      if (confirm('确定要对当前客户端应用【官方纯净简中汉化】吗？\n\n• 全量改写 CSD 词缀与属性描述文件\n• 注入官方基础物品与暗金译名，并汉化核心数据表\n• 纯净解耦，不与字体、物价强行捆绑\n• 全程受快照保护，可随时一键恢复纯净底包')) {
+        showToast('正在开始注入官方简中汉化补丁，请稍候...');
+        post('applyTranslationPatch');
+      }
+    });
+  }
 
-      // 6. 保存与同步（仅保存同步当前明细模块）
-      const saveBtn = element('btnApplyCurrentWorkbench');
-      saveBtn?.addEventListener('click', saveAndApplyCurrentModule);
+  /** 6. 保存与同步（仅保存同步当前明细模块） */
+  function bindSaveAndSync() {
+    const saveBtn = element('btnApplyCurrentWorkbench');
+    saveBtn?.addEventListener('click', saveAndApplyCurrentModule);
+  }
 
-      // 7. 预设与真实词库扫描
-      element('btnScanClient')?.addEventListener('click', scanClientDictionary);
+  /** 7. 预设与真实词库扫描 */
+  function bindPresetAndScan() {
+    element('btnScanClient')?.addEventListener('click', scanClientDictionary);
 
-      // 客户端显式异步扫描触发（传言、宝箱、字体）
-      element('btnScanChests')?.addEventListener('click', () => {
-        element('scanChestsSpinner')?.classList.remove('hidden');
-        showToast("正在读取客户端宝箱数据（chests.datc64）...");
-        post('scanClientChests');
-      });
+    // 客户端显式异步扫描触发（传言、宝箱、字体）
+    element('btnScanChests')?.addEventListener('click', () => {
+      element('scanChestsSpinner')?.classList.remove('hidden');
+      showToast("正在读取客户端宝箱数据（chests.datc64）...");
+      post('scanClientChests');
+    });
 
-      element('btnScanRumours')?.addEventListener('click', () => {
-        element('scanRumoursSpinner')?.classList.remove('hidden');
-        showToast("正在读取客户端地图传言数据（GGPK/Bundle）...");
-        post('scanClientRumours');
-      });
+    element('btnScanRumours')?.addEventListener('click', () => {
+      element('scanRumoursSpinner')?.classList.remove('hidden');
+      showToast("正在读取客户端地图传言数据（GGPK/Bundle）...");
+      post('scanClientRumours');
+    });
 
-      element('btnScanFontSettings')?.addEventListener('click', () => {
-        element('scanFontSpinner')?.classList.remove('hidden');
-        showToast("正在读取客户端生效字体模板（uisettings*.xml）...");
-        post('scanClientFontSettings');
-      });
-      element('btnRestoreSnapshot')?.addEventListener('click', () => {
-        if (!lastSnapshot || lastSnapshot.length === 0) {
-          showToast("⚠️ 暂无已保存的生效快照，当前已是最新规则");
-          return;
-        }
-        colorModData = JSON.parse(JSON.stringify(lastSnapshot));
-        renderTable();
-        renderLiveCard();
-        showToast("已恢复上一次生效的快照！");
-      });
+    element('btnScanFontSettings')?.addEventListener('click', () => {
+      element('scanFontSpinner')?.classList.remove('hidden');
+      showToast("正在读取客户端生效字体模板（uisettings*.xml）...");
+      post('scanClientFontSettings');
+    });
+    element('btnRestoreSnapshot')?.addEventListener('click', () => {
+      if (!lastSnapshot || lastSnapshot.length === 0) {
+        showToast("⚠️ 暂无已保存的生效快照，当前已是最新规则");
+        return;
+      }
+      colorModData = JSON.parse(JSON.stringify(lastSnapshot));
+      renderTable();
+      renderLiveCard();
+      showToast("已恢复上一次生效的快照！");
+    });
 
-      // 预设切换、另存为与删除
-      element('presetSelect')?.addEventListener('change', e => onPresetChange(e.target.value));
-      element('btnSavePresetModal')?.addEventListener('click', () => {
-        if (element('inpNewPresetName')) element('inpNewPresetName').value = "";
-        if (element('savePresetError')) element('savePresetError').innerText = "";
-        element('savePresetModal')?.classList.remove('hidden');
-      });
-      element('btnCloseSavePresetModal')?.addEventListener('click', () => element('savePresetModal')?.classList.add('hidden'));
-      element('btnCancelSavePreset')?.addEventListener('click', () => element('savePresetModal')?.classList.add('hidden'));
-      element('btnConfirmSavePreset')?.addEventListener('click', () => {
-        const name = element('inpNewPresetName')?.value;
-        const err = saveCustomPreset(name);
-        if (err) {
-          if (element('savePresetError')) element('savePresetError').innerText = err;
-        } else {
-          element('savePresetModal')?.classList.add('hidden');
-        }
-      });
-      element('btnDeletePreset')?.addEventListener('click', deleteCurrentCustomPreset);
+    // 预设切换、另存为与删除
+    element('presetSelect')?.addEventListener('change', e => onPresetChange(e.target.value));
+    element('btnSavePresetModal')?.addEventListener('click', () => {
+      if (element('inpNewPresetName')) element('inpNewPresetName').value = "";
+      if (element('savePresetError')) element('savePresetError').innerText = "";
+      element('savePresetModal')?.classList.remove('hidden');
+    });
+    element('btnCloseSavePresetModal')?.addEventListener('click', () => element('savePresetModal')?.classList.add('hidden'));
+    element('btnCancelSavePreset')?.addEventListener('click', () => element('savePresetModal')?.classList.add('hidden'));
+    element('btnConfirmSavePreset')?.addEventListener('click', () => {
+      const name = element('inpNewPresetName')?.value;
+      const err = saveCustomPreset(name);
+      if (err) {
+        if (element('savePresetError')) element('savePresetError').innerText = err;
+      } else {
+        element('savePresetModal')?.classList.add('hidden');
+      }
+    });
+    element('btnDeletePreset')?.addEventListener('click', deleteCurrentCustomPreset);
+  }
 
-      // 8. 词缀染色过滤与右侧仿真视窗联动
-      ['通用', '地图', '石板', '终局地图'].forEach(grp => {
-        element('pill-' + grp)?.addEventListener('click', () => {
-          currentGroup = grp;
-          colorModCurrentPage = 1;
-          document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
-          element('pill-' + grp)?.classList.add('active');
-
-          // 自动联动右侧 Tooltip 卡片仿真类型
-          if (grp === '通用') {
-            previewType = 'gear';
-          } else if (grp === '石板') {
-            previewType = 'tablet';
-          } else if (grp === '终局地图') {
-            previewType = 'endgame';
-          } else {
-            previewType = 'map';
-          }
-          const sel = element('cardTypeSelect');
-          if (sel) {
-            sel.value = previewType === 'endgame' ? 'map' : previewType;
-          }
-          renderTable();
-          renderLiveCard();
-        });
-      });
-      element('searchInput')?.addEventListener('input', () => {
+  /** 8. 词缀染色过滤与右侧仿真视窗联动 */
+  function bindColorModFilters() {
+    ['通用', '地图', '石板', '终局地图'].forEach(grp => {
+      element('pill-' + grp)?.addEventListener('click', () => {
+        currentGroup = grp;
         colorModCurrentPage = 1;
-        renderTable();
-      });
+        document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+        element('pill-' + grp)?.classList.add('active');
 
-      // 批量全选 / 全不选（框选）
-      element('chkSelectAllRules')?.addEventListener('change', e => toggleSelectAll(e.target.checked));
-      element('btnBatchCheckAll')?.addEventListener('click', () => toggleSelectAll(true));
-      element('btnBatchUncheckAll')?.addEventListener('click', () => toggleSelectAll(false));
-
-      // 分页操作
-      element('btnFirstPage')?.addEventListener('click', () => {
-        colorModCurrentPage = 1;
-        renderTable();
-      });
-      element('btnPrevPage')?.addEventListener('click', () => {
-        if (colorModCurrentPage > 1) {
-          colorModCurrentPage--;
-          renderTable();
-        }
-      });
-      element('btnNextPage')?.addEventListener('click', () => {
-        colorModCurrentPage++;
-        renderTable();
-      });
-      element('btnLastPage')?.addEventListener('click', () => {
-        colorModCurrentPage = 999999;
-        renderTable();
-      });
-
-      element('btnBatchWhole')?.addEventListener('click', () => {
-        colorModData.forEach(i => { if (i.group === currentGroup) i.style = 'Whole'; });
-        commitView();
-        renderTable();
-        renderLiveCard();
-        showToast("已批量设为整句着色");
-      });
-      element('btnBatchNumber')?.addEventListener('click', () => {
-        colorModData.forEach(i => { if (i.group === currentGroup) i.style = 'NumberOnly'; });
-        commitView();
-        renderTable();
-        renderLiveCard();
-        showToast("已批量设为仅数字着色");
-      });
-      element('btnScanIconPatch')?.addEventListener('click', () => {
-        element("iconPatchSpinner")?.classList.remove("hidden");
-        const status = element("iconPatchStatusText");
-        if (status) status.innerText = "读取中...";
-        post("scanIconPatch", {});
-      });
-      element('btnRestoreIconPatch')?.addEventListener('click', restoreIconPatch);
-      element('iconPatchSearch')?.addEventListener('input', () => renderIconPatchList());
-      element('btnIconSelectAll')?.addEventListener('click', () => {
-        getFilteredIconEntries().forEach(e => { e.enabled = true; });
-        renderIconPatchList();
-      });
-      element('btnIconSelectNone')?.addEventListener('click', () => {
-        getFilteredIconEntries().forEach(e => { e.enabled = false; });
-        renderIconPatchList();
-      });
-
-      element('cardTypeSelect')?.addEventListener('change', e => {
-        previewType = e.target.value;
-        renderLiveCard();
-      });
-
-      // 10. 字体预设、细分字号与加粗交互
-      element('fontPresetSelect')?.addEventListener('change', e => onFontPresetChange(e.target.value));
-
-      element('btnSaveFontPreset')?.addEventListener('click', () => {
-        const name = prompt("请输入自定义排版预设名称：", "个性排版预设");
-        if (name !== null) {
-          const err = saveCustomFontPreset(name);
-          if (err) alert(err);
-        }
-      });
-
-      element('btnDeleteFontPreset')?.addEventListener('click', deleteCurrentCustomFontPreset);
-
-      element('btnResetFontPreset')?.addEventListener('click', () => onFontPresetChange('default'));
-
-      element('fontSizeDropItemSelect')?.addEventListener('change', () => {
-        updateFontPreview();
-        const sel = element('fontSizeDropItemSelect');
-        showToast(`掉落物与物品字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
-      });
-
-      element('fontSizeGeneralSelect')?.addEventListener('change', () => {
-        updateFontPreview();
-        const sel = element('fontSizeGeneralSelect');
-        showToast(`通用正文描述字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
-      });
-
-      element('fontSizeTitleSelect')?.addEventListener('change', () => {
-        updateFontPreview();
-        const sel = element('fontSizeTitleSelect');
-        showToast(`界面窗口大标题字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
-      });
-
-      element('fontSizeTinySelect')?.addEventListener('change', () => {
-        updateFontPreview();
-        const sel = element('fontSizeTinySelect');
-        showToast(`微型数值角标字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
-      });
-
-      element('fontSelectDropdown')?.addEventListener('change', () => {
-        updateFontPreview();
-        const sel = element('fontSelectDropdown');
-        const selName = sel?.options[sel.selectedIndex]?.text || sel?.value;
-        showToast(`已选用字体：${selName}`);
-      });
-
-      element('fontSizeDeltaSelect')?.addEventListener('change', () => {
-        updateFontPreview();
-        const sel = element('fontSizeDeltaSelect');
-        const selText = sel?.options[sel.selectedIndex]?.text || sel?.value;
-        showToast(`已设置全局整平档位：${selText}`);
-      });
-
-      element('chkFontBold')?.addEventListener('change', () => {
-        updateFontPreview();
-        const isBold = element('chkFontBold')?.checked;
-        showToast(isBold ? "已启用字体原生加粗 (Weight 700)" : "已还原字体默认粗细");
-      });
-
-      // 11. 价格设置
-      // priceSepSelect 的 change 已由下方批量绑定统一处理（那里还会使预览失效），
-      // 此处不再单独绑定，否则同一个 change 会触发两次回调。
-      element('btnPreviewPricePatch')?.addEventListener('click', previewPrice);
-
-      // 清除已写入客户端的价格后缀（后端 CleanPricePatch，走正则剥离）
-      element('btnCleanPricePatch')?.addEventListener('click', () => {
-        if (!confirm('确定要清除已写入客户端的价格后缀吗？\n\n这会把物品名恢复为纯名称（如「混沌石 [150C]」→「混沌石」），\n物品名本身的汉化不受影响。')) return;
-        const sep = element('priceSepSelect')?.value ?? ' ';
-        showToast('正在清除客户端价格后缀...');
-        showEffectOperationOverlay('正在清除价格后缀，写入期间请勿关闭窗口...', 60);
-        post('cleanPricePatch', { separator: sep });
-      });
-
-      element('btnPriceSelectAll')?.addEventListener('click', () => {
-        Object.keys(PRICE_CATEGORY_INPUTS).forEach(id => {
-          const el = element(id);
-          if (el) el.checked = true;
-        });
-        invalidatePendingPricePreview();
-        if (currentPreviewItems && currentPreviewItems.length > 0) {
-          renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
-        }
-        showToast("已全选全部 14 个资产分类");
-      });
-
-      element('btnPriceUnselectAll')?.addEventListener('click', () => {
-        Object.keys(PRICE_CATEGORY_INPUTS).forEach(id => {
-          const el = element(id);
-          if (el) el.checked = false;
-        });
-        invalidatePendingPricePreview();
-        if (currentPreviewItems && currentPreviewItems.length > 0) {
-          renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
-        }
-        showToast("已取消勾选全部分类");
-      });
-
-      element('btnPriceSelectCommon')?.addEventListener('click', () => {
-        const commonIds = ['chkPriceCurrency', 'chkPriceLineage', 'chkPriceRunes', 'chkPriceEssences', 'chkPriceSoulCores', 'chkPriceUncutGems'];
-        Object.keys(PRICE_CATEGORY_INPUTS).forEach(id => {
-          const el = element(id);
-          if (el) el.checked = commonIds.includes(id);
-        });
-        invalidatePendingPricePreview();
-        if (currentPreviewItems && currentPreviewItems.length > 0) {
-          renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
-        }
-        showToast("已选用推荐常用资产分类 (通货/血脉/符文/精华/核心/未切割宝石)");
-      });
-
-      element('pricePreviewSearch')?.addEventListener('input', e => {
-        renderPricePreviewTable(e.target.value);
-      });
-
-      Object.keys(PRICE_CATEGORY_INPUTS).concat(['priceFilterMin', 'priceSepSelect', 'chkPriceStripExisting']).forEach(id => {
-        element(id)?.addEventListener('change', () => {
-          // 这些参数直接决定预览计划的生成结果。一旦变更，此前确认的预览即失效，
-          // 必须连同其 token 一并丢弃，否则点保存会把旧计划写进客户端，与界面当前选择不符。
-          invalidatePendingPricePreview();
-          updatePriceSim();
-        });
-      });
-
-      // 12. 传言搜索
-      element('rumourSearch')?.addEventListener('input', renderRumoursTable);
-
-      // 13. 模态框打开与关闭
-      element('btnOpenAddModal')?.addEventListener('click', () => {
-        if (element('modalRuleText')) element('modalRuleText').value = "";
-        element('autocompleteDropdown')?.classList.add('hidden');
-        updateModalBox();
-        element('addCustomModal')?.classList.remove('hidden');
-      });
-      element('btnCloseAddModal')?.addEventListener('click', () => element('addCustomModal')?.classList.add('hidden'));
-      element('btnCancelModal')?.addEventListener('click', () => element('addCustomModal')?.classList.add('hidden'));
-      element('modalRuleText')?.addEventListener('input', e => onModalInput(e.target.value));
-      element('modalRuleStyle')?.addEventListener('change', updateModalBox);
-      element('modalRuleColor')?.addEventListener('input', updateModalBox);
-      element('btnConfirmAddRule')?.addEventListener('click', () => {
-        const text = element('modalRuleText')?.value.trim();
-        if (!text) { alert('请输入词缀内容'); return; }
-        const grp = element('modalRuleGroup')?.value || '地图';
-        const st = element('modalRuleStyle')?.value || 'Whole';
-        const col = element('modalRuleColor')?.value || '#e64545';
-        const tag = element('modalRuleTag')?.value.trim() || '自定义';
-
-        colorModData.unshift({
-          id: 'custom_' + Date.now(),
-          text,
-          group: grp,
-          color: col,
-          style: st,
-          tag,
-          isCustom: true,
-          enabled: true
-        });
-
-        element('addCustomModal')?.classList.add('hidden');
-        renderTable();
-        showToast("🎉 自定义规则添加成功！");
-      });
-
-      // 模态框快捷模板
-      element('tplReflect')?.addEventListener('click', () => fillModal('玩家受到 (15-20)% 的物理伤害反射', '地图', 'Whole', '#e64545', '高危反伤'));
-      element('tplNoRegen')?.addEventListener('click', () => fillModal('玩家无法回复生命或魔力', '地图', 'Whole', '#e64545', '高危恶疾'));
-      element('tplInstantLeech')?.addEventListener('click', () => fillModal('偷取立即生效', '通用', 'Whole', '#38b469', '核心机制'));
-      element('tplImmuneChaos')?.addEventListener('click', () => fillModal('怪物免疫混沌伤害', '石板', 'Whole', '#e64545', '高危免疫'));
-
-      // 导入/导出
-      element('btnOpenImportModal')?.addEventListener('click', () => {
-        element('ioModalTitle').innerText = '📥 导入补丁规则配置码';
-        element('ioTextarea').value = '';
-        element('ioModal')?.classList.remove('hidden');
-      });
-      element('btnOpenExportModal')?.addEventListener('click', () => {
-        element('ioModalTitle').innerText = '📤 导出当前规则配置码';
-        element('ioTextarea').value = JSON.stringify(colorModData, null, 2);
-        element('ioModal')?.classList.remove('hidden');
-      });
-      element('btnCloseIoModal')?.addEventListener('click', () => element('ioModal')?.classList.add('hidden'));
-      element('btnCancelIo')?.addEventListener('click', () => element('ioModal')?.classList.add('hidden'));
-      element('btnConfirmIo')?.addEventListener('click', () => {
-        const val = element('ioTextarea')?.value.trim();
-        if (element('ioModalTitle')?.innerText.includes('导入')) {
-          try {
-            const parsed = JSON.parse(val);
-            if (Array.isArray(parsed)) {
-              // 导入会整体替换当前规则，用户未保存的编辑将丢失，必须先确认。
-              if (colorModData.length > 0 &&
-                  !confirm(`导入将用 ${parsed.length} 条规则覆盖当前的 ${colorModData.length} 条规则，且无法撤销。\n\n确定继续吗？`)) {
-                return;
-              }
-              colorModData = parsed;
-              renderTable();
-              showToast("🎉 成功导入规则！");
-              element('ioModal')?.classList.add('hidden');
-            } else {
-              alert("格式不符合规则数组规范");
-            }
-          } catch (e) {
-            alert("配置码解析失败：" + e.message);
-          }
+        // 自动联动右侧 Tooltip 卡片仿真类型
+        if (grp === '通用') {
+          previewType = 'gear';
+        } else if (grp === '石板') {
+          previewType = 'tablet';
+        } else if (grp === '终局地图') {
+          previewType = 'endgame';
         } else {
-          // 剪贴板写入是异步且可能失败（权限被拒、文档失焦）。
-          // 必须等结果再提示，否则用户粘贴出来是旧内容却以为复制成功。
-          copyToClipboard(val)
-            .then(() => {
-              showToast("已复制配置码到剪贴板！");
-              element('ioModal')?.classList.add('hidden');
-            })
-            .catch(err => {
-              showToast("复制失败：" + (err && err.message ? err.message : "浏览器拒绝了剪贴板访问") , true);
-            });
+          previewType = 'map';
         }
-      });
-
-      // 14. 游戏特效与性能优化 (EffectPatch) 事件绑定
-      element('btnApplyEffectRules')?.addEventListener('click', applyAllEffectSettings);
-      element('btnRestoreEffectRules')?.addEventListener('click', restoreAllEffectSettings);
-      element('btnQuickApplyEffectPatch')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        applyAllEffectSettings();
-      });
-
-      // 技能专属设置弹窗控制
-      element('btnOpenSpellBlockSettings')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        element('spellBlockSettingsModal')?.classList.remove('hidden');
-        renderSpellBlockModal();
-      });
-      element('btnCloseSpellBlockModal')?.addEventListener('click', () => {
-        element('spellBlockSettingsModal')?.classList.add('hidden');
-        renderEffectPatchUi();
-      });
-      element('btnSaveSpellBlockModal')?.addEventListener('click', () => {
-        element('spellBlockSettingsModal')?.classList.add('hidden');
-        // 「应用屏蔽」：把弹窗里勾选的技能真正写入客户端。
-        // 早期这里只关窗，导致 applySpellBlocks 无任何可达入口。
-        applySpellBlocks();
-      });
-      element('spellBlockSettingsModal')?.addEventListener('click', (e) => {
-        if (e.target === element('spellBlockSettingsModal')) {
-          element('spellBlockSettingsModal')?.classList.add('hidden');
-          renderEffectPatchUi();
+        const sel = element('cardTypeSelect');
+        if (sel) {
+          sel.value = previewType === 'endgame' ? 'map' : previewType;
         }
+        renderTable();
+        renderLiveCard();
       });
+    });
+    element('searchInput')?.addEventListener('input', () => {
+      colorModCurrentPage = 1;
+      renderTable();
+    });
 
-      // 技能设置弹窗内部快捷操作
-      element('spellSearchInput')?.addEventListener('input', (e) => {
-        spellSearchKeyword = e.target.value;
-        renderSpellBlockModal();
-      });
-      element('btnSpellFilterOnlyChecked')?.addEventListener('click', () => {
-        spellFilterOnlyChecked = !spellFilterOnlyChecked;
-        renderSpellBlockModal();
-      });
-      element('btnSpellSelectAllVisible')?.addEventListener('click', () => {
-        const kw = (spellSearchKeyword || "").trim().toLowerCase();
-        const visibleSpells = POE2_SPELL_OPTIONS.filter(opt => {
-          if (!kw) return true;
-          return opt.name.toLowerCase().includes(kw) || opt.value.toLowerCase().includes(kw);
-        });
-        visibleSpells.forEach(opt => selectedBlockedSpells.add(opt.value));
-        renderSpellBlockModal();
-      });
-      element('btnSpellClearAll')?.addEventListener('click', () => {
-        selectedBlockedSpells.clear();
-        renderSpellBlockModal();
-      });
-      element('btnRestoreSpellBlocksInModal')?.addEventListener('click', () => {
-        restoreSpellBlocks();
-      });
+    // 批量全选 / 全不选（框选）
+    element('chkSelectAllRules')?.addEventListener('change', e => toggleSelectAll(e.target.checked));
+    element('btnBatchCheckAll')?.addEventListener('click', () => toggleSelectAll(true));
+    element('btnBatchUncheckAll')?.addEventListener('click', () => toggleSelectAll(false));
 
-      // 泥人专属设置弹窗控制
-      element('btnOpenMudManSettings')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        element('mudManSettingsModal')?.classList.remove('hidden');
-      });
-      element('btnCloseMudManModal')?.addEventListener('click', () => {
-        element('mudManSettingsModal')?.classList.add('hidden');
-        renderMudManUi();
-      });
-      element('btnSaveMudManModal')?.addEventListener('click', () => {
-        element('mudManSettingsModal')?.classList.add('hidden');
-        renderMudManUi();
-      });
-      element('mudManSettingsModal')?.addEventListener('click', (e) => {
-        if (e.target === element('mudManSettingsModal')) {
-          element('mudManSettingsModal')?.classList.add('hidden');
-          renderMudManUi();
-        }
-      });
-      element('btnRestoreMudManInModal')?.addEventListener('click', () => {
-        restoreMudMan();
-      });
-
-      // 头顶血条开关
-      element('chkOpt-healthbar')?.addEventListener('change', (e) => {
-        toggleHealthBar(e.target.checked);
-      });
-      // 泥人外层卡片主开关与档位单选
-      element('chkOpt-mudman')?.addEventListener('change', (e) => {
-        if (e.target.checked) {
-          if (selectedMudManTier < 0) selectedMudManTier = 4; // 默认推荐中级 + 材质压缩
-        } else {
-          selectedMudManTier = -1;
-        }
-        renderMudManUi();
-      });
-      document.querySelectorAll('.mudman-tier-radio').forEach(radio => {
-        radio.addEventListener('change', () => {
-          const tier = parseInt(radio.value, 10);
-          if (!Number.isNaN(tier)) {
-            selectedMudManTier = tier;
-            const chkMud = element('chkOpt-mudman');
-            if (chkMud) chkMud.checked = true;
-          }
-          renderMudManUi();
-        });
-      });
-
-      // 环境去黑暗与全局亮度调整设置弹窗控制
-      element('btnOpenRemoveDarkSettings')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        element('removeDarkSettingsModal')?.classList.remove('hidden');
-      });
-      element('btnCloseRemoveDarkModal')?.addEventListener('click', () => {
-        element('removeDarkSettingsModal')?.classList.add('hidden');
-        renderEffectPatchUi();
-      });
-      element('btnSaveRemoveDarkModal')?.addEventListener('click', () => {
-        element('removeDarkSettingsModal')?.classList.add('hidden');
-        renderEffectPatchUi();
-      });
-      element('removeDarkSettingsModal')?.addEventListener('click', (e) => {
-        if (e.target === element('removeDarkSettingsModal')) {
-          element('removeDarkSettingsModal')?.classList.add('hidden');
-          renderEffectPatchUi();
-        }
-      });
-      document.querySelectorAll('.remove-dark-level-radio').forEach(radio => {
-        radio.addEventListener('change', () => {
-          selectedRemoveDarkLevel = radio.value;
-          localStorage.setItem('frei_remove_dark_level', selectedRemoveDarkLevel);
-          Array.from(selectedEffectRules)
-            .filter(x => x === 'remove_dark' || x.startsWith('remove_dark:') || x === 'dark_light_objects')
-            .forEach(x => selectedEffectRules.delete(x));
-          selectedEffectRules.add(`remove_dark:${selectedRemoveDarkLevel}`);
-          const chkDark = element('chkOpt-remove_dark');
-          if (chkDark) chkDark.checked = true;
-          renderEffectPatchUi();
-        });
-      });
-
-      // ── 小地图颜色设置弹窗控制与联动 ──
-      function rgbToHex(r, g, b) {
-        const toHex = c => Math.min(255, Math.max(0, Math.round(c))).toString(16).padStart(2, '0');
-        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    // 分页操作
+    element('btnFirstPage')?.addEventListener('click', () => {
+      colorModCurrentPage = 1;
+      renderTable();
+    });
+    element('btnPrevPage')?.addEventListener('click', () => {
+      if (colorModCurrentPage > 1) {
+        colorModCurrentPage--;
+        renderTable();
       }
-      function hexToRgb(hex) {
-        const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [0, 0, 0];
+    });
+    element('btnNextPage')?.addEventListener('click', () => {
+      colorModCurrentPage++;
+      renderTable();
+    });
+    element('btnLastPage')?.addEventListener('click', () => {
+      colorModCurrentPage = 999999;
+      renderTable();
+    });
+
+    element('btnBatchWhole')?.addEventListener('click', () => {
+      colorModData.forEach(i => { if (i.group === currentGroup) i.style = 'Whole'; });
+      commitView();
+      renderTable();
+      renderLiveCard();
+      showToast("已批量设为整句着色");
+    });
+    element('btnBatchNumber')?.addEventListener('click', () => {
+      colorModData.forEach(i => { if (i.group === currentGroup) i.style = 'NumberOnly'; });
+      commitView();
+      renderTable();
+      renderLiveCard();
+      showToast("已批量设为仅数字着色");
+    });
+    element('btnScanIconPatch')?.addEventListener('click', () => {
+      element("iconPatchSpinner")?.classList.remove("hidden");
+      const status = element("iconPatchStatusText");
+      if (status) status.innerText = "读取中...";
+      post("scanIconPatch", {});
+    });
+    element('btnRestoreIconPatch')?.addEventListener('click', restoreIconPatch);
+    element('iconPatchSearch')?.addEventListener('input', () => renderIconPatchList());
+    element('btnIconSelectAll')?.addEventListener('click', () => {
+      getFilteredIconEntries().forEach(e => { e.enabled = true; });
+      renderIconPatchList();
+    });
+    element('btnIconSelectNone')?.addEventListener('click', () => {
+      getFilteredIconEntries().forEach(e => { e.enabled = false; });
+      renderIconPatchList();
+    });
+
+    element('cardTypeSelect')?.addEventListener('change', e => {
+      previewType = e.target.value;
+      renderLiveCard();
+    });
+  }
+
+  /** 10. 字体预设、细分字号与加粗交互 */
+  function bindFontControls() {
+    element('fontPresetSelect')?.addEventListener('change', e => onFontPresetChange(e.target.value));
+
+    element('btnSaveFontPreset')?.addEventListener('click', () => {
+      const name = prompt("请输入自定义排版预设名称：", "个性排版预设");
+      if (name !== null) {
+        const err = saveCustomFontPreset(name);
+        if (err) alert(err);
       }
+    });
 
-      function syncMinimapColorInputsToUi(c) {
-        if (element('mmExploredR')) element('mmExploredR').value = c.exploredR;
-        if (element('valExploredR')) element('valExploredR').innerText = c.exploredR;
-        if (element('mmExploredG')) element('mmExploredG').value = c.exploredG;
-        if (element('valExploredG')) element('valExploredG').innerText = c.exploredG;
-        if (element('mmExploredB')) element('mmExploredB').value = c.exploredB;
-        if (element('valExploredB')) element('valExploredB').innerText = c.exploredB;
-        if (element('mmExploredA')) element('mmExploredA').value = c.exploredA;
-        if (element('valExploredA')) element('valExploredA').innerText = c.exploredA;
-        if (element('mmColorExploredPicker')) element('mmColorExploredPicker').value = rgbToHex(c.exploredR, c.exploredG, c.exploredB);
+    element('btnDeleteFontPreset')?.addEventListener('click', deleteCurrentCustomFontPreset);
 
-        if (element('mmBorderR')) element('mmBorderR').value = c.borderR;
-        if (element('valBorderR')) element('valBorderR').innerText = c.borderR;
-        if (element('mmBorderG')) element('mmBorderG').value = c.borderG;
-        if (element('valBorderG')) element('valBorderG').innerText = c.borderG;
-        if (element('mmBorderB')) element('mmBorderB').value = c.borderB;
-        if (element('valBorderB')) element('valBorderB').innerText = c.borderB;
-        if (element('mmBorderA')) element('mmBorderA').value = c.borderA;
-        if (element('valBorderA')) element('valBorderA').innerText = c.borderA;
-        if (element('mmColorBorderPicker')) element('mmColorBorderPicker').value = rgbToHex(c.borderR, c.borderG, c.borderB);
+    element('btnResetFontPreset')?.addEventListener('click', () => onFontPresetChange('default'));
 
-        if (element('mmExploringR')) element('mmExploringR').value = c.exploringR;
-        if (element('valExploringR')) element('valExploringR').innerText = c.exploringR;
-        if (element('mmExploringG')) element('mmExploringG').value = c.exploringG;
-        if (element('valExploringG')) element('valExploringG').innerText = c.exploringG;
-        if (element('mmExploringB')) element('mmExploringB').value = c.exploringB;
-        if (element('valExploringB')) element('valExploringB').innerText = c.exploringB;
-        if (element('mmExploringA')) element('mmExploringA').value = c.exploringA;
-        if (element('valExploringA')) element('valExploringA').innerText = c.exploringA;
-        if (element('mmColorExploringPicker')) element('mmColorExploringPicker').value = rgbToHex(c.exploringR, c.exploringG, c.exploringB);
+    element('fontSizeDropItemSelect')?.addEventListener('change', () => {
+      updateFontPreview();
+      const sel = element('fontSizeDropItemSelect');
+      showToast(`掉落物与物品字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
+    });
 
-        if (element('mmBorderGlow')) element('mmBorderGlow').value = c.borderGlow;
-        if (element('valBorderGlow')) element('valBorderGlow').innerText = c.borderGlow;
-        if (element('mmExploringGlow')) element('mmExploringGlow').value = c.exploringGlow;
-        if (element('valExploringGlow')) element('valExploringGlow').innerText = c.exploringGlow;
-        if (element('mmVisibilityThreshold')) element('mmVisibilityThreshold').value = c.visibilityThreshold;
-        if (element('valVisibilityThreshold')) element('valVisibilityThreshold').innerText = Number(c.visibilityThreshold).toFixed(2);
+    element('fontSizeGeneralSelect')?.addEventListener('change', () => {
+      updateFontPreview();
+      const sel = element('fontSizeGeneralSelect');
+      showToast(`通用正文描述字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
+    });
+
+    element('fontSizeTitleSelect')?.addEventListener('change', () => {
+      updateFontPreview();
+      const sel = element('fontSizeTitleSelect');
+      showToast(`界面窗口大标题字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
+    });
+
+    element('fontSizeTinySelect')?.addEventListener('change', () => {
+      updateFontPreview();
+      const sel = element('fontSizeTinySelect');
+      showToast(`微型数值角标字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
+    });
+
+    element('fontSelectDropdown')?.addEventListener('change', () => {
+      updateFontPreview();
+      const sel = element('fontSelectDropdown');
+      const selName = sel?.options[sel.selectedIndex]?.text || sel?.value;
+      showToast(`已选用字体：${selName}`);
+    });
+
+    element('fontSizeDeltaSelect')?.addEventListener('change', () => {
+      updateFontPreview();
+      const sel = element('fontSizeDeltaSelect');
+      const selText = sel?.options[sel.selectedIndex]?.text || sel?.value;
+      showToast(`已设置全局整平档位：${selText}`);
+    });
+
+    element('chkFontBold')?.addEventListener('change', () => {
+      updateFontPreview();
+      const isBold = element('chkFontBold')?.checked;
+      showToast(isBold ? "已启用字体原生加粗 (Weight 700)" : "已还原字体默认粗细");
+    });
+  }
+
+  /** 11. 价格设置 */
+  function bindPriceControls() {
+    // priceSepSelect 的 change 已由下方批量绑定统一处理（那里还会使预览失效），
+    // 此处不再单独绑定，否则同一个 change 会触发两次回调。
+    element('btnPreviewPricePatch')?.addEventListener('click', previewPrice);
+
+    // 清除已写入客户端的价格后缀（后端 CleanPricePatch，走正则剥离）
+    element('btnCleanPricePatch')?.addEventListener('click', () => {
+      if (!confirm('确定要清除已写入客户端的价格后缀吗？\n\n这会把物品名恢复为纯名称（如「混沌石 [150C]」→「混沌石」），\n物品名本身的汉化不受影响。')) return;
+      const sep = element('priceSepSelect')?.value ?? ' ';
+      showToast('正在清除客户端价格后缀...');
+      showEffectOperationOverlay('正在清除价格后缀，写入期间请勿关闭窗口...', 60);
+      post('cleanPricePatch', { separator: sep });
+    });
+
+    element('btnPriceSelectAll')?.addEventListener('click', () => {
+      Object.keys(PRICE_CATEGORY_INPUTS).forEach(id => {
+        const el = element(id);
+        if (el) el.checked = true;
+      });
+      invalidatePendingPricePreview();
+      if (currentPreviewItems && currentPreviewItems.length > 0) {
+        renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
       }
+      showToast("已全选全部 14 个资产分类");
+    });
 
-      function readMinimapColorInputs() {
-        return {
-          exploredR: parseInt(element('mmExploredR')?.value || '0', 10),
-          exploredG: parseInt(element('mmExploredG')?.value || '0', 10),
-          exploredB: parseInt(element('mmExploredB')?.value || '0', 10),
-          exploredA: parseInt(element('mmExploredA')?.value || '76', 10),
-          borderR: parseInt(element('mmBorderR')?.value || '0', 10),
-          borderG: parseInt(element('mmBorderG')?.value || '120', 10),
-          borderB: parseInt(element('mmBorderB')?.value || '215', 10),
-          borderA: parseInt(element('mmBorderA')?.value || '26', 10),
-          exploringR: parseInt(element('mmExploringR')?.value || '0', 10),
-          exploringG: parseInt(element('mmExploringG')?.value || '128', 10),
-          exploringB: parseInt(element('mmExploringB')?.value || '255', 10),
-          exploringA: parseInt(element('mmExploringA')?.value || '128', 10),
-          borderGlow: parseFloat(element('mmBorderGlow')?.value || '13'),
-          exploringGlow: parseFloat(element('mmExploringGlow')?.value || '1'),
-          visibilityThreshold: parseFloat(element('mmVisibilityThreshold')?.value || '0.18')
-        };
+    element('btnPriceUnselectAll')?.addEventListener('click', () => {
+      Object.keys(PRICE_CATEGORY_INPUTS).forEach(id => {
+        const el = element(id);
+        if (el) el.checked = false;
+      });
+      invalidatePendingPricePreview();
+      if (currentPreviewItems && currentPreviewItems.length > 0) {
+        renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
       }
+      showToast("已取消勾选全部分类");
+    });
 
-      function bindRgbChannel(sliderId, textId, pickerId, getChannels) {
-        const slider = element(sliderId);
-        slider?.addEventListener('input', () => {
-          if (element(textId)) element(textId).innerText = slider.value;
-          const [r, g, b] = getChannels();
-          const picker = element(pickerId);
-          if (picker) picker.value = rgbToHex(r, g, b);
-        });
+    element('btnPriceSelectCommon')?.addEventListener('click', () => {
+      const commonIds = ['chkPriceCurrency', 'chkPriceLineage', 'chkPriceRunes', 'chkPriceEssences', 'chkPriceSoulCores', 'chkPriceUncutGems'];
+      Object.keys(PRICE_CATEGORY_INPUTS).forEach(id => {
+        const el = element(id);
+        if (el) el.checked = commonIds.includes(id);
+      });
+      invalidatePendingPricePreview();
+      if (currentPreviewItems && currentPreviewItems.length > 0) {
+        renderPricePreviewTable(element('pricePreviewSearch')?.value || '');
       }
+      showToast("已选用推荐常用资产分类 (通货/血脉/符文/精华/核心/未切割宝石)");
+    });
 
-      bindRgbChannel('mmExploredR', 'valExploredR', 'mmColorExploredPicker', () => [
-        parseInt(element('mmExploredR')?.value || '0', 10),
-        parseInt(element('mmExploredG')?.value || '0', 10),
-        parseInt(element('mmExploredB')?.value || '0', 10)
-      ]);
-      bindRgbChannel('mmExploredG', 'valExploredG', 'mmColorExploredPicker', () => [
-        parseInt(element('mmExploredR')?.value || '0', 10),
-        parseInt(element('mmExploredG')?.value || '0', 10),
-        parseInt(element('mmExploredB')?.value || '0', 10)
-      ]);
-      bindRgbChannel('mmExploredB', 'valExploredB', 'mmColorExploredPicker', () => [
-        parseInt(element('mmExploredR')?.value || '0', 10),
-        parseInt(element('mmExploredG')?.value || '0', 10),
-        parseInt(element('mmExploredB')?.value || '0', 10)
-      ]);
-      element('mmExploredA')?.addEventListener('input', (e) => {
-        if (element('valExploredA')) element('valExploredA').innerText = e.target.value;
-      });
-      element('mmColorExploredPicker')?.addEventListener('input', (e) => {
-        const [r, g, b] = hexToRgb(e.target.value);
-        if (element('mmExploredR')) element('mmExploredR').value = r;
-        if (element('valExploredR')) element('valExploredR').innerText = r;
-        if (element('mmExploredG')) element('mmExploredG').value = g;
-        if (element('valExploredG')) element('valExploredG').innerText = g;
-        if (element('mmExploredB')) element('mmExploredB').value = b;
-        if (element('valExploredB')) element('valExploredB').innerText = b;
-      });
+    element('pricePreviewSearch')?.addEventListener('input', e => {
+      renderPricePreviewTable(e.target.value);
+    });
 
-      bindRgbChannel('mmBorderR', 'valBorderR', 'mmColorBorderPicker', () => [
-        parseInt(element('mmBorderR')?.value || '0', 10),
-        parseInt(element('mmBorderG')?.value || '120', 10),
-        parseInt(element('mmBorderB')?.value || '215', 10)
-      ]);
-      bindRgbChannel('mmBorderG', 'valBorderG', 'mmColorBorderPicker', () => [
-        parseInt(element('mmBorderR')?.value || '0', 10),
-        parseInt(element('mmBorderG')?.value || '120', 10),
-        parseInt(element('mmBorderB')?.value || '215', 10)
-      ]);
-      bindRgbChannel('mmBorderB', 'valBorderB', 'mmColorBorderPicker', () => [
-        parseInt(element('mmBorderR')?.value || '0', 10),
-        parseInt(element('mmBorderG')?.value || '120', 10),
-        parseInt(element('mmBorderB')?.value || '215', 10)
-      ]);
-      element('mmBorderA')?.addEventListener('input', (e) => {
-        if (element('valBorderA')) element('valBorderA').innerText = e.target.value;
+    Object.keys(PRICE_CATEGORY_INPUTS).concat(['priceFilterMin', 'priceSepSelect', 'chkPriceStripExisting']).forEach(id => {
+      element(id)?.addEventListener('change', () => {
+        // 这些参数直接决定预览计划的生成结果。一旦变更，此前确认的预览即失效，
+        // 必须连同其 token 一并丢弃，否则点保存会把旧计划写进客户端，与界面当前选择不符。
+        invalidatePendingPricePreview();
+        updatePriceSim();
       });
-      element('mmColorBorderPicker')?.addEventListener('input', (e) => {
-        const [r, g, b] = hexToRgb(e.target.value);
-        if (element('mmBorderR')) element('mmBorderR').value = r;
-        if (element('valBorderR')) element('valBorderR').innerText = r;
-        if (element('mmBorderG')) element('mmBorderG').value = g;
-        if (element('valBorderG')) element('valBorderG').innerText = g;
-        if (element('mmBorderB')) element('mmBorderB').value = b;
-        if (element('valBorderB')) element('valBorderB').innerText = b;
+    });
+  }
+
+  /** 12. 传言搜索 */
+  function bindRumourSearch() {
+    element('rumourSearch')?.addEventListener('input', renderRumoursTable);
+  }
+
+  /** 13. 模态框打开与关闭 */
+  function bindModalControls() {
+    element('btnOpenAddModal')?.addEventListener('click', () => {
+      if (element('modalRuleText')) element('modalRuleText').value = "";
+      element('autocompleteDropdown')?.classList.add('hidden');
+      updateModalBox();
+      element('addCustomModal')?.classList.remove('hidden');
+    });
+    element('btnCloseAddModal')?.addEventListener('click', () => element('addCustomModal')?.classList.add('hidden'));
+    element('btnCancelModal')?.addEventListener('click', () => element('addCustomModal')?.classList.add('hidden'));
+    element('modalRuleText')?.addEventListener('input', e => onModalInput(e.target.value));
+    element('modalRuleStyle')?.addEventListener('change', updateModalBox);
+    element('modalRuleColor')?.addEventListener('input', updateModalBox);
+    element('btnConfirmAddRule')?.addEventListener('click', () => {
+      const text = element('modalRuleText')?.value.trim();
+      if (!text) { alert('请输入词缀内容'); return; }
+      const grp = element('modalRuleGroup')?.value || '地图';
+      const st = element('modalRuleStyle')?.value || 'Whole';
+      const col = element('modalRuleColor')?.value || '#e64545';
+      const tag = element('modalRuleTag')?.value.trim() || '自定义';
+
+      colorModData.unshift({
+        id: 'custom_' + Date.now(),
+        text,
+        group: grp,
+        color: col,
+        style: st,
+        tag,
+        isCustom: true,
+        enabled: true
       });
 
-      bindRgbChannel('mmExploringR', 'valExploringR', 'mmColorExploringPicker', () => [
-        parseInt(element('mmExploringR')?.value || '0', 10),
-        parseInt(element('mmExploringG')?.value || '128', 10),
-        parseInt(element('mmExploringB')?.value || '255', 10)
-      ]);
-      bindRgbChannel('mmExploringG', 'valExploringG', 'mmColorExploringPicker', () => [
-        parseInt(element('mmExploringR')?.value || '0', 10),
-        parseInt(element('mmExploringG')?.value || '128', 10),
-        parseInt(element('mmExploringB')?.value || '255', 10)
-      ]);
-      bindRgbChannel('mmExploringB', 'valExploringB', 'mmColorExploringPicker', () => [
-        parseInt(element('mmExploringR')?.value || '0', 10),
-        parseInt(element('mmExploringG')?.value || '128', 10),
-        parseInt(element('mmExploringB')?.value || '255', 10)
-      ]);
-      element('mmExploringA')?.addEventListener('input', (e) => {
-        if (element('valExploringA')) element('valExploringA').innerText = e.target.value;
-      });
-      element('mmColorExploringPicker')?.addEventListener('input', (e) => {
-        const [r, g, b] = hexToRgb(e.target.value);
-        if (element('mmExploringR')) element('mmExploringR').value = r;
-        if (element('valExploringR')) element('valExploringR').innerText = r;
-        if (element('mmExploringG')) element('mmExploringG').value = g;
-        if (element('valExploringG')) element('valExploringG').innerText = g;
-        if (element('mmExploringB')) element('mmExploringB').value = b;
-        if (element('valExploringB')) element('valExploringB').innerText = b;
-      });
+      element('addCustomModal')?.classList.add('hidden');
+      renderTable();
+      showToast("🎉 自定义规则添加成功！");
+    });
 
-      element('mmBorderGlow')?.addEventListener('input', (e) => {
-        if (element('valBorderGlow')) element('valBorderGlow').innerText = e.target.value;
-      });
-      element('mmExploringGlow')?.addEventListener('input', (e) => {
-        if (element('valExploringGlow')) element('valExploringGlow').innerText = e.target.value;
-      });
-      element('mmVisibilityThreshold')?.addEventListener('input', (e) => {
-        if (element('valVisibilityThreshold')) element('valVisibilityThreshold').innerText = Number(e.target.value).toFixed(2);
-      });
+    // 模态框快捷模板
+    element('tplReflect')?.addEventListener('click', () => fillModal('玩家受到 (15-20)% 的物理伤害反射', '地图', 'Whole', '#e64545', '高危反伤'));
+    element('tplNoRegen')?.addEventListener('click', () => fillModal('玩家无法回复生命或魔力', '地图', 'Whole', '#e64545', '高危恶疾'));
+    element('tplInstantLeech')?.addEventListener('click', () => fillModal('偷取立即生效', '通用', 'Whole', '#38b469', '核心机制'));
+    element('tplImmuneChaos')?.addEventListener('click', () => fillModal('怪物免疫混沌伤害', '石板', 'Whole', '#e64545', '高危免疫'));
 
-      element('btnOpenMinimapColorModal')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        syncMinimapColorInputsToUi(currentMinimapColor);
-        element('minimapColorModal')?.classList.remove('hidden');
-      });
-      element('btnCloseMinimapColorModal')?.addEventListener('click', () => {
-        element('minimapColorModal')?.classList.add('hidden');
-      });
-      element('btnResetMinimapColor')?.addEventListener('click', () => {
-        syncMinimapColorInputsToUi(DEFAULT_MINIMAP_COLOR);
-      });
-      element('btnSaveMinimapColor')?.addEventListener('click', () => {
-        currentMinimapColor = readMinimapColorInputs();
-        localStorage.setItem('frei_minimap_color', JSON.stringify(currentMinimapColor));
-        const chkMinimap = element('chkOpt-minimap_visibility');
-        if (chkMinimap && chkMinimap.checked) {
-          Array.from(selectedEffectRules)
-            .filter(x => x === 'minimap_visibility' || x.startsWith('minimap_color:') || x.startsWith('minimap_visibility:'))
-            .forEach(x => selectedEffectRules.delete(x));
-          selectedEffectRules.add(formatMinimapColorRule(currentMinimapColor));
-        }
-        element('minimapColorModal')?.classList.add('hidden');
-        renderEffectPatchUi();
-      });
-      element('minimapColorModal')?.addEventListener('click', (e) => {
-        if (e.target === element('minimapColorModal')) {
-          element('minimapColorModal')?.classList.add('hidden');
-        }
-      });
-
-      // 视距缩放倍率切换监听
-      element('selViewDistanceRatio')?.addEventListener('change', (e) => {
-        const val = e.target.value;
-        const hasVd = Array.from(selectedEffectRules).some(r => r.startsWith("view_distance"));
-        if (hasVd) {
-          Array.from(selectedEffectRules).filter(r => r.startsWith("view_distance")).forEach(r => selectedEffectRules.delete(r));
-          selectedEffectRules.add(`view_distance:${val}`);
-        }
-      });
-
-      // 规则复选框改动监听
-      document.querySelectorAll('.effect-rule-checkbox').forEach(chk => {
-        chk.addEventListener('change', () => {
-          const rules = chk.dataset.rule.split(',');
-          rules.forEach(r => {
-            const ruleName = r.trim();
-            if (chk.checked) {
-              // 勾选前清掉同名历史变体，避免集合里同时存在
-              // "view_distance" 与 "view_distance:2.0"，下发时出现重复条目。
-              if (ruleName === 'view_distance') {
-                Array.from(selectedEffectRules)
-                  .filter(x => x === 'view_distance' || x.startsWith('view_distance:'))
-                  .forEach(x => selectedEffectRules.delete(x));
-              }
-              if (ruleName === 'remove_dark') {
-                Array.from(selectedEffectRules)
-                  .filter(x => x === 'remove_dark' || x.startsWith('remove_dark:') || x === 'dark_light_objects')
-                  .forEach(x => selectedEffectRules.delete(x));
-                selectedEffectRules.add(`remove_dark:${selectedRemoveDarkLevel}`);
-                return;
-              }
-              if (ruleName === 'minimap_visibility') {
-                Array.from(selectedEffectRules)
-                  .filter(x => x === 'minimap_visibility' || x.startsWith('minimap_color:') || x.startsWith('minimap_visibility:'))
-                  .forEach(x => selectedEffectRules.delete(x));
-                selectedEffectRules.add(formatMinimapColorRule(currentMinimapColor));
-                return;
-              }
-              selectedEffectRules.add(ruleName);
+    // 导入/导出
+    element('btnOpenImportModal')?.addEventListener('click', () => {
+      element('ioModalTitle').innerText = '📥 导入补丁规则配置码';
+      element('ioTextarea').value = '';
+      element('ioModal')?.classList.remove('hidden');
+    });
+    element('btnOpenExportModal')?.addEventListener('click', () => {
+      element('ioModalTitle').innerText = '📤 导出当前规则配置码';
+      element('ioTextarea').value = JSON.stringify(colorModData, null, 2);
+      element('ioModal')?.classList.remove('hidden');
+    });
+    element('btnCloseIoModal')?.addEventListener('click', () => element('ioModal')?.classList.add('hidden'));
+    element('btnCancelIo')?.addEventListener('click', () => element('ioModal')?.classList.add('hidden'));
+    element('btnConfirmIo')?.addEventListener('click', () => {
+      const val = element('ioTextarea')?.value.trim();
+      if (element('ioModalTitle')?.innerText.includes('导入')) {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) {
+            // 导入会整体替换当前规则，用户未保存的编辑将丢失，必须先确认。
+            if (colorModData.length > 0 &&
+                !confirm(`导入将用 ${parsed.length} 条规则覆盖当前的 ${colorModData.length} 条规则，且无法撤销。\n\n确定继续吗？`)) {
               return;
             }
-            // 取消勾选必须按前缀清理。
-            // view_distance 存进集合时会被写成 "view_distance:2.0"（带倍率后缀），
-            // 直接 delete("view_distance") 删不掉，紧接着 renderEffectPatchUi 又按
-            // 「集合里有 view_distance 前缀」把它勾回去 —— 表现为这个开关取消不了。
+            colorModData = parsed;
+            renderTable();
+            showToast("🎉 成功导入规则！");
+            element('ioModal')?.classList.add('hidden');
+          } else {
+            alert("格式不符合规则数组规范");
+          }
+        } catch (e) {
+          alert("配置码解析失败：" + e.message);
+        }
+      } else {
+        // 剪贴板写入是异步且可能失败（权限被拒、文档失焦）。
+        // 必须等结果再提示，否则用户粘贴出来是旧内容却以为复制成功。
+        copyToClipboard(val)
+          .then(() => {
+            showToast("已复制配置码到剪贴板！");
+            element('ioModal')?.classList.add('hidden');
+          })
+          .catch(err => {
+            showToast("复制失败：" + (err && err.message ? err.message : "浏览器拒绝了剪贴板访问") , true);
+          });
+      }
+    });
+  }
+
+  /** 14. 游戏特效与性能优化 (EffectPatch) 事件绑定 */
+  function bindEffectPatchControls() {
+    element('btnApplyEffectRules')?.addEventListener('click', applyAllEffectSettings);
+    element('btnRestoreEffectRules')?.addEventListener('click', restoreAllEffectSettings);
+    element('btnQuickApplyEffectPatch')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      applyAllEffectSettings();
+    });
+
+    // 技能专属设置弹窗控制
+    element('btnOpenSpellBlockSettings')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      element('spellBlockSettingsModal')?.classList.remove('hidden');
+      renderSpellBlockModal();
+    });
+    element('btnCloseSpellBlockModal')?.addEventListener('click', () => {
+      element('spellBlockSettingsModal')?.classList.add('hidden');
+      renderEffectPatchUi();
+    });
+    element('btnSaveSpellBlockModal')?.addEventListener('click', () => {
+      element('spellBlockSettingsModal')?.classList.add('hidden');
+      // 「应用屏蔽」：把弹窗里勾选的技能真正写入客户端。
+      // 早期这里只关窗，导致 applySpellBlocks 无任何可达入口。
+      applySpellBlocks();
+    });
+    element('spellBlockSettingsModal')?.addEventListener('click', (e) => {
+      if (e.target === element('spellBlockSettingsModal')) {
+        element('spellBlockSettingsModal')?.classList.add('hidden');
+        renderEffectPatchUi();
+      }
+    });
+
+    // 技能设置弹窗内部快捷操作
+    element('spellSearchInput')?.addEventListener('input', (e) => {
+      spellSearchKeyword = e.target.value;
+      renderSpellBlockModal();
+    });
+    element('btnSpellFilterOnlyChecked')?.addEventListener('click', () => {
+      spellFilterOnlyChecked = !spellFilterOnlyChecked;
+      renderSpellBlockModal();
+    });
+    element('btnSpellSelectAllVisible')?.addEventListener('click', () => {
+      const kw = (spellSearchKeyword || "").trim().toLowerCase();
+      const visibleSpells = POE2_SPELL_OPTIONS.filter(opt => {
+        if (!kw) return true;
+        return opt.name.toLowerCase().includes(kw) || opt.value.toLowerCase().includes(kw);
+      });
+      visibleSpells.forEach(opt => selectedBlockedSpells.add(opt.value));
+      renderSpellBlockModal();
+    });
+    element('btnSpellClearAll')?.addEventListener('click', () => {
+      selectedBlockedSpells.clear();
+      renderSpellBlockModal();
+    });
+    element('btnRestoreSpellBlocksInModal')?.addEventListener('click', () => {
+      restoreSpellBlocks();
+    });
+
+    // 泥人专属设置弹窗控制
+    element('btnOpenMudManSettings')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      element('mudManSettingsModal')?.classList.remove('hidden');
+    });
+    element('btnCloseMudManModal')?.addEventListener('click', () => {
+      element('mudManSettingsModal')?.classList.add('hidden');
+      renderMudManUi();
+    });
+    element('btnSaveMudManModal')?.addEventListener('click', () => {
+      element('mudManSettingsModal')?.classList.add('hidden');
+      renderMudManUi();
+    });
+    element('mudManSettingsModal')?.addEventListener('click', (e) => {
+      if (e.target === element('mudManSettingsModal')) {
+        element('mudManSettingsModal')?.classList.add('hidden');
+        renderMudManUi();
+      }
+    });
+    element('btnRestoreMudManInModal')?.addEventListener('click', () => {
+      restoreMudMan();
+    });
+
+    // 头顶血条开关
+    element('chkOpt-healthbar')?.addEventListener('change', (e) => {
+      toggleHealthBar(e.target.checked);
+    });
+    // 泥人外层卡片主开关与档位单选
+    element('chkOpt-mudman')?.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        if (selectedMudManTier < 0) selectedMudManTier = 4; // 默认推荐中级 + 材质压缩
+      } else {
+        selectedMudManTier = -1;
+      }
+      renderMudManUi();
+    });
+    document.querySelectorAll('.mudman-tier-radio').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const tier = parseInt(radio.value, 10);
+        if (!Number.isNaN(tier)) {
+          selectedMudManTier = tier;
+          const chkMud = element('chkOpt-mudman');
+          if (chkMud) chkMud.checked = true;
+        }
+        renderMudManUi();
+      });
+    });
+
+    // 环境去黑暗与全局亮度调整设置弹窗控制
+    element('btnOpenRemoveDarkSettings')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      element('removeDarkSettingsModal')?.classList.remove('hidden');
+    });
+    element('btnCloseRemoveDarkModal')?.addEventListener('click', () => {
+      element('removeDarkSettingsModal')?.classList.add('hidden');
+      renderEffectPatchUi();
+    });
+    element('btnSaveRemoveDarkModal')?.addEventListener('click', () => {
+      element('removeDarkSettingsModal')?.classList.add('hidden');
+      renderEffectPatchUi();
+    });
+    element('removeDarkSettingsModal')?.addEventListener('click', (e) => {
+      if (e.target === element('removeDarkSettingsModal')) {
+        element('removeDarkSettingsModal')?.classList.add('hidden');
+        renderEffectPatchUi();
+      }
+    });
+    document.querySelectorAll('.remove-dark-level-radio').forEach(radio => {
+      radio.addEventListener('change', () => {
+        selectedRemoveDarkLevel = radio.value;
+        localStorage.setItem('frei_remove_dark_level', selectedRemoveDarkLevel);
+        Array.from(selectedEffectRules)
+          .filter(x => x === 'remove_dark' || x.startsWith('remove_dark:') || x === 'dark_light_objects')
+          .forEach(x => selectedEffectRules.delete(x));
+        selectedEffectRules.add(`remove_dark:${selectedRemoveDarkLevel}`);
+        const chkDark = element('chkOpt-remove_dark');
+        if (chkDark) chkDark.checked = true;
+        renderEffectPatchUi();
+      });
+    });
+
+    // ── 小地图颜色设置弹窗控制与联动 ──
+    function rgbToHex(r, g, b) {
+      const toHex = c => Math.min(255, Math.max(0, Math.round(c))).toString(16).padStart(2, '0');
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+    function hexToRgb(hex) {
+      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [0, 0, 0];
+    }
+
+    function syncMinimapColorInputsToUi(c) {
+      if (element('mmExploredR')) element('mmExploredR').value = c.exploredR;
+      if (element('valExploredR')) element('valExploredR').innerText = c.exploredR;
+      if (element('mmExploredG')) element('mmExploredG').value = c.exploredG;
+      if (element('valExploredG')) element('valExploredG').innerText = c.exploredG;
+      if (element('mmExploredB')) element('mmExploredB').value = c.exploredB;
+      if (element('valExploredB')) element('valExploredB').innerText = c.exploredB;
+      if (element('mmExploredA')) element('mmExploredA').value = c.exploredA;
+      if (element('valExploredA')) element('valExploredA').innerText = c.exploredA;
+      if (element('mmColorExploredPicker')) element('mmColorExploredPicker').value = rgbToHex(c.exploredR, c.exploredG, c.exploredB);
+
+      if (element('mmBorderR')) element('mmBorderR').value = c.borderR;
+      if (element('valBorderR')) element('valBorderR').innerText = c.borderR;
+      if (element('mmBorderG')) element('mmBorderG').value = c.borderG;
+      if (element('valBorderG')) element('valBorderG').innerText = c.borderG;
+      if (element('mmBorderB')) element('mmBorderB').value = c.borderB;
+      if (element('valBorderB')) element('valBorderB').innerText = c.borderB;
+      if (element('mmBorderA')) element('mmBorderA').value = c.borderA;
+      if (element('valBorderA')) element('valBorderA').innerText = c.borderA;
+      if (element('mmColorBorderPicker')) element('mmColorBorderPicker').value = rgbToHex(c.borderR, c.borderG, c.borderB);
+
+      if (element('mmExploringR')) element('mmExploringR').value = c.exploringR;
+      if (element('valExploringR')) element('valExploringR').innerText = c.exploringR;
+      if (element('mmExploringG')) element('mmExploringG').value = c.exploringG;
+      if (element('valExploringG')) element('valExploringG').innerText = c.exploringG;
+      if (element('mmExploringB')) element('mmExploringB').value = c.exploringB;
+      if (element('valExploringB')) element('valExploringB').innerText = c.exploringB;
+      if (element('mmExploringA')) element('mmExploringA').value = c.exploringA;
+      if (element('valExploringA')) element('valExploringA').innerText = c.exploringA;
+      if (element('mmColorExploringPicker')) element('mmColorExploringPicker').value = rgbToHex(c.exploringR, c.exploringG, c.exploringB);
+
+      if (element('mmBorderGlow')) element('mmBorderGlow').value = c.borderGlow;
+      if (element('valBorderGlow')) element('valBorderGlow').innerText = c.borderGlow;
+      if (element('mmExploringGlow')) element('mmExploringGlow').value = c.exploringGlow;
+      if (element('valExploringGlow')) element('valExploringGlow').innerText = c.exploringGlow;
+      if (element('mmVisibilityThreshold')) element('mmVisibilityThreshold').value = c.visibilityThreshold;
+      if (element('valVisibilityThreshold')) element('valVisibilityThreshold').innerText = Number(c.visibilityThreshold).toFixed(2);
+    }
+
+    function readMinimapColorInputs() {
+      return {
+        exploredR: parseInt(element('mmExploredR')?.value || '0', 10),
+        exploredG: parseInt(element('mmExploredG')?.value || '0', 10),
+        exploredB: parseInt(element('mmExploredB')?.value || '0', 10),
+        exploredA: parseInt(element('mmExploredA')?.value || '76', 10),
+        borderR: parseInt(element('mmBorderR')?.value || '0', 10),
+        borderG: parseInt(element('mmBorderG')?.value || '120', 10),
+        borderB: parseInt(element('mmBorderB')?.value || '215', 10),
+        borderA: parseInt(element('mmBorderA')?.value || '26', 10),
+        exploringR: parseInt(element('mmExploringR')?.value || '0', 10),
+        exploringG: parseInt(element('mmExploringG')?.value || '128', 10),
+        exploringB: parseInt(element('mmExploringB')?.value || '255', 10),
+        exploringA: parseInt(element('mmExploringA')?.value || '128', 10),
+        borderGlow: parseFloat(element('mmBorderGlow')?.value || '13'),
+        exploringGlow: parseFloat(element('mmExploringGlow')?.value || '1'),
+        visibilityThreshold: parseFloat(element('mmVisibilityThreshold')?.value || '0.18')
+      };
+    }
+
+    function bindRgbChannel(sliderId, textId, pickerId, getChannels) {
+      const slider = element(sliderId);
+      slider?.addEventListener('input', () => {
+        if (element(textId)) element(textId).innerText = slider.value;
+        const [r, g, b] = getChannels();
+        const picker = element(pickerId);
+        if (picker) picker.value = rgbToHex(r, g, b);
+      });
+    }
+
+    bindRgbChannel('mmExploredR', 'valExploredR', 'mmColorExploredPicker', () => [
+      parseInt(element('mmExploredR')?.value || '0', 10),
+      parseInt(element('mmExploredG')?.value || '0', 10),
+      parseInt(element('mmExploredB')?.value || '0', 10)
+    ]);
+    bindRgbChannel('mmExploredG', 'valExploredG', 'mmColorExploredPicker', () => [
+      parseInt(element('mmExploredR')?.value || '0', 10),
+      parseInt(element('mmExploredG')?.value || '0', 10),
+      parseInt(element('mmExploredB')?.value || '0', 10)
+    ]);
+    bindRgbChannel('mmExploredB', 'valExploredB', 'mmColorExploredPicker', () => [
+      parseInt(element('mmExploredR')?.value || '0', 10),
+      parseInt(element('mmExploredG')?.value || '0', 10),
+      parseInt(element('mmExploredB')?.value || '0', 10)
+    ]);
+    element('mmExploredA')?.addEventListener('input', (e) => {
+      if (element('valExploredA')) element('valExploredA').innerText = e.target.value;
+    });
+    element('mmColorExploredPicker')?.addEventListener('input', (e) => {
+      const [r, g, b] = hexToRgb(e.target.value);
+      if (element('mmExploredR')) element('mmExploredR').value = r;
+      if (element('valExploredR')) element('valExploredR').innerText = r;
+      if (element('mmExploredG')) element('mmExploredG').value = g;
+      if (element('valExploredG')) element('valExploredG').innerText = g;
+      if (element('mmExploredB')) element('mmExploredB').value = b;
+      if (element('valExploredB')) element('valExploredB').innerText = b;
+    });
+
+    bindRgbChannel('mmBorderR', 'valBorderR', 'mmColorBorderPicker', () => [
+      parseInt(element('mmBorderR')?.value || '0', 10),
+      parseInt(element('mmBorderG')?.value || '120', 10),
+      parseInt(element('mmBorderB')?.value || '215', 10)
+    ]);
+    bindRgbChannel('mmBorderG', 'valBorderG', 'mmColorBorderPicker', () => [
+      parseInt(element('mmBorderR')?.value || '0', 10),
+      parseInt(element('mmBorderG')?.value || '120', 10),
+      parseInt(element('mmBorderB')?.value || '215', 10)
+    ]);
+    bindRgbChannel('mmBorderB', 'valBorderB', 'mmColorBorderPicker', () => [
+      parseInt(element('mmBorderR')?.value || '0', 10),
+      parseInt(element('mmBorderG')?.value || '120', 10),
+      parseInt(element('mmBorderB')?.value || '215', 10)
+    ]);
+    element('mmBorderA')?.addEventListener('input', (e) => {
+      if (element('valBorderA')) element('valBorderA').innerText = e.target.value;
+    });
+    element('mmColorBorderPicker')?.addEventListener('input', (e) => {
+      const [r, g, b] = hexToRgb(e.target.value);
+      if (element('mmBorderR')) element('mmBorderR').value = r;
+      if (element('valBorderR')) element('valBorderR').innerText = r;
+      if (element('mmBorderG')) element('mmBorderG').value = g;
+      if (element('valBorderG')) element('valBorderG').innerText = g;
+      if (element('mmBorderB')) element('mmBorderB').value = b;
+      if (element('valBorderB')) element('valBorderB').innerText = b;
+    });
+
+    bindRgbChannel('mmExploringR', 'valExploringR', 'mmColorExploringPicker', () => [
+      parseInt(element('mmExploringR')?.value || '0', 10),
+      parseInt(element('mmExploringG')?.value || '128', 10),
+      parseInt(element('mmExploringB')?.value || '255', 10)
+    ]);
+    bindRgbChannel('mmExploringG', 'valExploringG', 'mmColorExploringPicker', () => [
+      parseInt(element('mmExploringR')?.value || '0', 10),
+      parseInt(element('mmExploringG')?.value || '128', 10),
+      parseInt(element('mmExploringB')?.value || '255', 10)
+    ]);
+    bindRgbChannel('mmExploringB', 'valExploringB', 'mmColorExploringPicker', () => [
+      parseInt(element('mmExploringR')?.value || '0', 10),
+      parseInt(element('mmExploringG')?.value || '128', 10),
+      parseInt(element('mmExploringB')?.value || '255', 10)
+    ]);
+    element('mmExploringA')?.addEventListener('input', (e) => {
+      if (element('valExploringA')) element('valExploringA').innerText = e.target.value;
+    });
+    element('mmColorExploringPicker')?.addEventListener('input', (e) => {
+      const [r, g, b] = hexToRgb(e.target.value);
+      if (element('mmExploringR')) element('mmExploringR').value = r;
+      if (element('valExploringR')) element('valExploringR').innerText = r;
+      if (element('mmExploringG')) element('mmExploringG').value = g;
+      if (element('valExploringG')) element('valExploringG').innerText = g;
+      if (element('mmExploringB')) element('mmExploringB').value = b;
+      if (element('valExploringB')) element('valExploringB').innerText = b;
+    });
+
+    element('mmBorderGlow')?.addEventListener('input', (e) => {
+      if (element('valBorderGlow')) element('valBorderGlow').innerText = e.target.value;
+    });
+    element('mmExploringGlow')?.addEventListener('input', (e) => {
+      if (element('valExploringGlow')) element('valExploringGlow').innerText = e.target.value;
+    });
+    element('mmVisibilityThreshold')?.addEventListener('input', (e) => {
+      if (element('valVisibilityThreshold')) element('valVisibilityThreshold').innerText = Number(e.target.value).toFixed(2);
+    });
+
+    element('btnOpenMinimapColorModal')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      syncMinimapColorInputsToUi(currentMinimapColor);
+      element('minimapColorModal')?.classList.remove('hidden');
+    });
+    element('btnCloseMinimapColorModal')?.addEventListener('click', () => {
+      element('minimapColorModal')?.classList.add('hidden');
+    });
+    element('btnResetMinimapColor')?.addEventListener('click', () => {
+      syncMinimapColorInputsToUi(DEFAULT_MINIMAP_COLOR);
+    });
+    element('btnSaveMinimapColor')?.addEventListener('click', () => {
+      currentMinimapColor = readMinimapColorInputs();
+      localStorage.setItem('frei_minimap_color', JSON.stringify(currentMinimapColor));
+      const chkMinimap = element('chkOpt-minimap_visibility');
+      if (chkMinimap && chkMinimap.checked) {
+        Array.from(selectedEffectRules)
+          .filter(x => x === 'minimap_visibility' || x.startsWith('minimap_color:') || x.startsWith('minimap_visibility:'))
+          .forEach(x => selectedEffectRules.delete(x));
+        selectedEffectRules.add(formatMinimapColorRule(currentMinimapColor));
+      }
+      element('minimapColorModal')?.classList.add('hidden');
+      renderEffectPatchUi();
+    });
+    element('minimapColorModal')?.addEventListener('click', (e) => {
+      if (e.target === element('minimapColorModal')) {
+        element('minimapColorModal')?.classList.add('hidden');
+      }
+    });
+
+    // 视距缩放倍率切换监听
+    element('selViewDistanceRatio')?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      const hasVd = Array.from(selectedEffectRules).some(r => r.startsWith("view_distance"));
+      if (hasVd) {
+        Array.from(selectedEffectRules).filter(r => r.startsWith("view_distance")).forEach(r => selectedEffectRules.delete(r));
+        selectedEffectRules.add(`view_distance:${val}`);
+      }
+    });
+
+    // 规则复选框改动监听
+    document.querySelectorAll('.effect-rule-checkbox').forEach(chk => {
+      chk.addEventListener('change', () => {
+        const rules = chk.dataset.rule.split(',');
+        rules.forEach(r => {
+          const ruleName = r.trim();
+          if (chk.checked) {
+            // 勾选前清掉同名历史变体，避免集合里同时存在
+            // "view_distance" 与 "view_distance:2.0"，下发时出现重复条目。
             if (ruleName === 'view_distance') {
               Array.from(selectedEffectRules)
                 .filter(x => x === 'view_distance' || x.startsWith('view_distance:'))
                 .forEach(x => selectedEffectRules.delete(x));
-              return;
             }
             if (ruleName === 'remove_dark') {
               Array.from(selectedEffectRules)
                 .filter(x => x === 'remove_dark' || x.startsWith('remove_dark:') || x === 'dark_light_objects')
                 .forEach(x => selectedEffectRules.delete(x));
+              selectedEffectRules.add(`remove_dark:${selectedRemoveDarkLevel}`);
               return;
             }
             if (ruleName === 'minimap_visibility') {
               Array.from(selectedEffectRules)
                 .filter(x => x === 'minimap_visibility' || x.startsWith('minimap_color:') || x.startsWith('minimap_visibility:'))
                 .forEach(x => selectedEffectRules.delete(x));
+              selectedEffectRules.add(formatMinimapColorRule(currentMinimapColor));
               return;
             }
-            selectedEffectRules.delete(ruleName);
-          });
-          renderEffectPatchUi();
-        });
-      });
-
-      // 技能总开关监听
-      element('chkOpt-spell_block_master')?.addEventListener('change', (e) => {
-        if (e.target.checked) {
-          if (selectedBlockedSpells.size === 0) {
-            selectedBlockedSpells.add("lightning_spark");
+            selectedEffectRules.add(ruleName);
+            return;
           }
-        } else {
-          selectedBlockedSpells.clear();
-        }
+          // 取消勾选必须按前缀清理。
+          // view_distance 存进集合时会被写成 "view_distance:2.0"（带倍率后缀），
+          // 直接 delete("view_distance") 删不掉，紧接着 renderEffectPatchUi 又按
+          // 「集合里有 view_distance 前缀」把它勾回去 —— 表现为这个开关取消不了。
+          if (ruleName === 'view_distance') {
+            Array.from(selectedEffectRules)
+              .filter(x => x === 'view_distance' || x.startsWith('view_distance:'))
+              .forEach(x => selectedEffectRules.delete(x));
+            return;
+          }
+          if (ruleName === 'remove_dark') {
+            Array.from(selectedEffectRules)
+              .filter(x => x === 'remove_dark' || x.startsWith('remove_dark:') || x === 'dark_light_objects')
+              .forEach(x => selectedEffectRules.delete(x));
+            return;
+          }
+          if (ruleName === 'minimap_visibility') {
+            Array.from(selectedEffectRules)
+              .filter(x => x === 'minimap_visibility' || x.startsWith('minimap_color:') || x.startsWith('minimap_visibility:'))
+              .forEach(x => selectedEffectRules.delete(x));
+            return;
+          }
+          selectedEffectRules.delete(ruleName);
+        });
         renderEffectPatchUi();
       });
+    });
 
-      element('chkSpellIncludeAudio')?.addEventListener('change', e => {
-        spellIncludeAudio = e.target.checked;
-      });
-
-      // 初始化所有表格与视图
-      loadCustomPresets();
-      renderTable();
-      renderMapBeam();
-      renderChestsList();
-      renderRumoursTable();
-      updatePriceSim();
+    // 技能总开关监听
+    element('chkOpt-spell_block_master')?.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        if (selectedBlockedSpells.size === 0) {
+          selectedBlockedSpells.add("lightning_spark");
+        }
+      } else {
+        selectedBlockedSpells.clear();
+      }
       renderEffectPatchUi();
+    });
 
-      // MTX 外观模块事件绑定
-      document.querySelectorAll(".mtx-tab-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          document.querySelectorAll(".mtx-tab-btn").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          mtxCurrentTab = btn.dataset.tab || "all";
-          renderMtxGrid();
-        });
-      });
+    element('chkSpellIncludeAudio')?.addEventListener('change', e => {
+      spellIncludeAudio = e.target.checked;
+    });
 
-      element("txtMtxSearch")?.addEventListener("input", e => {
-        mtxSearchQuery = (e.target.value || "").trim();
+    // 初始化所有表格与视图
+    loadCustomPresets();
+    renderTable();
+    renderMapBeam();
+    renderChestsList();
+    renderRumoursTable();
+    updatePriceSim();
+    renderEffectPatchUi();
+
+    // MTX 外观模块事件绑定
+    document.querySelectorAll(".mtx-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".mtx-tab-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        mtxCurrentTab = btn.dataset.tab || "all";
         renderMtxGrid();
       });
+    });
 
-      element("btnClearMtxSearch")?.addEventListener("click", () => {
-        const inp = element("txtMtxSearch");
-        if (inp) inp.value = "";
-        mtxSearchQuery = "";
-        renderMtxGrid();
-      });
+    element("txtMtxSearch")?.addEventListener("input", e => {
+      mtxSearchQuery = (e.target.value || "").trim();
+      renderMtxGrid();
+    });
 
-      element("btnApplyMtxPatch")?.addEventListener("click", applyMtxPatchAction);
-      element("btnQuickApplyMtxPatch")?.addEventListener("click", e => {
-        e.stopPropagation();
-        applyMtxPatchAction();
-      });
-      element("btnRestoreMtxPatch")?.addEventListener("click", restoreMtxPatchAction);
+    element("btnClearMtxSearch")?.addEventListener("click", () => {
+      const inp = element("txtMtxSearch");
+      if (inp) inp.value = "";
+      mtxSearchQuery = "";
+      renderMtxGrid();
+    });
 
-      element("btnClearAllMtxSelections")?.addEventListener("click", () => {
-        selectedArmourSet = null;
-        selectedPortal = null;
-        selectedPet = null;
-        selectedMtxNames.clear();
-        renderMtxSummary();
-        renderMtxGrid();
-      });
+    element("btnApplyMtxPatch")?.addEventListener("click", applyMtxPatchAction);
+    element("btnQuickApplyMtxPatch")?.addEventListener("click", e => {
+      e.stopPropagation();
+      applyMtxPatchAction();
+    });
+    element("btnRestoreMtxPatch")?.addEventListener("click", restoreMtxPatchAction);
 
-      element("selMtxCharacterClass")?.addEventListener("change", e => {
-        selectedMtxClass = e.target.value;
-      });
+    element("btnClearAllMtxSelections")?.addEventListener("click", () => {
+      selectedArmourSet = null;
+      selectedPortal = null;
+      selectedPet = null;
+      selectedMtxNames.clear();
+      renderMtxSummary();
+      renderMtxGrid();
+    });
 
-      renderMtxUi();
+    element("selMtxCharacterClass")?.addEventListener("change", e => {
+      selectedMtxClass = e.target.value;
+    });
+
+    renderMtxUi();
+  }
+
+  window.patcherUi = {
+    hideOverlay: hideEffectOperationOverlay,
+    receiveBusyState,
+    initialize() {
+      // 事件绑定按功能区拆到独立方法，避免单函数过长。
+      // 各段互不依赖，任一段出问题不影响其余功能区的绑定。
+      bindHubCards();
+      bindModuleMasters();
+      bindWorkbenchNavigation();
+      bindGameDirInput();
+      bindSnapshotControls();
+      bindSaveAndSync();
+      bindPresetAndScan();
+      bindColorModFilters();
+      bindFontControls();
+      bindPriceControls();
+      bindRumourSearch();
+      bindModalControls();
+      bindEffectPatchControls();
     },
 
     receive(payload) {
