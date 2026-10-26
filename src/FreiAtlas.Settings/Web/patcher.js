@@ -406,12 +406,20 @@
   }
 
   function applyIconPatch() {
+    // 总开关关闭时不允许写入。
+    // 此前这里无条件把 moduleMasters.iconpatch 置 true 并硬编码 enabled:true，
+    // 导致用户关掉总开关后点「应用当前工作台」照样写入客户端 —— 开关形同虚设。
+    if (!moduleMasters.iconpatch) {
+      showToast("图标替换总开关已关闭。如需应用，请先打开开关；若目标是还原，请点击「恢复原版图标」。");
+      return;
+    }
+
     const selected = iconPatchEntries.filter(e => e.enabled).map(e => e.path);
     if (selected.length === 0) {
       showToast("请先勾选要替换的图标");
       return;
     }
-    moduleMasters.iconpatch = true;
+
     showToast(`正在写入 ${selected.length} 个图标到游戏客户端，请稍候...`);
     post("applyIconPatch", { enabled: true, paths: selected });
   }
@@ -3340,7 +3348,8 @@
       });
 
       // 11. 价格设置
-      element('priceSepSelect')?.addEventListener('change', updatePriceSim);
+      // priceSepSelect 的 change 已由下方批量绑定统一处理（那里还会使预览失效），
+      // 此处不再单独绑定，否则同一个 change 会触发两次回调。
       element('btnPreviewPricePatch')?.addEventListener('click', previewPrice);
 
       // 清除已写入客户端的价格后缀（后端 CleanPricePatch，走正则剥离）
