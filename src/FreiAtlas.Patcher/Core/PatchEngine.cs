@@ -196,6 +196,41 @@ public sealed class PatchEngine
     }
 
     /// <summary>
+    /// 按候选路径顺序读取数据表，返回第一个成功读到的内容。
+    ///
+    /// 客户端的语言目录命名在不同版本间有过变化（data/balance 前缀、
+    /// traditional/simplified/chinese 几种写法并存），因此每张表都要按
+    /// 候选列表逐个尝试。候选来源优先级：客户端探测结果 → 已知历史路径。
+    ///
+    /// 空字符串候选会被跳过，重复路径只尝试一次。
+    /// </summary>
+    /// <param name="info">客户端信息。</param>
+    /// <param name="candidatePaths">候选虚拟路径，按优先级排列。</param>
+    /// <param name="actualPath">实际命中的路径；全部失败时为空字符串。</param>
+    /// <returns>命中的文件内容；全部失败时返回 null。</returns>
+    public byte[]? ReadFirstAvailableFile(
+        GameModeInfo info,
+        IEnumerable<string> candidatePaths,
+        out string actualPath)
+    {
+        actualPath = string.Empty;
+
+        foreach (var path in candidatePaths
+                     .Where(p => !string.IsNullOrEmpty(p))
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var bytes = ReadGameFile(info, path, out var resolved);
+            if (bytes is { Length: > 0 })
+            {
+                actualPath = resolved;
+                return bytes;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// 把文件写入客户端索引。
     /// </summary>
     /// <param name="info">客户端信息。</param>

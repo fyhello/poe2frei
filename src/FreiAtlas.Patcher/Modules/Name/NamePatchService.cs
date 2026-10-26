@@ -229,17 +229,7 @@ public sealed class NamePatchService
             "data/chests.datc64"
         ];
 
-        byte[]? datBytes = null;
-        string actualPath = string.Empty;
-
-        foreach (var p in candidatePaths.Where(p => !string.IsNullOrEmpty(p)).Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            datBytes = _engine.ReadGameFile(info, p, out actualPath);
-            if (datBytes != null && datBytes.Length > 0)
-            {
-                break;
-            }
-        }
+        byte[]? datBytes = _engine.ReadFirstAvailableFile(info, candidatePaths, out string actualPath);
 
         if (datBytes == null || datBytes.Length == 0)
         {
@@ -302,15 +292,7 @@ public sealed class NamePatchService
             "data/chests.datc64"
         ];
 
-        byte[]? datBytes = null;
-        foreach (var p in candidatePaths.Where(p => !string.IsNullOrEmpty(p)).Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            datBytes = _engine.ReadGameFile(info, p, out _);
-            if (datBytes != null && datBytes.Length > 0)
-            {
-                break;
-            }
-        }
+        byte[]? datBytes = _engine.ReadFirstAvailableFile(info, candidatePaths, out _);
 
         if (datBytes == null || datBytes.Length == 0)
         {

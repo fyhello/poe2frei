@@ -29,7 +29,7 @@ public sealed class EffectPatchApplier
         [".ot", ".aoc", ".ao", ".env", ".hlsl", ".epk", ".pet", ".trl", ".fxgraph", ".ffx"];
 
     /// <summary>单个文件处理上限，与扫描服务保持一致。</summary>
-    private const int MaxFileBytes = 8 * 1024 * 1024;
+    private const int MaxFileBytes = DatBinaryUtils.MaxPatchFileBytes;
 
     private readonly PatchEngine _engine;
 

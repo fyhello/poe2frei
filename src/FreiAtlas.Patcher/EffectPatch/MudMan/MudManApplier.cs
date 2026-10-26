@@ -26,7 +26,7 @@ public sealed class MudManApplier
         [".ot", ".ao", ".aoc", ".epk", ".pet", ".trl", ".atlas", ".dlp", ".ffx"];
 
     /// <summary>单个文本文件处理上限。</summary>
-    private const int MaxTextFileBytes = 8 * 1024 * 1024;
+    private const int MaxTextFileBytes = DatBinaryUtils.MaxPatchFileBytes;
 
     private readonly PatchEngine _engine;
     private readonly PatchBackupManager _backupManager;

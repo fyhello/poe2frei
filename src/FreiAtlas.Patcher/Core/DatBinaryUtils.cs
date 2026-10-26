@@ -21,6 +21,16 @@ public static class DatBinaryUtils
     public const ulong SentinelValue = 0xBBBBBBBBBBBBBBBBUL;
 
     /// <summary>
+    /// 单个补丁目标文件的字节上限（8 MiB），超出即跳过。
+    ///
+    /// 客户端的特效脚本与怪物定义普遍在几十 KB 量级，超过 8 MiB 的文件
+    /// 基本可以判定不是本模块该处理的目标（多为误判或数据异常）。
+    /// 设这个上限是为了避免把内存耗在大文件上，同时防止正则作用于
+    /// 异常内容时产生灾难性回溯。
+    /// </summary>
+    public const int MaxPatchFileBytes = 8 * 1024 * 1024;
+
+    /// <summary>
     /// 查找字符串区起始哨兵的位置。
     /// </summary>
     /// <param name="data">完整文件字节。</param>

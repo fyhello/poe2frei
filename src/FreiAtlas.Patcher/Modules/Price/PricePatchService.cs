@@ -183,8 +183,7 @@ public sealed class PricePatchService
     }
 
     private byte[]? ReadBaseItemsFile(GameModeInfo info, out string actualPath)
-    {
-        string[] candidatePaths = [
+        => _engine.ReadFirstAvailableFile(info, [
             info.BaseItemsPath,
             "data/balance/traditional chinese/baseitemtypes.datc64",
             "data/balance/simplified chinese/baseitemtypes.datc64",
@@ -193,19 +192,7 @@ public sealed class PricePatchService
             "data/simplified chinese/baseitemtypes.datc64",
             "data/balance/baseitemtypes.datc64",
             "data/baseitemtypes.datc64"
-        ];
-
-        actualPath = string.Empty;
-        foreach (var p in candidatePaths.Where(p => !string.IsNullOrEmpty(p)).Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            var bytes = _engine.ReadGameFile(info, p, out actualPath);
-            if (bytes != null && bytes.Length > 0)
-            {
-                return bytes;
-            }
-        }
-        return null;
-    }
+        ], out actualPath);
 
     public List<BaseItemName> ScanClientBaseItems(GameModeInfo info)
     {
@@ -264,8 +251,7 @@ public sealed class PricePatchService
     }
 
     private byte[]? ReadWordsFile(GameModeInfo info, out string actualPath)
-    {
-        string[] candidatePaths = [
+        => _engine.ReadFirstAvailableFile(info, [
             info.WordsPath,
             "data/balance/traditional chinese/words.datc64",
             "data/balance/simplified chinese/words.datc64",
@@ -274,19 +260,7 @@ public sealed class PricePatchService
             "data/simplified chinese/words.datc64",
             "data/balance/words.datc64",
             "data/words.datc64"
-        ];
-
-        actualPath = string.Empty;
-        foreach (var p in candidatePaths.Where(p => !string.IsNullOrEmpty(p)).Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            var bytes = _engine.ReadGameFile(info, p, out actualPath);
-            if (bytes != null && bytes.Length > 0)
-            {
-                return bytes;
-            }
-        }
-        return null;
-    }
+        ], out actualPath);
 
 
     /// <summary>
