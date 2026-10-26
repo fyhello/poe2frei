@@ -112,7 +112,6 @@ public sealed class WebMessageRouter
             "scanClientRumours" => new ScanClientRumoursWebCommand(),
             "scanClientChests" => new ScanClientChestsWebCommand(),
             "scanClientFontSettings" => new ScanClientFontSettingsWebCommand(),
-            "scanClientBaseItems" => new ScanClientBaseItemsWebCommand(),
             "setPatcherGameDir" => RouteSetPatcherGameDir(payload),
             "applyFontPatch" => RouteApplyFontPatch(payload),
             "applyRumourPatch" => RouteApplyRumourPatch(payload),
@@ -121,7 +120,6 @@ public sealed class WebMessageRouter
             "applyMapBeamPatch" => RouteApplyMapBeamPatch(payload),
             "scanIconPatch" => new ScanIconPatchWebCommand(),
             "applyIconPatch" => RouteApplyIconPatch(payload),
-            "applyPricePatch" => RouteApplyPricePatch(payload),
             "applyCurrentPricesPatch" => RouteApplyCurrentPricesPatch(payload),
             "previewCurrentPricesPatch" => RoutePreviewCurrentPricesPatch(payload),
             "confirmCurrentPricesPatch" => RouteConfirmCurrentPricesPatch(payload),
@@ -441,14 +439,6 @@ public sealed class WebMessageRouter
         return new ApplyMapBeamPatchWebCommand(enabled, targets);
     }
 
-
-    private static WebCommand? RouteApplyPricePatch(JsonElement payload)
-    {
-        string? csvPath = payload.TryGetProperty("csvPath", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
-        string mode = payload.TryGetProperty("mode", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() ?? "append" : "append";
-        string separator = payload.TryGetProperty("separator", out var s) && s.ValueKind == JsonValueKind.String ? s.GetString() ?? " " : " ";
-        return new ApplyPricePatchWebCommand(csvPath, mode, separator);
-    }
 
     private static WebCommand? RouteApplyCurrentPricesPatch(JsonElement payload)
     {

@@ -77,8 +77,6 @@ public sealed record ApplyMapBeamPatchWebCommand(
     bool Enabled,
     IReadOnlyList<FreiAtlas.Core.Settings.MapBeamTargetOption>? Targets = null) : WebCommand;
 
-public sealed record ApplyPricePatchWebCommand(string? CsvPath, string Mode, string Separator) : WebCommand;
-
 public sealed record ApplyCurrentPricesPatchWebCommand(
     string Mode,
     string Separator,
@@ -114,8 +112,6 @@ public sealed record ScanClientRumoursWebCommand : WebCommand;
 public sealed record ScanClientChestsWebCommand : WebCommand;
 
 public sealed record ScanClientFontSettingsWebCommand : WebCommand;
-
-public sealed record ScanClientBaseItemsWebCommand : WebCommand;
 
 public sealed record ApplyTranslationPatchWebCommand : WebCommand;
 

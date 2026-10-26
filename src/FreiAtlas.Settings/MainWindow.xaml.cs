@@ -301,9 +301,6 @@ public partial class MainWindow : Window
                 case ScanClientFontSettingsWebCommand:
                     await HandleScanClientFontSettingsAsync();
                     break;
-                case ScanClientBaseItemsWebCommand:
-                    await HandleScanClientBaseItemsAsync();
-                    break;
                 case SetPatcherGameDirWebCommand setDir:
                     HandleSetPatcherGameDir(setDir.Path);
                     break;
@@ -321,9 +318,6 @@ public partial class MainWindow : Window
                     break;
                 case ApplyMapBeamPatchWebCommand applyMapBeam:
                     await HandleApplyMapBeamPatchAsync(applyMapBeam);
-                    break;
-                case ApplyPricePatchWebCommand applyPrice:
-                    await HandleApplyPricePatchAsync(applyPrice);
                     break;
                 case ApplyCurrentPricesPatchWebCommand applyCurrentPrices:
                     await HandleApplyCurrentPricesPatchAsync(applyCurrentPrices);
@@ -474,7 +468,6 @@ public partial class MainWindow : Window
         or ApplyChestPatchWebCommand
         or ApplyColorModPatchWebCommand
         or ApplyMapBeamPatchWebCommand
-        or ApplyPricePatchWebCommand
         or ApplyCurrentPricesPatchWebCommand
         or ConfirmCurrentPricesPatchWebCommand
         or CleanPricePatchWebCommand
@@ -1336,118 +1329,6 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// 校验前端传入的物价 CSV 路径。
-    ///
-    /// 该路径最终会交给 <c>PricePatchService.LoadPriceRowsFromCsv</c> 直接读取，
-    /// 中间没有任何目录限制，因此只允许用户目录或临时目录下的 .csv 文件，
-    /// 避免被指到系统文件或客户端本体上。
-    /// </summary>
-    private static bool IsAllowedPriceCsvPath(string csvPath)
-    {
-        if (string.IsNullOrWhiteSpace(csvPath)) return false;
-
-        string full;
-        try
-        {
-            full = Path.GetFullPath(csvPath);
-        }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
-        {
-            return false;
-        }
-
-        if (!string.Equals(Path.GetExtension(full), ".csv", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        // 只在用户可写目录（文档 / 下载 / 桌面 / 临时）下读取，
-        // 防止被指向系统目录或游戏客户端内部文件。
-        string[] allowedRoots =
-        [
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            Path.GetTempPath()
-        ];
-
-        foreach (var root in allowedRoots)
-        {
-            if (string.IsNullOrEmpty(root)) continue;
-            string normalizedRoot = Path.GetFullPath(root)
-                .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            if (full.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private async Task HandleApplyPricePatchAsync(ApplyPricePatchWebCommand cmd)
-    {
-        if (_patcher is null || _settingsStore is null) return;
-        if (PatcherFacade.IsGameRunning())
-        {
-            SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
-            return;
-        }
-
-        _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
-        {
-            PricePatchEnabled = true,
-            PricePatchSeparator = cmd.Separator,
-        });
-
-        SendPatcherSnapshot(message: "正在解析物价数据并准备注入客户端...");
-
-        List<PriceRow> priceRows = [];
-        if (!string.IsNullOrWhiteSpace(cmd.CsvPath) && File.Exists(cmd.CsvPath))
-        {
-            // CSV 路径由前端传入，必须过一遍白名单校验。
-            // WebMessageRouter 的字段防护只挡 address/offset 之类的关键词，
-            // 不挡路径，所以任何本地文件都可能被指定读取。
-            if (!IsAllowedPriceCsvPath(cmd.CsvPath))
-            {
-                SendPatcherSnapshot(error: "物价 CSV 只允许读取 .csv 文件，该路径已被拒绝。");
-                return;
-            }
-            priceRows = PricePatchService.LoadPriceRowsFromCsv(cmd.CsvPath);
-        }
-
-        if (priceRows.Count == 0)
-        {
-            // 自动回退到实时物价
-            await HandleApplyCurrentPricesPatchAsync(new ApplyCurrentPricesPatchWebCommand(cmd.Mode, cmd.Separator));
-            return;
-        }
-
-        RecordAutoSnapshot("物价补丁写入");
-
-        string? progressLog = null;
-        var res = await Task.Run(() => _patcher.ApplyPricePatch(
-            priceRows,
-            cmd.Mode,
-            cmd.Separator,
-            _settingsStore.ClientPatch.CustomGameDirectory,
-            msg =>
-            {
-                progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-            }));
-
-        if (res.Success)
-        {
-            _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with { PricePatchEnabled = true });
-            SendPatcherSnapshot(message: progressLog ?? $"客户端原生掉落物价注入成功！（已注入 {res.PatchedNames} 个物品）");
-        }
-        else
-        {
-            SendPatcherSnapshot(error: res.ErrorMessage.Length > 0 ? res.ErrorMessage : "客户端物价注入失败。");
-        }
-    }
-
     private async Task HandleCleanPricePatchAsync(CleanPricePatchWebCommand cmd)
     {
         if (_patcher is null || _settingsStore is null) return;
@@ -1713,21 +1594,6 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             SendPatcherSnapshot(error: "读取客户端字体配置失败：" + ex.Message);
-        }
-    }
-
-    private async Task HandleScanClientBaseItemsAsync()
-    {
-        if (_patcher is null || _settingsStore is null) return;
-        SendPatcherSnapshot(message: "正在读取客户端基础物品数据表（baseitemtypes.datc64）...");
-        try
-        {
-            var items = await Task.Run(() => _patcher.ScanBaseItems(_settingsStore.ClientPatch.CustomGameDirectory));
-            SendPatcherSnapshot(message: $"已读取客户端 {items.Count} 个基础物品条目。", clientBaseItems: items);
-        }
-        catch (Exception ex)
-        {
-            SendPatcherSnapshot(error: "读取基础物品数据表失败：" + ex.Message);
         }
     }
 
