@@ -156,6 +156,22 @@
                 <label class="field slider-field wide"><span>背景透明度</span><input id="backgroundOpacity" type="range" min="0" max="1" step="0.05"><input id="backgroundOpacityNumber" class="number-input" type="number" min="0" max="1" step="0.05"></label>
               </div>
             </section>
+
+            <section class="settings-band">
+              <h2>覆盖层显示设置</h2>
+              <div class="control-grid two-col">
+                <label class="field slider-field">
+                  <span>先祖秘藏列表缩放</span>
+                  <input id="expeditionPanelScale" type="range" min="0.5" max="1.5" step="0.05">
+                  <input id="expeditionPanelScaleNumber" class="number-input" type="number" min="0.5" max="1.5" step="0.05">
+                </label>
+                <label class="field slider-field">
+                  <span>小地图位置覆盖层缩放</span>
+                  <input id="areaMapOverlayScale" type="range" min="0.5" max="1.5" step="0.05">
+                  <input id="areaMapOverlayScaleNumber" class="number-input" type="number" min="0.5" max="1.5" step="0.05">
+                </label>
+              </div>
+            </section>
           </div>
         </section>
         <section id="quickAssist" class="page">
@@ -267,7 +283,87 @@
           <!-- 方案 B: 视图 1 - 仪表盘总览 (Hub) -->
           <div id="patcherHubView">
             <!-- 8 大功能控制卡片网格 (2 列规整排版) -->
-            <div class="hub-grid" id="hubCardsGrid">
+            <div class="hub-grid">
+              <!-- 卡片 0: 官方纯净简中汉化 (完全独立模块) -->
+              <div class="hub-card" id="hcard-translation" data-accent="translation">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">🇨🇳</div>
+                    <div class="hub-card-names">
+                      <strong style="color: #fca5a5;">官方纯净简体中文</strong>
+                      <span>Translation · 词缀与核心数据表</span>
+                    </div>
+                  </div>
+                  <button id="btnApplyTranslationPatch" class="primary-button" style="height: 28px; padding: 0 12px; font-size: 11px; font-weight: bold; background: #dc2626; border-color: #ef4444;" title="独立注入官方简体中文，不与字体、物价联动">⚡ 一键注入汉化</button>
+                </div>
+                <div class="hub-card-desc">
+                  全量改写 CSD 词缀描述，并注入官方基础物品与暗金译名。完全独立，不与字体/物价强行捆绑。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #fca5a5; border-color: rgba(239,68,68,0.3);">官方词库直出</span>
+                  <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3);">核心数据表全覆盖</span>
+                  <span class="hub-badge" style="color: #60a5fa;">底模无损重写</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-translation" class="hub-status-txt">● 纯净官方词库已就绪</span>
+                  <span style="font-size: 11px; color: #94a3b8;">打完后刷新客户端即可按需配字体/物价</span>
+                </div>
+              </div>
+
+              <!-- 卡片 0.5: 游戏特效与性能优化 (小地图/视距/尸体/技能屏蔽) -->
+              <div class="hub-card" id="hcard-effectpatch" data-module="effectpatch" data-accent="effectpatch">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">⚡</div>
+                    <div class="hub-card-names">
+                      <strong style="color: #38bdf8;">游戏特效与性能优化</strong>
+                      <span>Effect · 小地图 / 视距 / 尸体 / 技能屏蔽</span>
+                    </div>
+                  </div>
+                  <button id="btnQuickApplyEffectPatch" class="primary-button" style="height: 28px; padding: 0 12px; font-size: 11px; font-weight: bold; background: #0284c7; border-color: #38bdf8;" title="同步并应用当前选中的特效补丁">⚡ 应用特效优化</button>
+                </div>
+                <div class="hub-card-desc">
+                  精简游戏渲染负载，提供小地图全开、3倍视距、怪物尸体秒消与指定技能特效屏蔽。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3);">小地图全开</span>
+                  <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3);">视距拉远 3 倍</span>
+                  <span class="hub-badge" style="color: #c084fc; border-color: rgba(192,132,252,0.3);">怪物死亡秒消</span>
+                  <span class="hub-badge" style="color: #eab308; border-color: rgba(234,179,8,0.3);">电球特效屏蔽</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-effectpatch" class="hub-status-txt">● 0 项已启用</span>
+                  <span class="hub-enter-link">配置细则 ➔</span>
+                </div>
+              </div>
+
+              <!-- 卡片 0.6: 商城外观与特效替换 (MTX) -->
+              <div class="hub-card" id="hcard-mtxpatch" data-module="mtxpatch" data-accent="mtxpatch">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">👑</div>
+                    <div class="hub-card-names">
+                      <strong style="color: #fbbf24;">PoE 2 商城外观特效替换</strong>
+                      <span>MTX · 843 款防具 / 技能 / 门 / 宠 / 翅膀</span>
+                    </div>
+                  </div>
+                  <button id="btnQuickApplyMtxPatch" class="primary-button" style="height: 28px; padding: 0 12px; font-size: 11px; font-weight: bold; background: #d97706; border-color: #f59e0b;" title="立即应用当前勾选的外观特效">👑 应用外观</button>
+                </div>
+                <div class="hub-card-desc">
+                  PoE 2 专属外观商城库，支持 205 款全职业全身时装、79 款技能特效、245 款传送门、154 款沙虫变宠物与 146 款背饰翻滚常驻。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #fbbf24; border-color: rgba(245,158,11,0.3);">205 款全身时装</span>
+                  <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3);">79 款技能特效</span>
+                  <span class="hub-badge" style="color: #a855f7; border-color: rgba(168,85,247,0.3);">245 款传送门</span>
+                  <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3);">沙虫变宠物</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-mtxpatch" class="hub-status-txt">● 未应用</span>
+                  <span class="hub-enter-link">浏览与选装 ➔</span>
+                </div>
+              </div>
+
               <!-- 卡片 1: 词缀染色 -->
               <div class="hub-card" id="hcard-colormod" data-module="colormod">
                 <div class="hub-card-head">
@@ -316,6 +412,33 @@
                 </div>
                 <div class="hub-card-foot">
                   <span id="hubStatus-mapbeam" class="hub-status-txt">● 5 种神图光柱激活</span>
+                  <span class="hub-enter-link">配置细则 ➔</span>
+                </div>
+              </div>
+
+              <!-- 卡片 4.5: 图标替换 -->
+              <div class="hub-card" id="hcard-iconpatch" data-module="iconpatch">
+                <div class="hub-card-head">
+                  <div class="hub-card-title-group">
+                    <div class="hub-card-icon">🖼️</div>
+                    <div class="hub-card-names">
+                      <strong>图标替换</strong>
+                      <span>IconPatch · 通货与宝石图标</span>
+                    </div>
+                  </div>
+                  <input type="checkbox" id="masterToggle-iconpatch" style="cursor: pointer;" title="总开关">
+                </div>
+                <div class="hub-card-desc">
+                  替换通货、血脉宝石、终局地图与维金图标的显示样式。
+                </div>
+                <div class="hub-badges-row">
+                  <span class="hub-badge" style="color: #eab308;">通货 544</span>
+                  <span class="hub-badge" style="color: #a855f7;">血脉宝石 88</span>
+                  <span class="hub-badge" style="color: #3b82f6;">终局地图 16</span>
+                  <span class="hub-badge" style="color: #14b8a6;">维金 136</span>
+                </div>
+                <div class="hub-card-foot">
+                  <span id="hubStatus-iconpatch" class="hub-status-txt">● 未读取客户端</span>
                   <span class="hub-enter-link">配置细则 ➔</span>
                 </div>
               </div>
@@ -382,7 +505,6 @@
                       <span>FontMod · 字体替换与缩放</span>
                     </div>
                   </div>
-                  <input type="checkbox" checked id="masterToggle-fontmod" style="cursor: pointer;" title="总开关">
                 </div>
                 <div class="hub-card-desc">
                   思源黑体/霞鹜文楷/得意黑一键切换，本地 TTF 导入与字号缩放。
@@ -407,7 +529,6 @@
                       <span>Price · 原生掉落物价挂接</span>
                     </div>
                   </div>
-                  <input type="checkbox" checked id="masterToggle-price" style="cursor: pointer;" title="总开关">
                 </div>
                 <div class="hub-card-desc">
                   全品类掉落标签注入赛季物价，低价隐藏后缀减少视觉杂乱。
@@ -436,8 +557,11 @@
               <div class="wb-right-nav">
                 <span style="color: var(--text-muted, #94a3b8); font-size: 11px;">快速直达：</span>
                 <select id="wbModuleSelect" class="preset-select" style="height: 26px;">
+                  <option value="mtxpatch">👑 商城外观特效替换 (MTX)</option>
+                  <option value="effectpatch">⚡ 特效与性能优化 (Effect)</option>
                   <option value="colormod">🎨 词缀染色 (ColorMod)</option>
                   <option value="mapbeam">🌟 神图光柱 (MapBeam)</option>
+                  <option value="iconpatch">🖼️ 图标替换 (IconPatch)</option>
                   <option value="chests">📦 宝箱透视与防暴毙 (Chests)</option>
                   <option value="rumours">🔮 异界传言透视 (Rumours)</option>
                   <option value="fontmod">🔤 游戏字体与排版 (FontMod)</option>
@@ -447,9 +571,340 @@
               </div>
             </div>
 
-            <!-- 8 个功能专注视窗 -->
+            <!-- 功能专注视窗 -->
+            <!-- 模块 0.5: 游戏特效与性能优化 -->
+            <div id="psec-effectpatch" class="patcher-section hidden">
+              <div class="patcher-box" style="width: 100%;">
+                <div class="section-title-bar" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 16px;">⚡</span>
+                    <div>
+                      <strong style="color: var(--text); font-size: 14px;">游戏特效与性能优化</strong>
+                      <span style="color: var(--muted); font-size: 11px; display: block;">独立勾选各项特效与画面规则，按需自由组合，提升高压场景与密集战斗的画面流畅度</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 6px;">
+                    <button id="btnRestoreEffectRules" class="btn-compact" style="color: #f87171; border-color: rgba(239,68,68,0.3);" title="从原始备份完全还原画面与技能特效">↺ 还原全部优化</button>
+                    <button id="btnApplyEffectRules" class="primary-button" style="height: 26px; padding: 0 12px; font-size: 11px; font-weight: bold;">💾 保存并应用</button>
+                  </div>
+                </div>
+
+                <div class="effect-options-list" style="display: flex; flex-direction: column; gap: 10px;">
+                  <!-- 卡片 1: 小地图全开 -->
+                  <div class="effect-opt-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-minimap_visibility" class="effect-rule-checkbox" data-rule="minimap_visibility" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">小地图全开</strong>
+                            <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">✅ 高清轮廓区分</span>
+                          </div>
+                          <span class="effect-opt-desc">全量显示地形轮廓，保留已探索痕迹与边界高亮，不污染存档。</span>
+                        </div>
+                      </label>
+                      <button id="btnOpenMinimapColorModal" class="btn-tool-outline" type="button" style="font-size: 11px; padding: 2px 8px; margin-left: 8px; flex-shrink: 0;" title="自定义小地图已探索/边界/探索中颜色与发光">
+                        ⚙️ 轮廓颜色
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- 卡片 2: 视距拉远 (支持自由调节倍率) -->
+                  <div class="effect-opt-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-view_distance" class="effect-rule-checkbox" data-rule="view_distance" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">视距拉远</strong>
+                            <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">✅ 实机验证通过</span>
+                          </div>
+                          <span class="effect-opt-desc">拉远镜头高度，大幅提升预警视野与战场空间感。</span>
+                        </div>
+                      </label>
+                      <div style="display: flex; align-items: center; gap: 6px; margin-left: 12px;">
+                        <span style="font-size: 11px; color: var(--muted); white-space: nowrap;">缩放倍率:</span>
+                        <select id="selViewDistanceRatio" class="preset-select" style="height: 26px; padding: 0 8px; font-size: 11px; min-width: 90px;">
+                          <option value="1.5">1.5 倍</option>
+                          <option value="2.0" selected>2.0 倍 (推荐)</option>
+                          <option value="2.5">2.5 倍</option>
+                          <option value="3.0">3.0 倍 (最大)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 卡片 3: 怪物死亡特效秒消 / 尸体清理 -->
+                  <div class="effect-opt-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-monster_dead" class="effect-rule-checkbox" data-rule="monster_dead_base,monster_dead_child,monster_dead_revive" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">怪物死亡特效秒消 / 尸体清理</strong>
+                            <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">✅ 实机验证通过</span>
+                          </div>
+                          <span class="effect-opt-desc">怪物死亡瞬间清除特效并隐藏模型，防止密集怪堆积掉帧；复活时自动恢复。</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- 卡片 4: 人物技能和装备特效屏蔽 (POE2) -->
+                  <div class="effect-opt-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-spell_block_master" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">人物技能和装备特效屏蔽 (POE2)</strong>
+                            <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">🪄 110 项全收录</span>
+                            <span id="badgeSpellSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
+                          </div>
+                          <span class="effect-opt-desc">
+                            精细屏蔽热门技能与装备的高负载视觉粒子、全屏爆闪与卡顿模型，支持单项精选、搜索过滤与保留球体机制。
+                          </span>
+                        </div>
+                      </label>
+                      <button id="btnOpenSpellBlockSettings" class="btn-compact" style="margin-left: 10px; display: flex; align-items: center; gap: 5px; padding: 3px 8px; font-size: 11px; color: #38bdf8; border-color: rgba(56,189,248,0.4);" title="配置屏蔽的技能与装备列表">
+                        <span>⚙️</span>
+                        <span>技能与装备设置</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- 卡片 5: 环境去黑暗，全局亮度调整 -->
+                  <div class="effect-opt-card" style="border-color: rgba(250, 204, 21, 0.35);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-remove_dark" class="effect-rule-checkbox" data-rule="remove_dark" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">环境去黑暗，全局亮度调整</strong>
+                            <span class="hub-badge" style="color: #facc15; border-color: rgba(250, 204, 21, 0.35); font-size: 10px; padding: 1px 6px;">☀️ 8 档可调</span>
+                            <span id="badgeRemoveDarkSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
+                          </div>
+                          <span class="effect-opt-desc">
+                            支持 5 档纯去黑暗全局曝光度调节（0.1 ~ 1.5）与 3 档保留光影暗处增强，保护特殊 Boss 与赛季机制场景。
+                          </span>
+                        </div>
+                      </label>
+                      <button id="btnOpenRemoveDarkSettings" class="btn-compact" style="margin-left: 10px; display: flex; align-items: center; gap: 5px; padding: 3px 8px; font-size: 11px; color: #facc15; border-color: rgba(250, 204, 21, 0.4);" title="配置去黑暗与全局亮度档位">
+                        <span>⚙️</span>
+                        <span>亮度设置</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- 卡片 5.5: 环境去雾 -->
+                  <div class="effect-opt-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-fog_only" class="effect-rule-checkbox" data-rule="fog_env_objects,fog_affliction_attachment,fog_weather_d_fog" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">环境去雾</strong>
+                            <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">🌫️ 3项规则</span>
+                          </div>
+                          <span class="effect-opt-desc">移除场景配置中的屏幕空间雾、水面与后处理变换，并清空荒林迷雾与天气迷雾挂件（保留特殊Boss与机制场景）。</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- 卡片 5.6: 异界去雾显线 (POE2) -->
+                  <div class="effect-opt-card" style="border-color: rgba(56, 189, 248, 0.35);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-remove_fog2" class="effect-rule-checkbox" data-rule="fog2_worldmap_blend,fog2_worldmap_output,fog2_worldmap_min,fog2_worldmap_max,fog2_windeffects" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">异界去雾显线 (POE2)</strong>
+                            <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.35); font-size: 10px; padding: 1px 6px;">🗺️ 异界图鉴</span>
+                          </div>
+                          <span class="effect-opt-desc">彻底消除异界天赋与舆图迷雾阴影，强化异界连线波纹可见度，全图节点与连线一目了然。</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- 卡片 6: 关闭泛光 (Bloom) -->
+                  <div class="effect-opt-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-bloom" class="effect-rule-checkbox" data-rule="dark_bloom_cutoff,dark_bloom_gather" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">关闭泛光 (Bloom)</strong>
+                            <span class="hub-badge" style="color: var(--muted); border-color: var(--line); font-size: 10px; padding: 1px 6px;">⚪ 已实施·视觉无感</span>
+                          </div>
+                          <span class="effect-opt-desc">切断泛光层高光溢出，实测日常场景肉眼不易察觉。</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  <!-- 卡片 7: 后处理精简（7 条，只改常量） -->
+                  <div class="effect-opt-card" style="border-color: rgba(56,189,248,0.25);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-postprocess" class="effect-rule-checkbox" data-rule="pp_bloom_cutoff,pp_bloom_gather,pp_blur,pp_screenspace_shadows,pp_depth_minmax,pp_depth_of_field,pp_ambient_occlusion" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">后处理精简</strong>
+                            <span class="hub-badge" style="color: #fbbf24; border-color: rgba(251,191,36,0.3); font-size: 10px; padding: 1px 6px;">🧪 待验证</span>
+                          </div>
+                          <span class="effect-opt-desc">
+                            关闭屏幕空间阴影、环境光遮蔽（AO）、泛光、景深，并把模糊半径归零。
+                            这是帧率提升的主要来源，但会明显改变画面观感。
+                          </span>
+                          <span style="color: var(--muted); font-size: 10px; display: block; margin-top: 3px;">
+                            ⚠️ 阴影会消失、画面整体变亮。建议单独开启测试，确认无异常后再叠加其它项。
+                          </span>
+                          <span style="color: var(--muted); font-size: 10px; display: block; margin-top: 2px;">
+                            仅改写着色器里已有的常量字面量，不注入新代码，因此不会引入未定义符号。
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  <!-- 卡片 8: 环境雾关闭（.fxgraph JSON 节点改写） -->
+                  <div class="effect-opt-card" style="border-color: rgba(56,189,248,0.25);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-fog_env_disable" class="effect-rule-checkbox" data-rule="fog_env_disable" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">环境雾关闭</strong>
+                            <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">⚡ 需实机验证</span>
+                          </div>
+                          <span class="effect-opt-desc">
+                            把屏幕空间雾的像素输出改为全透明，画面不再有环境雾。
+                            只处理 materials/environment 下的 5 个纯环境雾文件。
+                          </span>
+                          <span style="color: var(--muted); font-size: 10px; display: block; margin-top: 3px;">
+                            ✅ 不影响引导光（TORMENTED SPIRITS）、Ultimatum 血雾、BOSS 技能预警 ——
+                            这些是功能性视觉，清掉会影响玩法，规则里已刻意排除。
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  <!-- 卡片 9: 泥人优化 (外层卡片带主开关，右上角齿轮设置按钮) -->
+                  <div class="effect-opt-card" style="border-color: rgba(251, 146, 60, 0.35);">                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-mudman" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">泥人</strong>
+                            <span class="hub-badge" style="color: #fb923c; border-color: rgba(251, 146, 60, 0.35); font-size: 10px; padding: 1px 6px;">⚡ 极致优化</span>
+                            <span id="badgeMudManSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
+                          </div>
+                          <span class="effect-opt-desc">
+                            分档优化怪物死亡特效、场景粒子、技能表现与场景材质贴图，极大缓解复杂战斗卡顿与显存占用。
+                          </span>
+                        </div>
+                      </label>
+                      <button id="btnOpenMudManSettings" class="btn-compact" style="margin-left: 10px; display: flex; align-items: center; gap: 5px; padding: 3px 8px; font-size: 11px; color: #fb923c; border-color: rgba(251, 146, 60, 0.4);" title="配置泥人档位与贴图压缩细则">
+                        <span>⚙️</span>
+                        <span>泥人设置</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- 卡片 10: 头顶血条 -->
+                  <div class="effect-opt-card" style="border-color: rgba(239, 68, 68, 0.35);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
+                        <input type="checkbox" id="chkOpt-healthbar" style="margin-top: 3px; cursor: pointer;">
+                        <div>
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <strong class="effect-opt-title">头顶血条</strong>
+                            <span class="hub-badge" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.35); font-size: 10px; padding: 1px 6px;">⚔️ 战斗信息</span>
+                            <span id="badgeHealthBarSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
+                          </div>
+                          <span class="effect-opt-desc">
+                            让原本隐藏头顶血条的怪物（含 Boss、精英、特殊召唤物）也显示血条。游戏机制决定血条需怪物受到伤害后出现。
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模块 0.6: PoE 2 商城外观特效替换 -->
+            <div id="psec-mtxpatch" class="patcher-section hidden">
+              <div class="patcher-box" style="width: 100%;">
+                <div class="section-title-bar" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">👑</span>
+                    <div>
+                      <strong style="color: #fbbf24; font-size: 14px;">PoE 2 全量商城外观特效替换 (MTX)</strong>
+                      <span id="badgeMtxStatus" class="tag" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 11px; margin-left: 8px;">未应用</span>
+                      <span id="badgeMtxCount" style="color: var(--text-muted, #94a3b8); font-size: 11px; margin-left: 4px;">(共 843 款特效)</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <label style="font-size: 12px; color: var(--text-muted, #94a3b8); display: flex; align-items: center; gap: 4px;">
+                      职业挂载:
+                      <select id="selMtxCharacterClass" class="preset-select" style="height: 28px; font-size: 12px;">
+                        <option value="all">全部职业 (推荐，同时生效)</option>
+                        <option value="int">女巫 (Witch — 智力)</option>
+                        <option value="intb">女术士 (Sorceress — 智力B)</option>
+                        <option value="str">战士 (Warrior — 力量)</option>
+                        <option value="dex">游侠 (Ranger — 敏捷)</option>
+                        <option value="dexb">女猎手 (Huntress — 敏捷B)</option>
+                        <option value="strdex">佣兵 (Mercenary — 力敏)</option>
+                        <option value="dexint">武僧 (Monk — 敏智)</option>
+                        <option value="intstr">德鲁伊 (Druid — 力智)</option>
+                      </select>
+                    </label>
+                    <button id="btnRestoreMtxPatch" class="secondary-button" style="height: 28px; padding: 0 12px; font-size: 12px;" title="将所有外观文件恢复至官方纯净原版">↺ 恢复纯净外观</button>
+                    <button id="btnApplyMtxPatch" class="primary-button" style="height: 28px; padding: 0 16px; font-size: 12px; font-weight: bold; background: #d97706; border-color: #f59e0b;" title="应用当前勾选与选中的全部外观特效">👑 应用外观方案</button>
+                  </div>
+                </div>
+
+                <!-- 分类 Tabs 与 搜索过滤 -->
+                <div class="mtx-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line, #2d3345);">
+                  <div class="mtx-tabs" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button class="mtx-tab-btn active" data-tab="all">全部 (843)</button>
+                    <button class="mtx-tab-btn" data-tab="ArmourSets">全身防具 (205)</button>
+                    <button class="mtx-tab-btn" data-tab="Skills">技能特效 (79)</button>
+                    <button class="mtx-tab-btn" data-tab="Portals">传送门 (245)</button>
+                    <button class="mtx-tab-btn" data-tab="Pets">沙虫变宠物 (154)</button>
+                    <button class="mtx-tab-btn" data-tab="CharacterEffects">背饰·翻滚·光效 (146)</button>
+                    <button class="mtx-tab-btn" data-tab="Misc">杂项·变身·指针 (14)</button>
+                  </div>
+                  <div class="mtx-search-box" style="display: flex; align-items: center; gap: 6px;">
+                    <input type="text" id="txtMtxSearch" placeholder="🔍 搜索特效名称、系列或部位..." style="height: 28px; width: 220px; font-size: 12px; background: var(--control, rgba(0,0,0,0.1)); border: 1px solid var(--line, #2d3345); border-radius: 4px; padding: 0 8px; color: var(--text);">
+                    <button id="btnClearMtxSearch" class="secondary-button" style="height: 28px; padding: 0 8px; font-size: 11px;">✕</button>
+                  </div>
+                </div>
+
+                <!-- 选装指示器 -->
+                <div class="mtx-selected-summary" style="display: flex; gap: 12px; font-size: 12px; color: var(--muted, #94a3b8); margin-bottom: 12px; background: var(--surface-2, rgba(0,0,0,0.05)); border: 1px solid var(--line, rgba(0,0,0,0.1)); padding: 8px 12px; border-radius: 4px; flex-wrap: wrap; align-items: center;">
+                  <strong style="color: var(--text);">已选方案:</strong>
+                  <div>防具套装: <span id="lblSelectedArmour" style="color: #fbbf24; font-weight: bold;">(未选择)</span></div>
+                  <div>传送门: <span id="lblSelectedPortal" style="color: #a855f7; font-weight: bold;">(未选择)</span></div>
+                  <div>宠物: <span id="lblSelectedPet" style="color: #34d399; font-weight: bold;">(未选择)</span></div>
+                  <div>技能/背饰/光效: <span id="lblSelectedOtherCount" style="color: #38bdf8; font-weight: bold;">0 款</span></div>
+                  <button id="btnClearAllMtxSelections" style="background: none; border: none; color: #f87171; cursor: pointer; text-decoration: underline; margin-left: auto; font-size: 11px;">清空所有选择</button>
+                </div>
+
+                <!-- 特效卡片网格 -->
+                <div id="mtxGrid" class="mtx-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; max-height: calc(100vh - 360px); overflow-y: auto; padding-right: 4px;">
+                  <!-- 卡片由 patcher.js 动态渲染 -->
+                </div>
+              </div>
+            </div>
+
             <!-- 模块 1: 词缀染色 -->
             <div id="psec-colormod" class="patcher-section">
+                <div class="patch-restore-hint">
+                  ⓘ <strong>词缀染色</strong> 会改写共享数据表，无法单独还原 ——
+                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                </div>
               <div class="patcher-grid-split">
                 <div class="patcher-box">
                   <!-- 词缀专属预设与客户端词库管理工具栏 -->
@@ -474,10 +929,18 @@
                         <span id="scanBtnText">🎮 读取客户端词库</span>
                       </button>
 
-                      <span id="clientDictBadge" class="dict-status-badge">
+                      <span class="dict-status-badge">
                         <span id="dictStatusDot" class="dict-status-dot"></span>
                         <span id="dictStatusText">词库: 内置精选 (86条)</span>
                       </span>
+
+                      <!-- 全局染色样式：作用于未单独指定样式的规则 -->
+                      <span style="color: var(--text-muted); font-size: 11px; margin-left: 4px;">染色样式：</span>
+                      <select id="patcherColorModStyle" class="preset-select" style="min-width: 130px;" title="选择词缀染色覆盖的范围">
+                        <option value="Whole">整行染色</option>
+                        <option value="NumberOnly">仅数值染色</option>
+                        <option value="FollowGame">跟随游戏原生</option>
+                      </select>
                     </div>
 
                     <div style="display: flex; gap: 6px;">
@@ -520,7 +983,7 @@
 
                   <div style="display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 11px; margin-top: 6px; flex-wrap: wrap; gap: 6px;">
                     <span id="rulesCountText">当前展示 0 条 (全库 0 条)</span>
-                    <div id="colormodPagination" style="display: flex; align-items: center; gap: 4px;">
+                    <div style="display: flex; align-items: center; gap: 4px;">
                       <button id="btnFirstPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">首页</button>
                       <button id="btnPrevPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">上一页</button>
                       <span id="pageIndicator" style="font-size: 10px; color: var(--text); padding: 0 4px;">1 / 1</span>
@@ -547,7 +1010,7 @@
                     </select>
                   </div>
 
-                  <div class="poe-item-card" id="previewPoeCard">
+                  <div class="poe-item-card">
                     <div class="poe-item-header">
                       <div class="poe-item-title" id="cardTitle">阿兹莫里山区 (Azmerian Ranges)</div>
                       <div class="poe-item-subtitle" id="cardSubtitle">阶级: 15 异界地图</div>
@@ -571,6 +1034,10 @@
 
             <!-- 模块 2: 神图光柱 -->
             <div id="psec-mapbeam" class="patcher-section hidden">
+                <div class="patch-restore-hint">
+                  ⓘ <strong>神图光柱</strong> 会改写共享数据表，无法单独还原 ——
+                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                </div>
               <div class="patcher-grid-split">
                 <div class="patcher-box" id="mapBeamListContainer"></div>
                 <div class="preview-sticky-wrap">
@@ -584,8 +1051,55 @@
               </div>
             </div>
 
+            <!-- 模块 9: 图标替换 -->
+            <div id="psec-iconpatch" class="patcher-section hidden">
+                <div class="patch-restore-hint">
+                  ⓘ <strong>图标替换</strong> 会改写共享数据表，无法单独还原 ——
+                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                </div>
+              <div class="patcher-box" style="gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <div>
+                    <strong style="color: var(--text); font-size: 12px;">图标替换</strong>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                      先读取客户端索引，只展示当前客户端真实存在的图标。勾选后点击顶部「保存并同步当前功能」写入。
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <button id="btnScanIconPatch" class="btn-compact btn-scan-client" title="读取当前游戏客户端索引，比对内置图标是否适用">
+                      <span id="iconPatchSpinner" class="hidden animate-spin">⟳</span>
+                      <span>🎮 读取客户端图标</span>
+                    </button>
+                    <button id="btnRestoreIconPatch" class="btn-compact" title="把此前写入的图标还原成客户端原始版本">
+                      <span>↩ 恢复原版图标</span>
+                    </button>
+                    <span class="dict-status-badge">
+                      <span id="iconPatchStatusDot" class="dict-status-dot"></span>
+                      <span id="iconPatchStatusText">图标库: 未读取</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div id="iconPatchToolbar" class="hidden" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                  <div id="iconPatchTabs" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+                  <input type="text" id="iconPatchSearch" placeholder="搜索图标..."
+                         style="flex: 1; min-width: 140px; height: 24px; font-size: 11px; padding: 0 8px;">
+                  <button class="btn-compact" id="btnIconSelectAll">全选</button>
+                  <button class="btn-compact" id="btnIconSelectNone">全不选</button>
+                </div>
+
+                <div id="iconPatchList" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+
+                <div id="iconPatchSummary" style="font-size: 11px; color: var(--text-muted);"></div>
+              </div>
+            </div>
+
             <!-- 模块 5: 宝箱透视与防暴毙 -->
             <div id="psec-chests" class="patcher-section hidden">
+                <div class="patch-restore-hint">
+                  ⓘ <strong>宝箱增强</strong> 会改写共享数据表，无法单独还原 ——
+                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                </div>
               <div class="patcher-grid-split">
                 <div class="patcher-box" style="gap: 12px;">
                   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
@@ -598,7 +1112,7 @@
                         <span id="scanChestsSpinner" class="hidden animate-spin">⟳</span>
                         <span>🎮 读取客户端宝箱</span>
                       </button>
-                      <span id="chestsStatusBadge" class="dict-status-badge">
+                      <span class="dict-status-badge">
                         <span id="chestsStatusDot" class="dict-status-dot"></span>
                         <span id="chestsStatusText">宝箱库: 预设</span>
                       </span>
@@ -606,16 +1120,11 @@
                   </div>
                   <div style="display: grid; gap: 6px;" id="chestsListContainer"></div>
                   <div style="border-top: 1px solid var(--border-color); padding-top: 8px;">
-                    <strong style="color: #f87171; font-size: 11px;">⚠️ 致命开箱陷阱词缀警示设置：</strong>
-                    <div style="display: grid; gap: 4px; margin-top: 6px; font-size: 11px; color: var(--text-muted);">
-                      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                        <input type="checkbox" checked id="chkChestCorpseExplode">
-                        <span>引爆附近的死尸 (高危瞬间灭顶) - 标红加粗</span>
-                      </label>
-                      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                        <input type="checkbox" checked id="chkChestIceNova">
-                        <span>释放极度冰冻与冰霜新星 - 标深蓝警示</span>
-                      </label>
+                    <strong style="color: #f87171; font-size: 11px;">⚠️ 致命开箱陷阱词缀警示：</strong>
+                    <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted); line-height: 1.6;">
+                      死尸爆炸、冰霜新星、点燃、冰冻等致命开箱词缀的染色警示，
+                      请在 <strong style="color: var(--text);">词缀染色</strong> 模块中配置 ——
+                      那里会列出客户端实际存在的全部 <code style="color: #60a5fa;">chest_display_*</code> 词缀并默认标红。
                     </div>
                   </div>
                 </div>
@@ -641,6 +1150,10 @@
 
             <!-- 模块 6: 传言奖励透视与标注 -->
             <div id="psec-rumours" class="patcher-section hidden">
+                <div class="patch-restore-hint">
+                  ⓘ <strong>传言增强</strong> 会改写共享数据表，无法单独还原 ——
+                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                </div>
               <div class="patcher-grid-split">
                 <div class="patcher-box" style="gap: 10px;">
                   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
@@ -653,7 +1166,7 @@
                         <span id="scanRumoursSpinner" class="hidden animate-spin">⟳</span>
                         <span>🎮 读取客户端传言</span>
                       </button>
-                      <span id="rumoursStatusBadge" class="dict-status-badge">
+                      <span class="dict-status-badge">
                         <span id="rumoursStatusDot" class="dict-status-dot"></span>
                         <span id="rumoursStatusText">传言库: 待读取</span>
                       </span>
@@ -702,6 +1215,10 @@
 
             <!-- 模块 7: 字体与排版 -->
             <div id="psec-fontmod" class="patcher-section hidden">
+                <div class="patch-restore-hint">
+                  ⓘ <strong>字体排版</strong> 会改写共享数据表，无法单独还原 ——
+                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                </div>
               <div class="patcher-grid-split">
                 <div class="patcher-box" style="gap: 12px;">
                   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
@@ -714,7 +1231,7 @@
                         <span id="scanFontSpinner" class="hidden animate-spin">⟳</span>
                         <span>🎮 读取客户端字体配置</span>
                       </button>
-                      <span id="fontSettingsBadge" class="dict-status-badge">
+                      <span class="dict-status-badge">
                         <span id="fontSettingsDot" class="dict-status-dot"></span>
                         <span id="fontSettingsText">模板: 待读取</span>
                       </span>
@@ -901,6 +1418,11 @@
 
             <!-- 模块 8: 原生物价注入 -->
             <div id="psec-price" class="patcher-section hidden">
+                <div class="patch-restore-hint">
+                  ⓘ <strong>物价注入</strong> 会改写共享的 BaseItemTypes 数据表，无法单独还原 ——
+                  如需撤销已写入的价格后缀，请点 <strong>🧹 清除物价</strong>；
+                  如需整体回退，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                </div>
               <div class="patcher-grid-split">
                 <div class="patcher-box" style="gap: 10px;">
                   <!-- 1. 顶部操作栏：读取客户端并预览放最上方 -->
@@ -909,6 +1431,9 @@
                       <button id="btnPreviewPricePatch" class="btn-compact btn-scan-client" type="button" style="height: 30px; padding: 0 14px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" title="从当前客户端读取实际数据表并匹配物价生成预览">
                         <span id="pricePreviewSpinner" class="hidden animate-spin">⟳</span>
                         <span id="pricePreviewBtnText">🎮 读取客户端并预览</span>
+                      </button>
+                      <button id="btnCleanPricePatch" class="btn-compact" type="button" style="height: 30px; padding: 0 14px; font-size: 11.5px; color: #f87171; border-color: rgba(239,68,68,0.4);" title="剥离已写入客户端的价格后缀，恢复为纯物品名">
+                        🧹 清除物价
                       </button>
                       <span style="color: var(--text-muted); font-size: 11px;">读取客户端双语基底表生成精准物价预览</span>
                     </div>
@@ -925,7 +1450,7 @@
                         <button id="btnPriceSelectCommon" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">推荐常用</button>
                       </div>
                     </div>
-                    <div id="priceCategoryPills" style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px;">
                       <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
                         <input type="checkbox" checked id="chkPriceCurrency" data-cat="Currency" style="cursor: pointer;">
                         <span style="color: var(--text);">基础通货</span>
@@ -1231,6 +1756,407 @@
 
       <div id="snapshotListContainer" class="snapshot-list-container">
         <!-- 由 patcher.js 动态渲染 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框: 技能特效屏蔽专属设置弹窗 -->
+  <div id="spellBlockSettingsModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="width: 780px; max-width: 95%;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">🪄</span>
+          <strong style="color: var(--text); font-size: 14px;">人物技能与装备特效屏蔽 (POE2)</strong>
+          <span class="hub-badge" style="color: var(--accent); border-color: rgba(56,189,248,0.3); font-size: 11px; padding: 1px 6px;">110 项全收录</span>
+        </div>
+        <button id="btnCloseSpellBlockModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
+      </div>
+
+      <!-- 快捷搜索与操作工具栏 -->
+      <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 220px;">
+          <input type="text" id="spellSearchInput" placeholder="🔍 搜索技能/装备名称 (如: 霹雳闪, 电球, 旋风斩, 尸爆)..." style="width: 100%; height: 30px; font-size: 12px; padding: 0 10px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; color: var(--text); box-sizing: border-box;">
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button id="btnSpellFilterOnlyChecked" class="btn-compact" style="font-size: 11px; height: 28px; padding: 0 8px;">仅看已选 (0)</button>
+          <button id="btnSpellSelectAllVisible" class="btn-compact" style="font-size: 11px; height: 28px; padding: 0 8px;">全选当前</button>
+          <button id="btnSpellClearAll" class="btn-compact" style="font-size: 11px; height: 28px; padding: 0 8px;">清空已选</button>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 11px; color: var(--text); margin-left: 4px; white-space: nowrap; user-select: none;">
+            <input type="checkbox" id="chkSpellIncludeAudio" checked style="cursor: pointer;">
+            <span>同步屏蔽音效</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 技能网格容器 (4 列，动态生成 110 项) -->
+      <div id="spellGridContainer" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 400px; min-height: 220px; overflow-y: auto; padding-right: 4px;">
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px;">
+        <button id="btnRestoreSpellBlocksInModal" class="btn-compact" style="color: #f87171; border-color: rgba(239,68,68,0.3);" title="从独立备份完全还原技能特效">↺ 还原技能特效</button>
+        <span id="spellSelectCountBadge" style="color: var(--muted); font-size: 12px;">已选择 0 项</span>
+        <button id="btnSaveSpellBlockModal" class="primary-button" style="height: 28px; padding: 0 16px; font-size: 12px;" title="将当前勾选的技能写入客户端">应用屏蔽</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框: 泥人专属设置弹窗 -->
+  <div id="mudManSettingsModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="width: 540px; max-width: 92%;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">🥔</span>
+          <strong style="color: var(--text); font-size: 14px;">泥人档位设置</strong>
+        </div>
+        <button id="btnCloseMudManModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
+      </div>
+
+      <!-- 贴图表状态与说明 -->
+      <div id="mudManTableStatus" style="padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 8px;"></div>
+
+      <!-- 六档单选列表 -->
+      <div class="effect-options-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; padding-right: 4px;">
+        <div class="effect-opt-card" data-tier="0">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="0" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">低级（技能除外）</strong>
+                <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">改动最轻</span>
+              </div>
+              <span class="effect-opt-desc">清掉怪物死亡特效与场景粒子，保留技能特效。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-tier="1">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="1" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">中级（包括技能）</strong>
+                <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">常用</span>
+              </div>
+              <span class="effect-opt-desc">在低级基础上再清掉技能特效与音效事件，战斗画面最干净。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-tier="2">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="2" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">高级（包括模型）</strong>
+              </div>
+              <span class="effect-opt-desc">在中级基础上清掉全部粒子与拖尾，画面元素最少。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-tier="3" style="border-color: rgba(251,146,60,0.35);">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="3" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">低级 + 大幅压缩材质</strong>
+                <span class="hub-badge" style="color: #fb923c; border-color: rgba(251,146,60,0.35); font-size: 10px; padding: 1px 6px;">🥔 显存</span>
+              </div>
+              <span class="effect-opt-desc">低级特效 + 把 3D 场景贴图压成极小尺寸，显存占用大幅下降。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-tier="4" style="border-color: rgba(251,146,60,0.45);">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="4" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">中级 + 大幅压缩材质</strong>
+                <span class="hub-badge" style="color: #fb923c; border-color: rgba(251,146,60,0.35); font-size: 10px; padding: 1px 6px;">🥔 推荐</span>
+              </div>
+              <span class="effect-opt-desc">中级特效 + 贴图压缩，显存与战斗画面同时优化。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-tier="5" style="border-color: rgba(251,146,60,0.5);">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalMudManTier" class="mudman-tier-radio" value="5" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">高级 + 大幅压缩材质</strong>
+                <span class="hub-badge" style="color: #f87171; border-color: rgba(248,113,113,0.35); font-size: 10px; padding: 1px 6px;">压到最狠</span>
+              </div>
+              <span class="effect-opt-desc">高级特效 + 贴图压缩，画面损失最大，显存占用最低。</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px; font-size: 10px; color: var(--muted); line-height: 1.5;">
+        ✅ 贴图压缩只处理场景贴图，界面/物品图标/地图保持原样。<br>
+        ⚠️ 采用预置紧凑块极速替换，速度快且不损坏客户端文件。
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 6px;">
+        <button id="btnRestoreMudManInModal" class="btn-compact" style="color: #f87171; border-color: rgba(239,68,68,0.3);" title="单独还原泥人改动">↺ 单独还原泥人</button>
+        <button id="btnSaveMudManModal" class="primary-button" style="height: 28px; padding: 0 16px; font-size: 12px;">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框: 环境去黑暗与全局亮度调整设置弹窗 -->
+  <div id="removeDarkSettingsModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="width: 540px; max-width: 92%;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">☀️</span>
+          <strong style="color: var(--text); font-size: 14px;">环境去黑暗，全局亮度调整</strong>
+        </div>
+        <button id="btnCloseRemoveDarkModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
+      </div>
+
+      <!-- 八档单选列表 -->
+      <div class="effect-options-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px;">
+        <div class="effect-opt-card" data-dark-level="0.1">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="0.1" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">0.1</strong>
+                <span class="hub-badge" style="color: #94a3b8; border-color: rgba(148,163,184,0.3); font-size: 10px; padding: 1px 6px;">极低曝光</span>
+              </div>
+              <span class="effect-opt-desc">移除光源与泛光，统一全局曝光度为 0.1（适合极亮场景压暗）。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-dark-level="0.3">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="0.3" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">0.3</strong>
+                <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">偏暗柔和</span>
+              </div>
+              <span class="effect-opt-desc">移除光源与泛光，统一全局曝光度为 0.3（柔和不刺眼）。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-dark-level="0.5">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="0.5" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">0.5</strong>
+                <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">适中曝光</span>
+              </div>
+              <span class="effect-opt-desc">移除光源与泛光，统一全局曝光度为 0.5（均衡亮度）。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-dark-level="1.0" style="border-color: rgba(250,204,21,0.4);">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="1.0" checked style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">1.0</strong>
+                <span class="hub-badge" style="color: #facc15; border-color: rgba(250,204,21,0.35); font-size: 10px; padding: 1px 6px;">默认推荐</span>
+              </div>
+              <span class="effect-opt-desc">标准去黑暗：移除光源与泛光，统一全局曝光度为 1.0。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-dark-level="1.5">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="1.5" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">1.5</strong>
+                <span class="hub-badge" style="color: #fb923c; border-color: rgba(251,146,60,0.35); font-size: 10px; padding: 1px 6px;">高亮曝光</span>
+              </div>
+              <span class="effect-opt-desc">移除光源与泛光，统一全局曝光度为 1.5（暗图最亮）。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-dark-level="990.5" style="border-color: rgba(56,189,248,0.35);">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="990.5" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">包含光影-增强1</strong>
+                <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.35); font-size: 10px; padding: 1px 6px;">保留光影 · 0.5x</span>
+              </div>
+              <span class="effect-opt-desc">保留原版光影与泛光，仅将过暗光源亮度乘数（&lt;0.5）提升至 0.5。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-dark-level="991" style="border-color: rgba(56,189,248,0.4);">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="991" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">包含光影-增强2</strong>
+                <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.35); font-size: 10px; padding: 1px 6px;">保留光影 · 1.0x</span>
+              </div>
+              <span class="effect-opt-desc">保留原版光影与泛光，将过暗光源亮度乘数提升至 1.0。</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="effect-opt-card" data-dark-level="991.5" style="border-color: rgba(56,189,248,0.45);">
+          <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start;">
+            <input type="radio" name="modalRemoveDarkLevel" class="remove-dark-level-radio" value="991.5" style="margin-top: 3px; cursor: pointer;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong class="effect-opt-title">包含光影-增强3</strong>
+                <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.35); font-size: 10px; padding: 1px 6px;">保留光影 · 1.5x</span>
+              </div>
+              <span class="effect-opt-desc">保留原版光影与泛光，将过暗光源亮度乘数提升至 1.5。</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px; font-size: 10px; color: var(--muted); line-height: 1.5;">
+        ✅ 自动保护特殊 Boss 战场、迷雾森林灵火、仪式祭坛与先驱灯笼等 32 类关键视觉场景。<br>
+        💡 选择档位后点击工作台右上角「💾 保存并应用」即可生效，支持随时无损切换档位或取消勾选还原。
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 6px;">
+        <button id="btnSaveRemoveDarkModal" class="primary-button" style="height: 28px; padding: 0 16px; font-size: 12px;">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框: 小地图颜色设置弹窗 -->
+  <div id="minimapColorModal" class="modal-overlay hidden">
+    <div class="modal-dialog" style="width: 560px; max-width: 95%;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">🗺️</span>
+          <strong style="color: var(--text); font-size: 14px;">小地图颜色设置</strong>
+        </div>
+        <button id="btnCloseMinimapColorModal" class="wb-back-btn" style="width: 24px; height: 24px; padding: 0; justify-content: center;">✕</button>
+      </div>
+
+      <div style="margin-top: 10px; margin-bottom: 12px; font-size: 11px; color: var(--muted); line-height: 1.4;">
+        点击预览色块可调出调色板选色；也可用 R/G/B/A 滑块逐通道微调（0~255）。
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px; max-height: 420px; overflow-y: auto; padding-right: 4px;">
+        <!-- 已探索区域色 -->
+        <div class="color-setting-row" style="display: flex; flex-direction: column; gap: 6px; background: var(--card-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line);">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 12px; font-weight: 600; color: var(--text); width: 85px;">已探索区域色:</span>
+              <input type="color" id="mmColorExploredPicker" style="width: 48px; height: 26px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; padding: 0; background: none;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; margin-left: 12px;">
+              <span style="font-size: 11px; color: #ef4444;">R</span>
+              <input type="range" id="mmExploredR" min="0" max="255" value="0" style="flex: 1;">
+              <span id="valExploredR" style="font-size: 11px; width: 24px; text-align: right;">0</span>
+
+              <span style="font-size: 11px; color: #10b981; margin-left: 4px;">G</span>
+              <input type="range" id="mmExploredG" min="0" max="255" value="0" style="flex: 1;">
+              <span id="valExploredG" style="font-size: 11px; width: 24px; text-align: right;">0</span>
+
+              <span style="font-size: 11px; color: #3b82f6; margin-left: 4px;">B</span>
+              <input type="range" id="mmExploredB" min="0" max="255" value="0" style="flex: 1;">
+              <span id="valExploredB" style="font-size: 11px; width: 24px; text-align: right;">0</span>
+
+              <span style="font-size: 11px; color: #a855f7; margin-left: 4px;">A</span>
+              <input type="range" id="mmExploredA" min="0" max="255" value="76" style="flex: 1;">
+              <span id="valExploredA" style="font-size: 11px; width: 24px; text-align: right;">76</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 边界色 -->
+        <div class="color-setting-row" style="display: flex; flex-direction: column; gap: 6px; background: var(--card-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line);">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 12px; font-weight: 600; color: var(--text); width: 85px;">边界色:</span>
+              <input type="color" id="mmColorBorderPicker" style="width: 48px; height: 26px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; padding: 0; background: none;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; margin-left: 12px;">
+              <span style="font-size: 11px; color: #ef4444;">R</span>
+              <input type="range" id="mmBorderR" min="0" max="255" value="0" style="flex: 1;">
+              <span id="valBorderR" style="font-size: 11px; width: 24px; text-align: right;">0</span>
+
+              <span style="font-size: 11px; color: #10b981; margin-left: 4px;">G</span>
+              <input type="range" id="mmBorderG" min="0" max="255" value="120" style="flex: 1;">
+              <span id="valBorderG" style="font-size: 11px; width: 24px; text-align: right;">120</span>
+
+              <span style="font-size: 11px; color: #3b82f6; margin-left: 4px;">B</span>
+              <input type="range" id="mmBorderB" min="0" max="255" value="215" style="flex: 1;">
+              <span id="valBorderB" style="font-size: 11px; width: 24px; text-align: right;">215</span>
+
+              <span style="font-size: 11px; color: #a855f7; margin-left: 4px;">A</span>
+              <input type="range" id="mmBorderA" min="0" max="255" value="26" style="flex: 1;">
+              <span id="valBorderA" style="font-size: 11px; width: 24px; text-align: right;">26</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 探索中色 -->
+        <div class="color-setting-row" style="display: flex; flex-direction: column; gap: 6px; background: var(--card-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line);">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 12px; font-weight: 600; color: var(--text); width: 85px;">探索中色:</span>
+              <input type="color" id="mmColorExploringPicker" style="width: 48px; height: 26px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; padding: 0; background: none;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; margin-left: 12px;">
+              <span style="font-size: 11px; color: #ef4444;">R</span>
+              <input type="range" id="mmExploringR" min="0" max="255" value="0" style="flex: 1;">
+              <span id="valExploringR" style="font-size: 11px; width: 24px; text-align: right;">0</span>
+
+              <span style="font-size: 11px; color: #10b981; margin-left: 4px;">G</span>
+              <input type="range" id="mmExploringG" min="0" max="255" value="128" style="flex: 1;">
+              <span id="valExploringG" style="font-size: 11px; width: 24px; text-align: right;">128</span>
+
+              <span style="font-size: 11px; color: #3b82f6; margin-left: 4px;">B</span>
+              <input type="range" id="mmExploringB" min="0" max="255" value="255" style="flex: 1;">
+              <span id="valExploringB" style="font-size: 11px; width: 24px; text-align: right;">255</span>
+
+              <span style="font-size: 11px; color: #a855f7; margin-left: 4px;">A</span>
+              <input type="range" id="mmExploringA" min="0" max="255" value="128" style="flex: 1;">
+              <span id="valExploringA" style="font-size: 11px; width: 24px; text-align: right;">128</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 边界发光 / 探索中发光 / 可见阈值 滑块 -->
+        <div style="display: flex; flex-direction: column; gap: 10px; background: var(--card-bg); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line);">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 12px; font-weight: 500; color: var(--text); width: 85px;">边界发光:</span>
+            <input type="range" id="mmBorderGlow" min="0" max="50" step="1" value="13" style="flex: 1; margin: 0 12px;">
+            <span id="valBorderGlow" style="font-size: 12px; width: 32px; text-align: right; font-variant-numeric: tabular-nums;">13</span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 12px; font-weight: 500; color: var(--text); width: 85px;">探索中发光:</span>
+            <input type="range" id="mmExploringGlow" min="0" max="20" step="1" value="1" style="flex: 1; margin: 0 12px;">
+            <span id="valExploringGlow" style="font-size: 12px; width: 32px; text-align: right; font-variant-numeric: tabular-nums;">1</span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 12px; font-weight: 500; color: var(--text); width: 85px;">可见阈值:</span>
+            <input type="range" id="mmVisibilityThreshold" min="0.05" max="0.50" step="0.01" value="0.18" style="flex: 1; margin: 0 12px;">
+            <span id="valVisibilityThreshold" style="font-size: 12px; width: 32px; text-align: right; font-variant-numeric: tabular-nums;">0.18</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px;">
+        <button id="btnResetMinimapColor" class="btn-tool-outline" style="height: 28px; padding: 0 14px; font-size: 12px;">重置默认</button>
+        <button id="btnSaveMinimapColor" class="primary-button" style="height: 28px; padding: 0 16px; font-size: 12px;">完成</button>
       </div>
     </div>
   </div>

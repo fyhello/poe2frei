@@ -10,11 +10,21 @@ using FreiAtlas.Core.Settings;
 using FreiAtlas.Core.Recovery;
 using FreiAtlas.Core.PortalSqueeze;
 using FreiAtlas.Patcher;
+using FreiAtlas.Patcher.EffectPatch.MudMan;
+using FreiAtlas.Patcher.IconPatch;
+using FreiAtlas.Patcher.Translation;
 using System.Windows.Threading;
 using FreiAtlas.Settings.Bridge;
 using FreiAtlas.Settings.Hotkeys;
 using FreiAtlas.Settings.Windowing;
 using Microsoft.Web.WebView2.Core;
+using FreiAtlas.Patcher.Core;
+using FreiAtlas.Patcher.Modules.ColorMod;
+using FreiAtlas.Patcher.Modules.Price;
+using FreiAtlas.Patcher.Modules.Font;
+using FreiAtlas.Patcher.Modules.Name;
+using FreiAtlas.Patcher.Modules.Rumour;
+using FreiAtlas.Patcher.Modules.MapBeam;
 
 namespace FreiAtlas.Settings;
 
@@ -44,6 +54,17 @@ public partial class MainWindow : Window
     private string? _patcherMessage;
     private string? _patcherError;
     private PendingPricePatch? _pendingPricePatch;
+
+    /// <summary>
+    /// 补丁写入互斥闸。
+    ///
+    /// 多个补丁服务会改写同一批数据表（baseitemtypes、endgamemaps、uisettings 等），
+    /// 各自「读取当前内容 → 修改 → 写回」。并发执行时后写入的一方会覆盖前一方，
+    /// 表现为某个补丁莫名其妙失效。
+    ///
+    /// 采用拒绝而非排队：排队会让用户连点多次后重复执行多次全量重写，耗时且无意义。
+    /// </summary>
+    private readonly PatchConcurrencyGate _patchGate = new();
 
     private sealed record PendingPricePatch(
         PricePatchService.PricePatchPreview Preview,
@@ -170,6 +191,20 @@ public partial class MainWindow : Window
             return;
         }
 
+        // 补丁写入互斥：同一时刻只允许一个写补丁任务。
+        // 前端虽然会禁用按钮，但那只是即时反馈，真正的互斥必须在这里做 ——
+        // 消息是异步派发的，连点两次会进来两个 Task。
+        IDisposable? gateLease = null;
+        if (IsWriteCommand(command))
+        {
+            gateLease = _patchGate.TryEnter();
+            if (gateLease is null)
+            {
+                SendPatcherSnapshot(error: "另一个补丁正在写入客户端，请等待其完成后再操作。");
+                return;
+            }
+        }
+
         try
         {
             switch (command)
@@ -234,17 +269,11 @@ public partial class MainWindow : Window
                 case ApplyFontPatchWebCommand applyFont:
                     await HandleApplyFontPatchAsync(applyFont);
                     break;
-                case ApplyUiColorPatchWebCommand applyUiColor:
-                    await HandleApplyUiColorPatchAsync(applyUiColor);
-                    break;
                 case ApplyRumourPatchWebCommand applyRumour:
                     await HandleApplyRumourPatchAsync(applyRumour);
                     break;
                 case ApplyChestPatchWebCommand applyChest:
                     await HandleApplyChestPatchAsync(applyChest);
-                    break;
-                case ApplyArchnemesisPatchWebCommand applyArchnemesis:
-                    await HandleApplyArchnemesisPatchAsync(applyArchnemesis);
                     break;
                 case ApplyColorModPatchWebCommand applyColorMod:
                     await HandleApplyColorModPatchAsync(applyColorMod);
@@ -266,6 +295,16 @@ public partial class MainWindow : Window
                     break;
                 case CleanPricePatchWebCommand cleanPrice:
                     await HandleCleanPricePatchAsync(cleanPrice);
+
+                    break;
+                case GetMtxDatabaseWebCommand:
+                    HandleGetMtxDatabase();
+                    break;
+                case ApplyMtxPatchWebCommand applyMtx:
+                    await HandleApplyMtxPatchAsync(applyMtx);
+                    break;
+                case RestoreMtxPatchWebCommand:
+                    await HandleRestoreMtxPatchAsync();
                     break;
                 case RestoreAllPatchesWebCommand:
                     await HandleRestoreAllPatchesAsync();
@@ -288,7 +327,42 @@ public partial class MainWindow : Window
                 case UpdateHotkeyWebCommand update:
                     await UpdateHotkeyAsync(update.Hotkey);
                     break;
-                case ResetPageWebCommand reset:
+                case ScanIconPatchWebCommand:
+                    await HandleScanIconPatchAsync();
+                    break;
+                case ApplyIconPatchWebCommand applyIcon:
+                    await HandleApplyIconPatchAsync(applyIcon);
+                    break;
+                case ApplyTranslationPatchWebCommand:
+                    await HandleApplyTranslationPatchAsync();
+                    break;
+                case ApplyEffectPatchWebCommand applyEffect:
+                    await HandleApplyEffectPatchAsync(applyEffect);
+                    break;
+                case RestoreEffectPatchWebCommand:
+                    await HandleRestoreEffectPatchAsync();
+                    break;
+                case ApplyMudManTierWebCommand applyMudMan:
+                    await HandleApplyMudManTierAsync(applyMudMan);
+                    break;
+                case RestoreMudManWebCommand:
+                    await HandleRestoreMudManAsync();
+                    break;
+                case ApplyHealthBarWebCommand:
+                    await HandleApplyHealthBarAsync();
+                    break;
+                case RestoreHealthBarWebCommand:
+                    await HandleRestoreHealthBarAsync();
+                    break;
+                case ApplySpellBlockWebCommand applySpell:
+                    await HandleApplySpellBlockAsync(applySpell);
+                    break;
+                case RestoreSpellBlockWebCommand restoreSpell:
+                    await HandleRestoreSpellBlockAsync(restoreSpell);
+                    break;
+                case ApplyAllEffectsWebCommand applyAll:
+                    await HandleApplyAllEffectsAsync(applyAll);
+                    break;                case ResetPageWebCommand reset:
                     await ResetPageAsync(reset.Page);
                     break;
                 case ResetAllWebCommand:
@@ -296,7 +370,8 @@ public partial class MainWindow : Window
                     SendPricesSnapshot(force: true);
                     UpdateQuickAssistSettings(QuickAssistSettings.Default);
                     SendQuickAssistSnapshot();
-                    _settingsStore!.UpdateClientPatch(ClientPatchSettings.Default);
+                    // 补丁设置复位，但游戏目录属于环境信息，保留用户已选路径。
+                    ResetClientPatchSettingsKeepingDirectory();
                     SendPatcherSnapshot();
                     await _runtime.UpdateSettingsAsync(DefaultSettings());
                     break;
@@ -314,14 +389,71 @@ public partial class MainWindow : Window
                 SendPricesSnapshot(exception.Message);
             if (command is UpdateQuickAssistWebCommand) SendQuickAssistSnapshot(exception.Message);
             if (command is UpdateHotkeyWebCommand) _runtime.SetHotkeyRegistrationError(exception.Message);
-            if (command is SetPatcherGameDirWebCommand or ApplyFontPatchWebCommand or ApplyUiColorPatchWebCommand or ApplyRumourPatchWebCommand or ApplyChestPatchWebCommand or ApplyArchnemesisPatchWebCommand or ApplyColorModPatchWebCommand or RestoreAllPatchesWebCommand or CreatePatcherSnapshotWebCommand or RestorePatcherSnapshotWebCommand or DeletePatcherSnapshotWebCommand)
+            if (command is SetPatcherGameDirWebCommand or ApplyFontPatchWebCommand or ApplyRumourPatchWebCommand or ApplyChestPatchWebCommand or ApplyColorModPatchWebCommand or ApplyMtxPatchWebCommand or RestoreMtxPatchWebCommand or RestoreAllPatchesWebCommand or CreatePatcherSnapshotWebCommand or RestorePatcherSnapshotWebCommand or DeletePatcherSnapshotWebCommand)
                 SendPatcherSnapshot(error: exception.Message);
             if (_runtime is not null)
             {
                 SendSnapshot(_runtime.Current);
             }
         }
+        finally
+        {
+            // 无论成功、失败还是取消，都必须释放闸门，否则后续补丁全部被拒。
+            if (gateLease is not null)
+            {
+                gateLease.Dispose();
+
+                // 闸门释放后必须立刻把 patchBusy=false 推给前端。
+                //
+                // 写入型 handler 内部最后一条快照是在 try 块里发的，那一刻闸门
+                // 尚未释放，所以前端收到的 patchBusy 必然是 true。前端据此把
+                // 18 个补丁按钮全部 disabled 且不关闭操作遮罩；若此处不补发，
+                // 前端会永久停在「另一个补丁正在写入」的状态，除非重启程序。
+                //
+                // 这里走轻量通道而不是 SendPatcherSnapshot()：后者会重新执行
+                // GetGameInfo / HasBackup / GetSnapshots，各触发一次完整客户端
+                // 探测，而本次只需要同步一个布尔值。
+                SendPatchBusyState();
+            }
+        }
     }
+
+    /// <summary>
+    /// 该命令是否会写入客户端文件。
+    ///
+    /// 只有写入型命令才需要占用补丁互斥闸；扫描、查询、切换进程等只读命令不占用，
+    /// 否则用户在看行情时点不了任何按钮。
+    ///
+    /// 清单覆盖全部补丁模块的「应用」与「还原」入口，以及快照的增删还原 ——
+    /// 快照操作会改写 _.index.bin，同样属于写入。
+    /// </summary>
+    private static bool IsWriteCommand(WebCommand command) => command is
+        ApplyFontPatchWebCommand
+        or ApplyRumourPatchWebCommand
+        or ApplyChestPatchWebCommand
+        or ApplyColorModPatchWebCommand
+        or ApplyMapBeamPatchWebCommand
+        or ApplyPricePatchWebCommand
+        or ApplyCurrentPricesPatchWebCommand
+        or ConfirmCurrentPricesPatchWebCommand
+        or CleanPricePatchWebCommand
+        or RestoreAllPatchesWebCommand
+        or ApplyTranslationPatchWebCommand
+        or ApplyIconPatchWebCommand
+        or ApplyEffectPatchWebCommand
+        or RestoreEffectPatchWebCommand
+        or ApplySpellBlockWebCommand
+        or RestoreSpellBlockWebCommand
+        or ApplyAllEffectsWebCommand
+        or ApplyMudManTierWebCommand
+        or RestoreMudManWebCommand
+        or ApplyHealthBarWebCommand
+        or RestoreHealthBarWebCommand
+        or ApplyMtxPatchWebCommand
+        or RestoreMtxPatchWebCommand
+        or CreatePatcherSnapshotWebCommand
+        or RestorePatcherSnapshotWebCommand
+        or DeletePatcherSnapshotWebCommand;
 
     private async Task ResetPageAsync(string page)
     {
@@ -344,7 +476,9 @@ public partial class MainWindow : Window
         }
         if (page == "clientPatch")
         {
-            _settingsStore!.UpdateClientPatch(ClientPatchSettings.Default);
+            // 只重置补丁配置，保留游戏目录 —— 清空路径会迫使非默认安装位置的
+            // 用户重新选择一次客户端，而路径本身不属于「补丁设置」。
+            ResetClientPatchSettingsKeepingDirectory();
             SendPatcherSnapshot(message: "客户端补丁设置已恢复默认。若需恢复纯净游戏文件，请点击【一键恢复纯净原版】。");
             return;
         }
@@ -362,7 +496,15 @@ public partial class MainWindow : Window
             {
                 Edges = defaults.Edges,
                 Highlight = defaults.Highlight,
-                Labels = defaults.Labels
+                Labels = defaults.Labels,
+                AreaMap = current.AreaMap with
+                {
+                    OverlayScale = defaults.AreaMap.OverlayScale,
+                    ExpeditionPanel = current.AreaMap.ExpeditionPanel with
+                    {
+                        Scale = defaults.AreaMap.ExpeditionPanel.Scale
+                    }
+                }
             },
             _ => current
         });
@@ -725,54 +867,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task HandleApplyUiColorPatchAsync(ApplyUiColorPatchWebCommand cmd)
-    {
-        if (_patcher is null || _settingsStore is null) return;
-        if (PatcherFacade.IsGameRunning())
-        {
-            SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
-            return;
-        }
-
-        _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
-        {
-            CustomColors = cmd.Colors
-        });
-
-        var entries = cmd.Colors.Select(c =>
-        {
-            var entry = new UiColorEntry
-            {
-                ColourKey = c.Key,
-                DisplayName = c.DisplayName,
-                Enabled = c.Enabled
-            };
-            entry.SetFromColorString(c.Value);
-            return entry;
-        });
-
-        SendPatcherSnapshot(message: "正在准备应用 UI 配色补丁，请稍候...");
-        string? progressLog = null;
-        RecordAutoSnapshot("UI配色写入");
-        bool success = await Task.Run(() => _patcher.ApplyUiColors(
-            entries,
-            _settingsStore.ClientPatch.CustomGameDirectory,
-            msg =>
-            {
-                progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-            }));
-
-        if (success)
-        {
-            SendPatcherSnapshot(message: progressLog ?? "UI 颜色补丁已成功应用！");
-        }
-        else
-        {
-            SendPatcherSnapshot(error: progressLog ?? "UI 颜色补丁应用失败。");
-        }
-    }
-
     private async Task HandleApplyRumourPatchAsync(ApplyRumourPatchWebCommand cmd)
     {
         if (_patcher is null || _settingsStore is null) return;
@@ -874,50 +968,6 @@ public partial class MainWindow : Window
         else
         {
             SendPatcherSnapshot(message: "已保存保险箱设置。注意：若需彻底恢复原版文本，请点击下方【一键恢复纯净原版】。");
-        }
-    }
-
-    private async Task HandleApplyArchnemesisPatchAsync(ApplyArchnemesisPatchWebCommand cmd)
-    {
-        if (_patcher is null || _settingsStore is null) return;
-        if (PatcherFacade.IsGameRunning())
-        {
-            SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
-            return;
-        }
-
-        _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
-        {
-            ArchnemesisEnhanced = cmd.Enabled
-        });
-
-        if (cmd.Enabled)
-        {
-            SendPatcherSnapshot(message: "正在准备应用高价值宿敌怪高亮补丁，请稍候...");
-            string? progressLog = null;
-            RecordAutoSnapshot("特殊名称补丁写入");
-            bool success = await Task.Run(() => _patcher.ApplyNamePatch(
-                NamePatchKind.ArchnemesisMods,
-                _settingsStore.ClientPatch.CustomGameDirectory,
-                customMappings: null,
-                progress: msg =>
-                {
-                    progressLog = msg;
-                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-                }));
-
-            if (success)
-            {
-                SendPatcherSnapshot(message: progressLog ?? "宿敌高价值怪物词缀高亮补丁已成功应用！");
-            }
-            else
-            {
-                SendPatcherSnapshot(error: progressLog ?? "宿敌词缀高亮补丁应用失败。");
-            }
-        }
-        else
-        {
-            SendPatcherSnapshot(message: "已保存宿敌高亮设置。注意：若需彻底恢复原版文本，请点击下方【一键恢复纯净原版】。");
         }
     }
 
@@ -1033,10 +1083,8 @@ public partial class MainWindow : Window
         _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
         {
             PricePatchEnabled = true,
-            PricePatchMode = cmd.Mode,
             PricePatchSeparator = cmd.Separator,
             PricePatchMinExalted = minExalted,
-            PricePatchUnitMode = unitMode,
             PricePatchStripExisting = stripExisting,
             PricePatchCategories = cmd.Categories
         });
@@ -1116,10 +1164,8 @@ public partial class MainWindow : Window
         _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
         {
             PricePatchEnabled = true,
-            PricePatchMode = cmd.Mode,
             PricePatchSeparator = cmd.Separator,
             PricePatchMinExalted = minExalted,
-            PricePatchUnitMode = unitMode,
             PricePatchStripExisting = stripExisting,
             PricePatchCategories = cmd.Categories
         });
@@ -1249,6 +1295,55 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// 校验前端传入的物价 CSV 路径。
+    ///
+    /// 该路径最终会交给 <c>PricePatchService.LoadPriceRowsFromCsv</c> 直接读取，
+    /// 中间没有任何目录限制，因此只允许用户目录或临时目录下的 .csv 文件，
+    /// 避免被指到系统文件或客户端本体上。
+    /// </summary>
+    private static bool IsAllowedPriceCsvPath(string csvPath)
+    {
+        if (string.IsNullOrWhiteSpace(csvPath)) return false;
+
+        string full;
+        try
+        {
+            full = Path.GetFullPath(csvPath);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+
+        if (!string.Equals(Path.GetExtension(full), ".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // 只在用户可写目录（文档 / 下载 / 桌面 / 临时）下读取，
+        // 防止被指向系统目录或游戏客户端内部文件。
+        string[] allowedRoots =
+        [
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            Path.GetTempPath()
+        ];
+
+        foreach (var root in allowedRoots)
+        {
+            if (string.IsNullOrEmpty(root)) continue;
+            string normalizedRoot = Path.GetFullPath(root)
+                .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (full.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private async Task HandleApplyPricePatchAsync(ApplyPricePatchWebCommand cmd)
     {
         if (_patcher is null || _settingsStore is null) return;
@@ -1261,9 +1356,7 @@ public partial class MainWindow : Window
         _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
         {
             PricePatchEnabled = true,
-            PricePatchMode = cmd.Mode,
             PricePatchSeparator = cmd.Separator,
-            PricePatchCsvPath = cmd.CsvPath
         });
 
         SendPatcherSnapshot(message: "正在解析物价数据并准备注入客户端...");
@@ -1271,6 +1364,14 @@ public partial class MainWindow : Window
         List<PriceRow> priceRows = [];
         if (!string.IsNullOrWhiteSpace(cmd.CsvPath) && File.Exists(cmd.CsvPath))
         {
+            // CSV 路径由前端传入，必须过一遍白名单校验。
+            // WebMessageRouter 的字段防护只挡 address/offset 之类的关键词，
+            // 不挡路径，所以任何本地文件都可能被指定读取。
+            if (!IsAllowedPriceCsvPath(cmd.CsvPath))
+            {
+                SendPatcherSnapshot(error: "物价 CSV 只允许读取 .csv 文件，该路径已被拒绝。");
+                return;
+            }
             priceRows = PricePatchService.LoadPriceRowsFromCsv(cmd.CsvPath);
         }
 
@@ -1355,15 +1456,14 @@ public partial class MainWindow : Window
 
         if (result.Success)
         {
-            // 还原成功后，将后端的全部补丁启用开关重置为关闭状态
-            _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
-            {
-                ColorModEnabled = false,
-                MapBeamEnabled = false,
-                ChestEnhanced = false,
-                RumourEnhanced = false,
-                PricePatchEnabled = false
-            });
+            // 索引已回滚为纯净官方版本，磁盘上的模块状态与逐文件备份必须同步清理。
+            // 只重置开关是不够的：泥人/血条的 state.json 仍记着 applied=true，
+            // 会让「再次应用同一档位」被判定为无需写入而永久跳过。
+            _patcher.ClearTransientPatchStates();
+
+            // 恢复默认设置时必须保留用户手动指定的游戏目录，
+            // 否则非默认安装路径的用户会被要求重新选择一次客户端。
+            ResetClientPatchSettingsKeepingDirectory();
 
             SendPatcherSnapshot(message: result.Message);
         }
@@ -1371,6 +1471,22 @@ public partial class MainWindow : Window
         {
             SendPatcherSnapshot(error: result.Message);
         }
+    }
+
+    /// <summary>
+    /// 把补丁设置整体复位为默认值，但保留用户手动指定的游戏目录。
+    ///
+    /// <see cref="ClientPatchSettings.Default"/> 的 <c>CustomGameDirectory</c> 是 null，
+    /// 直接整体覆盖会让非默认安装路径的用户丢失已选目录，被迫重新选择客户端。
+    /// 该目录属于「环境信息」而非「补丁配置」，不应被补丁状态重置波及。
+    /// </summary>
+    private void ResetClientPatchSettingsKeepingDirectory()
+    {
+        if (_settingsStore is null) return;
+
+        string? currentDir = _settingsStore.ClientPatch.CustomGameDirectory;
+        _settingsStore.UpdateClientPatch(
+            ClientPatchSettings.Default with { CustomGameDirectory = currentDir });
     }
 
     private BackupRestoreResult? RecordAutoSnapshot(string? patchActionName = null)
@@ -1469,18 +1585,20 @@ public partial class MainWindow : Window
                         _settingsStore.UpdateClientPatch(restored with { CustomGameDirectory = currentDir });
                     }
                 }
-                catch { }
-            }
-            else if (cmd.SnapshotId == PatchBackupManager.OfficialSnapshotId)
-            {
-                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+                catch
                 {
-                    ColorModEnabled = false,
-                    MapBeamEnabled = false,
-                    ChestEnhanced = false,
-                    RumourEnhanced = false,
-                    PricePatchEnabled = false
-                });
+                    // 快照里的设置 JSON 可能来自旧版本、字段已不兼容。
+                    // 客户端索引此时已经还原成功，不能因为设置反序列化失败就把还原判为失败；
+                    // 失败时保持当前设置不变。
+                }
+            }
+            else
+            {
+                // 快照未记录设置（官方底包或早期快照）：索引已回滚为纯净版本，
+                // 开关与磁盘状态必须一起复位，否则泥人/血条会因为 state.json
+                // 仍记着 applied=true 而拒绝再次写入。
+                _patcher.ClearTransientPatchStates();
+                ResetClientPatchSettingsKeepingDirectory();
             }
 
             SendPatcherSnapshot(message: progressLog ?? result.Message);
@@ -1591,10 +1709,10 @@ public partial class MainWindow : Window
                 isValid = false,
                 errorMessage = reason,
                 isGameRunning = PatcherFacade.IsGameRunning(),
+                patchBusy = _patchGate.IsBusy,
                 hasBackup = false,
                 snapshots = Array.Empty<PatchSnapshotInfo>(),
                 settings = _settingsStore.ClientPatch,
-                builtinColors = UiColorService.BuiltinEntries,
                 installedFonts = Array.Empty<FontItem>(),
                 clientRumours = (IReadOnlyList<EndgameMapRumourItem>?)null,
                 clientChests = (IReadOnlyList<NamePatchItem>?)null,
@@ -1613,6 +1731,41 @@ public partial class MainWindow : Window
         SettingsWebView.CoreWebView2.PostWebMessageAsJson(json);
     }
 
+    /// <summary>
+    /// 只下发「补丁闸门是否占用」这一项，不重新探测客户端。
+    ///
+    /// 用于补丁命令结束、闸门释放之后：此时必须让前端知道可以解锁了，
+    /// 但没必要再跑一遍 GetGameInfo / HasBackup / GetSnapshots ——
+    /// 那三者各自会触发一次完整的客户端探测（枚举进程 + 读注册表 + 扫目录）。
+    ///
+    /// 前端只关心 patchBusy 这一个字段，其余字段沿用上一次快照即可。
+    /// </summary>
+    private void SendPatchBusyState()
+    {
+        if (SettingsWebView.CoreWebView2 is null) return;
+
+        var json = JsonSerializer.Serialize(
+            new
+            {
+                version = 1,
+                type = "patcherBusyState",
+                payload = new
+                {
+                    patchBusy = _patchGate.IsBusy
+                }
+            },
+            JsonOptions);
+
+        try
+        {
+            SettingsWebView.CoreWebView2.PostWebMessageAsJson(json);
+        }
+        catch (InvalidOperationException)
+        {
+            // WebView 正在关闭，忽略
+        }
+    }
+
     private void SendPatcherSnapshot(
         string? message = null,
         string? error = null,
@@ -1621,7 +1774,11 @@ public partial class MainWindow : Window
         IReadOnlyList<NamePatchItem>? clientChests = null,
         FontSettingsInfo? fontSettings = null,
         IReadOnlyList<PricePatchService.BaseItemName>? clientBaseItems = null,
-        PricePatchService.PricePatchPreview? pricePreview = null)
+        PricePatchService.PricePatchPreview? pricePreview = null,
+        IReadOnlyList<object>? iconPatchEntries = null,
+        int? iconPatchSkipped = null,
+        int? iconSpriteCell = null,
+        int? iconSpriteColumns = null)
     {
         if (SettingsWebView.CoreWebView2 is null || _settingsStore is null) return;
         if (_patcher is null)
@@ -1640,10 +1797,14 @@ public partial class MainWindow : Window
             _patcherError = null;
         }
 
+        // 探测一次客户端，后续备份查询与快照列举都复用它。
+        // GameInstallDetector.Detect 会枚举进程、读注册表、扫十多条候选路径，
+        // 而快照推送在补丁写入期间会被反复触发（每条进度消息一次），
+        // 每次重探三遍会让 UI 线程明显卡顿。
         var gameInfo = _patcher.GetGameInfo(_settingsStore.ClientPatch.CustomGameDirectory);
         var isRunning = PatcherFacade.IsGameRunning();
-        var hasBackup = _patcher.HasBackup(_settingsStore.ClientPatch.CustomGameDirectory);
-        var snapshots = _patcher.GetSnapshots(_settingsStore.ClientPatch.CustomGameDirectory)
+        var hasBackup = _patcher.HasBackup(gameInfo);
+        var snapshots = _patcher.GetSnapshots(gameInfo)
             .Select(s => new
             {
                 id = s.Id,
@@ -1657,6 +1818,11 @@ public partial class MainWindow : Window
             .ToList();
 
         _cachedInstalledFonts ??= _patcher.GetInstalledFonts();
+
+        // 泥人还原点状态：前端据此告诉用户「还原会回到哪一份索引」，
+        // 版本不符时必须显式警告 —— 否则用户会回滚到旧索引导致客户端起不来。
+        var mudManRestorePoint = _patcher.GetMudManRestorePoint(
+            _settingsStore.ClientPatch.CustomGameDirectory);
 
         var json = JsonSerializer.Serialize(new
         {
@@ -1672,7 +1838,6 @@ public partial class MainWindow : Window
                 hasBackup = hasBackup,
                 snapshots = snapshots,
                 settings = _settingsStore.ClientPatch,
-                builtinColors = UiColorService.BuiltinEntries,
                 installedFonts = _cachedInstalledFonts,
                 clientRumours = clientRumours,
                 clientChests = clientChests,
@@ -1685,12 +1850,703 @@ public partial class MainWindow : Window
                 scannedEntries = scannedEntries,
                 message = _patcherMessage,
                 error = _patcherError,
-                pricePreview = pricePreview
+                pricePreview = pricePreview,
+                iconPatchEntries = iconPatchEntries,
+                iconPatchSkipped = iconPatchSkipped,
+                iconSpriteCell = iconSpriteCell,
+                iconSpriteColumns = iconSpriteColumns,
+                // 前端据此禁用写入型按钮。以前这个字段从不发送，
+                // 导致 patcher.js 里的 busy 恒为 false、按钮从不禁用。
+                patchBusy = _patchGate.IsBusy,
+                // 国服客户端原生即简体中文，汉化卡据此禁用并给出说明。
+                isChina = gameInfo.IsChina,
+                mudMan = new
+                {
+                    available = _patcher.MudManTablesAvailable,
+                    error = _patcher.MudManTablesError,
+                    customCount = _patcher.MudManCustomCount,
+                    listCount = _patcher.MudManListCount,
+                    applied = _patcher.IsMudManApplied(),
+                    patchedFiles = _patcher.MudManPatchedFileCount(),
+                    restorePoint = new
+                    {
+                        exists = mudManRestorePoint.Exists,
+                        gameVersion = mudManRestorePoint.GameVersion,
+                        matchesCurrent = mudManRestorePoint.MatchesCurrent
+                    }
+                },
+                healthBar = new
+                {
+                    // 以磁盘上的 state.json 为准判断是否真的写入过客户端；
+                    // 设置里的开关只用于跨会话记住用户意图。
+                    applied = _patcher.IsHealthBarApplied(),
+                    patchedFiles = _patcher.HealthBarPatchedFileCount(),
+                    enabled = _settingsStore.ClientPatch.HealthBarEnabled
+                },
+                iconPatch = new
+                {
+                    applied = _patcher.IsIconPatchApplied(),
+                    backedUpFiles = _patcher.IconPatchedFileCount()
+                },
+                mtx = new
+                {
+                    applied = _patcher.IsMtxPatchApplied(),
+                    patchedFiles = _patcher.MtxPatchedFileCount(),
+                    totalCount = FreiAtlas.Patcher.MtxPatch.MtxDatabase.Instance.AllEntries.Count
+                }
             }
         }, JsonOptions);
 
         SettingsWebView.CoreWebView2.PostWebMessageAsJson(json);
     }
+
+    private void HandleGetMtxDatabase()
+    {
+        if (SettingsWebView.CoreWebView2 is null) return;
+        var db = FreiAtlas.Patcher.MtxPatch.MtxDatabase.Instance;
+        var list = db.AllEntries.Select(e => new
+        {
+            name = e.Name,
+            displayNameZh = e.DisplayNameZh,
+            category = e.Category.ToString(),
+            group = e.Group,
+            displayGroup = e.DisplayGroup,
+            iconDdsPath = e.IconDdsPath,
+            previewUrl = e.PreviewUrl,
+            slotAttach = e.SlotAttach,
+            slotAttachLabel = e.SlotAttachLabel,
+            armourSetFolder = e.ArmourSetFolder,
+            armourSetFilePrefix = e.ArmourSetFilePrefix,
+            isArmourSetGlobal = e.IsArmourSetGlobal,
+            isConstructionEffectPack = e.IsConstructionEffectPack,
+            internalPaths = e.InternalPaths,
+            subtitle = e.Subtitle
+        }).ToList();
+
+        var json = JsonSerializer.Serialize(new
+        {
+            version = 1,
+            type = "mtxDatabase",
+            payload = new
+            {
+                entries = list,
+                supportedClasses = FreiAtlas.Patcher.MtxPatch.MtxDatabase.SupportedClasses
+            }
+        }, JsonOptions);
+        SettingsWebView.CoreWebView2.PostWebMessageAsJson(json);
+    }
+
+    private async Task HandleApplyMtxPatchAsync(ApplyMtxPatchWebCommand cmd)
+    {
+        if (_patcher is null || _settingsStore is null) return;
+        if (PatcherFacade.IsGameRunning())
+        {
+            SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用外观特效。");
+            return;
+        }
+
+        _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+        {
+            MtxSelectedNames = cmd.SelectedNames,
+            MtxSelectedArmourSet = cmd.SelectedArmourSetName,
+            MtxSelectedPortal = cmd.SelectedPortalName,
+            MtxSelectedPet = cmd.SelectedPetName,
+            MtxSelectedClass = cmd.SelectedClassCode
+        });
+
+        SendPatcherSnapshot(message: "正在准备应用外观商城特效替换，请稍候...");
+        string? progressLog = null;
+        RecordAutoSnapshot("商城外观特效替换");
+
+        var options = new FreiAtlas.Patcher.MtxPatch.MtxPatchOptions
+        {
+            SelectedNames = new HashSet<string>(cmd.SelectedNames, StringComparer.OrdinalIgnoreCase),
+            SelectedArmourSetName = cmd.SelectedArmourSetName,
+            SelectedPortalName = cmd.SelectedPortalName,
+            SelectedPetName = cmd.SelectedPetName,
+            SelectedClassCode = cmd.SelectedClassCode
+        };
+
+        var (ok, message) = await Task.Run(() =>
+        {
+            var r = _patcher.ApplyMtxPatch(
+                _settingsStore.ClientPatch.CustomGameDirectory,
+                options,
+                msg =>
+                {
+                    progressLog = msg;
+                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                },
+                out var m);
+            return (r, m);
+        });
+
+        if (ok)
+        {
+            SendPatcherSnapshot(message: !string.IsNullOrWhiteSpace(message) ? message : "外观商城特效替换已成功应用！");
+        }
+        else
+        {
+            SendPatcherSnapshot(error: !string.IsNullOrWhiteSpace(message) ? message : (progressLog ?? "外观特效替换应用失败。"));
+        }
+    }
+
+    private async Task HandleRestoreMtxPatchAsync()
+    {
+        if (_patcher is null || _settingsStore is null) return;
+        if (PatcherFacade.IsGameRunning())
+        {
+            SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再还原外观特效。");
+            return;
+        }
+
+        SendPatcherSnapshot(message: "正在还原外观特效至纯净原版，请稍候...");
+        string? progressLog = null;
+        RecordAutoSnapshot("还原商城外观特效");
+
+        var (ok, message) = await Task.Run(() =>
+        {
+            var r = _patcher.RestoreMtxPatch(
+                _settingsStore.ClientPatch.CustomGameDirectory,
+                msg =>
+                {
+                    progressLog = msg;
+                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                },
+                out var m);
+            return (r, m);
+        });
+
+        if (ok)
+        {
+            _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+            {
+                MtxSelectedNames = null,
+                MtxSelectedArmourSet = null,
+                MtxSelectedPortal = null,
+                MtxSelectedPet = null
+            });
+            SendPatcherSnapshot(message: !string.IsNullOrWhiteSpace(message) ? message : "外观特效已全部成功恢复纯净原版！");
+        }
+        else
+        {
+            SendPatcherSnapshot(error: !string.IsNullOrWhiteSpace(message) ? message : (progressLog ?? "外观特效还原失败。"));
+        }
+    }
+
+        private async Task HandleScanIconPatchAsync()
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            GameModeInfo gameInfo = _patcher.GetGameInfo(_settingsStore.ClientPatch.CustomGameDirectory);
+            if (!gameInfo.IsValid)
+            {
+                SendPatcherSnapshot(null, gameInfo.ErrorMessage ?? "未检测到有效的游戏客户端。");
+                return;
+            }
+            IconPatchService service = _patcher.IconPatchService;
+            IconPatchScanResult iconPatchScanResult = await Task.Run(() => service.Scan(gameInfo));
+            if (iconPatchScanResult.Error != null)
+            {
+                SendPatcherSnapshot(null, iconPatchScanResult.Error);
+                return;
+            }
+            IconSpriteInfo spriteInfo = IconPatchService.SpriteInfo;
+            IReadOnlyList<string> enabledPaths = _settingsStore.ClientPatch.IconPatchSelectedPaths ?? Array.Empty<string>();
+            SendPatcherSnapshot(iconPatchEntries: iconPatchScanResult.Entries.Select((IconPatchEntry e) => new
+            {
+                path = e.VirtualPath,
+                fileName = e.FileName,
+                category = e.Category,
+                groupIndex = e.GroupIndex,
+                originalSize = e.OriginalSize,
+                replacementSize = e.ReplacementSize,
+                spriteX = e.SpriteX,
+                spriteY = e.SpriteY,
+                enabled = enabledPaths.Contains(e.VirtualPath, StringComparer.OrdinalIgnoreCase)
+            }).ToList(), iconPatchSkipped: iconPatchScanResult.SkippedCount, iconSpriteCell: spriteInfo.CellSize, iconSpriteColumns: spriteInfo.Columns, message: (iconPatchScanResult.SkippedCount > 0) ? $"客户端可用 {iconPatchScanResult.Entries.Count} 个图标，{iconPatchScanResult.SkippedCount} 个不适用于当前版本已隐藏。" : $"客户端可用 {iconPatchScanResult.Entries.Count} 个图标。");
+        }
+
+        private async Task HandleApplyIconPatchAsync(ApplyIconPatchWebCommand cmd)
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            if (PatcherFacade.IsGameRunning())
+            {
+                SendPatcherSnapshot(null, "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
+                return;
+            }
+            IReadOnlyList<string> paths = cmd.Paths ?? Array.Empty<string>();
+            _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+            {
+                IconPatchEnabled = cmd.Enabled,
+                IconPatchSelectedPaths = paths
+            });
+
+            // 关闭开关或清空选择时必须真正把官方图标写回客户端。
+            // 只改内存开关会让界面显示「已关闭」而磁盘仍是替换后的版本。
+            if (!cmd.Enabled || paths.Count == 0)
+            {
+                if (!_patcher.IsIconPatchApplied())
+                {
+                    SendPatcherSnapshot(cmd.Enabled
+                        ? "未选择任何图标。"
+                        : "已关闭图标替换。");
+                    return;
+                }
+
+                SendPatcherSnapshot("正在还原官方图标，请稍候...");
+                string? restoreLog = null;
+                IconPatchRestoreResult restored = await Task.Run(() => _patcher.RestoreIconPatch(
+                    _settingsStore.ClientPatch.CustomGameDirectory,
+                    msg =>
+                    {
+                        restoreLog = msg;
+                        Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    }));
+
+                if (restored.Success)
+                {
+                    SendPatcherSnapshot(restoreLog ?? restored.Message);
+                }
+                else
+                {
+                    SendPatcherSnapshot(null, restored.Message);
+                }
+                return;
+            }
+            GameModeInfo gameInfo = _patcher.GetGameInfo(_settingsStore.ClientPatch.CustomGameDirectory);
+            if (!gameInfo.IsValid)
+            {
+                SendPatcherSnapshot(null, gameInfo.ErrorMessage ?? "未检测到有效的游戏客户端。");
+                return;
+            }
+            SendPatcherSnapshot("正在准备写入图标，请稍候...");
+            string? progressLog = null;
+            RecordAutoSnapshot("图标替换写入前");
+            IconPatchService service = _patcher.IconPatchService;
+            string message = string.Empty;
+            if (await Task.Run(() => service.Apply(gameInfo, paths, (string msg) =>
+            {
+                progressLog = msg;
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }, out message)))
+            {
+                SendPatcherSnapshot(message);
+            }
+            else
+            {
+                SendPatcherSnapshot(null, message);
+            }
+        }
+
+        private async Task HandleApplyTranslationPatchAsync()
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            SendPatcherSnapshot("正在准备应用官方纯净简体中文汉化补丁，请稍候...");
+            RecordAutoSnapshot("汉化补丁写入");
+            string? progressLog = null;
+            TranslationPatchResult translationPatchResult = await Task.Run(() => _patcher.ApplyTranslation(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+            {
+                progressLog = msg;
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }));
+            if (translationPatchResult.Success)
+            {
+                SendPatcherSnapshot($"官方简中汉化补丁全量注入完成！共改写 {translationPatchResult.CsdCount} 个 CSD 文件，注入 {translationPatchResult.BaseItemsCount} 个基础道具，全量汉化 {translationPatchResult.PatchedDatTablesCount} 个核心数据表（共 {translationPatchResult.PatchedDatCellsCount} 个文本单元格）。正在刷新客户端数据...");
+                try
+                {
+                    SendPatcherSnapshot(null, null, await Task.Run(() => _patcher.ScanClientDictionary(_settingsStore.ClientPatch.CustomGameDirectory)));
+                    return;
+                }
+                catch
+                {
+                    return;
+                }
+            }
+            SendPatcherSnapshot(null, translationPatchResult.ErrorMessage);
+        }
+
+        private async Task HandleApplyEffectPatchAsync(ApplyEffectPatchWebCommand cmd)
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            SendPatcherSnapshot("正在应用画面与环境特效优化，请稍候（写入期间请勿关闭窗口）...");
+            string? progressLog = null;
+            var (flag, text) = await Task.Run(() => (r: _patcher.ApplyEffectRules(cmd.RuleIds, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+            {
+                progressLog = msg;
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }, out string message), m: message));
+            if (flag)
+            {
+                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+                {
+                    EffectPatchRuleIds = cmd.RuleIds,
+                    ViewDistanceRatio = cmd.ViewDistanceRatio
+                });
+                SendPatcherSnapshot(text);
+            }
+            else
+            {
+                SendPatcherSnapshot(null, text);
+            }
+        }
+
+        private async Task HandleRestoreEffectPatchAsync()
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            SendPatcherSnapshot("正在还原画面与环境特效优化，请稍候...");
+            var (flag, text) = await Task.Run(() => (r: _patcher.RestoreEffectRules(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+            {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }, out string message), m: message));
+            if (flag)
+            {
+                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+                {
+                    EffectPatchRuleIds = Array.Empty<string>()
+                });
+                SendPatcherSnapshot(text);
+            }
+            else
+            {
+                SendPatcherSnapshot(null, text);
+            }
+        }
+
+        private async Task HandleApplyMudManTierAsync(ApplyMudManTierWebCommand cmd)
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            if (!Enum.IsDefined(typeof(MudManTier), cmd.Tier))
+            {
+                SendPatcherSnapshot(null, $"未知的泥人档位：{cmd.Tier}");
+                return;
+            }
+            MudManTier tier = (MudManTier)cmd.Tier;
+            SendPatcherSnapshot("正在应用泥人：" + tier.DisplayName() + "，请稍候（写入期间请勿关闭窗口）...");
+            var (flag, text) = await Task.Run(() => (r: _patcher.ApplyMudManTier(tier, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+            {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }, out string message), m: message));
+            if (flag)
+            {
+                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+                {
+                    MudManTier = cmd.Tier
+                });
+                SendPatcherSnapshot(text);
+            }
+            else
+            {
+                SendPatcherSnapshot(null, text);
+            }
+        }
+
+        private async Task HandleRestoreMudManAsync()
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            SendPatcherSnapshot("正在还原泥人改动，请稍候...");
+            var (flag, text) = await Task.Run(() => (r: _patcher.RestoreMudMan(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+            {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }, out string message), m: message));
+            if (flag)
+            {
+                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+                {
+                    MudManTier = -1
+                });
+                SendPatcherSnapshot(text);
+            }
+            else
+            {
+                SendPatcherSnapshot(null, text);
+            }
+        }
+
+        private async Task HandleApplyHealthBarAsync()
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            SendPatcherSnapshot("正在应用头顶血条补丁，请稍候（写入期间请勿关闭窗口）...");
+            var (flag, text) = await Task.Run(() => (r: _patcher.ApplyHealthBar(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+            {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }, out string message), m: message));
+            if (flag)
+            {
+                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+                {
+                    HealthBarEnabled = true
+                });
+                SendPatcherSnapshot(text);
+            }
+            else
+            {
+                SendPatcherSnapshot(null, text);
+            }
+        }
+
+        private async Task HandleRestoreHealthBarAsync()
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            SendPatcherSnapshot("正在还原头顶血条补丁，请稍候...");
+            var (flag, text) = await Task.Run(() => (r: _patcher.RestoreHealthBar(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+            {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }, out string message), m: message));
+            if (flag)
+            {
+                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+                {
+                    HealthBarEnabled = false
+                });
+                SendPatcherSnapshot(text);
+            }
+            else
+            {
+                SendPatcherSnapshot(null, text);
+            }
+        }
+
+        private async Task HandleApplySpellBlockAsync(ApplySpellBlockWebCommand cmd)
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            SendPatcherSnapshot("正在应用技能特效屏蔽，请稍候（写入期间请勿关闭窗口）...");
+            var (flag, text) = await Task.Run(() => (r: _patcher.ApplySpellBlocks(cmd.SpellIds, cmd.IncludeAudio, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+            {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }, out string message), m: message));
+            if (flag)
+            {
+                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+                {
+                    BlockedSpellIds = cmd.SpellIds,
+                    SpellBlockIncludeAudio = cmd.IncludeAudio
+                });
+                SendPatcherSnapshot(text);
+            }
+            else
+            {
+                SendPatcherSnapshot(null, text);
+            }
+        }
+
+        private async Task HandleRestoreSpellBlockAsync(RestoreSpellBlockWebCommand cmd)
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            SendPatcherSnapshot("正在还原技能特效，请稍候...");
+            var (flag, text) = await Task.Run(() => (r: _patcher.RestoreSpellBlocks(cmd.SpellIds, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+            {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+            }, out string message), m: message));
+            if (flag)
+            {
+                List<string> blockedSpellIds = (_settingsStore.ClientPatch.BlockedSpellIds ?? Array.Empty<string>()).Where((string id) => !cmd.SpellIds.Contains(id, StringComparer.OrdinalIgnoreCase)).ToList();
+                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+                {
+                    BlockedSpellIds = blockedSpellIds
+                });
+                SendPatcherSnapshot(text);
+            }
+            else
+            {
+                SendPatcherSnapshot(null, text);
+            }
+        }
+
+        private async Task HandleApplyAllEffectsAsync(ApplyAllEffectsWebCommand cmd)
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return;
+            }
+            SendPatcherSnapshot("正在保存并应用特效优化，请稍候（写入期间请勿关闭窗口）...");
+            (bool, bool, bool, List<string>, List<string>) tuple = await Task.Run(() =>
+            {
+                List<string> list = new List<string>();
+                List<string> list2 = new List<string>();
+                bool flag = true;
+                bool flag2 = true;
+                bool flag3 = true;
+                IReadOnlyList<string> readOnlyList = _settingsStore.ClientPatch.EffectPatchRuleIds ?? Array.Empty<string>();
+                if (cmd.RuleIds.Count > 0)
+                {
+                    flag = _patcher.ApplyEffectRules(cmd.RuleIds, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                    {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    }, out string message2);
+                    if (flag)
+                    {
+                        list.Add(message2);
+                    }
+                    else
+                    {
+                        list2.Add("画面优化写入失败：" + message2);
+                    }
+                }
+                else if (readOnlyList.Count > 0)
+                {
+                    flag = _patcher.RestoreEffectRules(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                    {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    }, out string message3);
+                    if (flag)
+                    {
+                        list.Add(message3);
+                    }
+                    else
+                    {
+                        list2.Add("画面优化还原失败：" + message3);
+                    }
+                }
+                IReadOnlyList<string> readOnlyList2 = _settingsStore.ClientPatch.BlockedSpellIds ?? Array.Empty<string>();
+                if (cmd.SpellIds.Count > 0)
+                {
+                    flag2 = _patcher.ApplySpellBlocks(cmd.SpellIds, cmd.IncludeAudio, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                    {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    }, out string message4);
+                    if (flag2)
+                    {
+                        list.Add(message4);
+                    }
+                    else
+                    {
+                        list2.Add("技能屏蔽写入失败：" + message4);
+                    }
+                }
+                else if (readOnlyList2.Count > 0)
+                {
+                    flag2 = _patcher.RestoreSpellBlocks(readOnlyList2, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                    {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    }, out string message5);
+                    if (flag2)
+                    {
+                        list.Add(message5);
+                    }
+                    else
+                    {
+                        list2.Add("技能特效还原失败：" + message5);
+                    }
+                }
+                int mudManTier = _settingsStore.ClientPatch.MudManTier;
+                bool flag4 = _patcher.IsMudManApplied();
+                if (cmd.MudManTier >= 0 && Enum.IsDefined(typeof(MudManTier), cmd.MudManTier))
+                {
+                    MudManTier mudManTier2 = (MudManTier)cmd.MudManTier;
+                    if (!flag4 || mudManTier != cmd.MudManTier)
+                    {
+                        flag3 = _patcher.ApplyMudManTier(mudManTier2, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                        {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                        }, out string message6);
+                        if (flag3)
+                        {
+                            list.Add(message6);
+                        }
+                        else
+                        {
+                            list2.Add("泥人应用失败：" + message6);
+                        }
+                    }
+                }
+                else if (cmd.MudManTier < 0 && (flag4 || mudManTier >= 0))
+                {
+                    flag3 = _patcher.RestoreMudMan(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                    {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    }, out string message7);
+                    if (flag3)
+                    {
+                        list.Add(message7);
+                    }
+                    else
+                    {
+                        list2.Add("泥人还原失败：" + message7);
+                    }
+                }
+                return (ruleOk: flag, spellOk: flag2, mudManOk: flag3, msgs: list, errs: list2);
+            });
+            bool item = tuple.Item1;
+            bool item2 = tuple.Item2;
+            bool item3 = tuple.Item3;
+            List<string> item4 = tuple.Item4;
+            List<string> item5 = tuple.Item5;
+            ClientPatchSettings clientPatch = _settingsStore.ClientPatch;
+            ClientPatchSettings clientPatchSettings = clientPatch;
+            if (item)
+            {
+                clientPatchSettings = clientPatchSettings with
+                {
+                    EffectPatchRuleIds = cmd.RuleIds,
+                    ViewDistanceRatio = cmd.ViewDistanceRatio
+                };
+            }
+            if (item2)
+            {
+                clientPatchSettings = clientPatchSettings with
+                {
+                    BlockedSpellIds = cmd.SpellIds,
+                    SpellBlockIncludeAudio = cmd.IncludeAudio
+                };
+            }
+            if (item3)
+            {
+                clientPatchSettings = clientPatchSettings with
+                {
+                    MudManTier = cmd.MudManTier
+                };
+            }
+            if (clientPatchSettings != clientPatch)
+            {
+                _settingsStore.UpdateClientPatch(clientPatchSettings);
+            }
+            if (item5.Count == 0)
+            {
+                string message = ((item4.Count > 0) ? string.Join("；", item4) : "未作任何变更。");
+                SendPatcherSnapshot(message);
+                return;
+            }
+            string text = string.Join("；", item5);
+            if (item4.Count > 0)
+            {
+                text = text + "（部分已生效：" + string.Join("；", item4) + "）";
+            }
+            SendPatcherSnapshot(null, text);
+        }
+
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {

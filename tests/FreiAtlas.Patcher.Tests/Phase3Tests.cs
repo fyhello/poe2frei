@@ -1,5 +1,10 @@
 using System.Text;
 using FreiAtlas.Patcher;
+using FreiAtlas.Patcher.Core;
+using FreiAtlas.Patcher.Modules.ColorMod;
+using FreiAtlas.Patcher.Modules.Price;
+using FreiAtlas.Patcher.Modules.Rumour;
+using FreiAtlas.Patcher.Modules.MapBeam;
 
 namespace FreiAtlas.Patcher.Tests;
 
@@ -531,25 +536,25 @@ public class Phase3Tests
     public void Rumour_BuiltinRules_CorrectlyMatchesTraditionalAndSimplifiedRumours()
     {
         // 繁体中文匹配
-        var (ruleTradNoRevive, textTradNoRevive) = RumourPatchService.MatchRule("沒東西可喝……", "", isChina: false);
+        var (ruleTradNoRevive, textTradNoRevive) = RumourPatchService.MatchRule("沒東西可喝……", "", isSimplified: false);
         Assert.NotNull(ruleTradNoRevive);
         Assert.Equal("致命机制", ruleTradNoRevive.Category);
         Assert.Equal("#ef4444", ruleTradNoRevive.Color);
         Assert.Equal("[<rgb(227,158,255)>{無復活}]沒東西可喝……", textTradNoRevive);
 
-        var (ruleTradBadMap, textTradBadMap) = RumourPatchService.MatchRule("荒涼又糟糕……", "", isChina: false);
+        var (ruleTradBadMap, textTradBadMap) = RumourPatchService.MatchRule("荒涼又糟糕……", "", isSimplified: false);
         Assert.NotNull(ruleTradBadMap);
         Assert.Equal("贫瘠差图", ruleTradBadMap.Category);
         Assert.Equal("[差圖]荒涼又糟糕……", textTradBadMap);
 
         // 简体中文匹配
-        var (ruleSimpCastaway, textSimpCastaway) = RumourPatchService.MatchRule("所有闪闪发光之物……", "", isChina: true);
+        var (ruleSimpCastaway, textSimpCastaway) = RumourPatchService.MatchRule("所有闪闪发光之物……", "", isSimplified: true);
         Assert.NotNull(ruleSimpCastaway);
         Assert.Equal("暗金神图", ruleSimpCastaway.Category);
         Assert.Equal("#06b6d4", ruleSimpCastaway.Color);
         Assert.Equal("[<rgb(14,186,255)>{颠沛领域}]所有闪闪发光之物……", textSimpCastaway);
 
-        var (ruleSimpNoDrink, textSimpNoDrink) = RumourPatchService.MatchRule("没东西喝……", "", isChina: true);
+        var (ruleSimpNoDrink, textSimpNoDrink) = RumourPatchService.MatchRule("没东西喝……", "", isSimplified: true);
         Assert.NotNull(ruleSimpNoDrink);
         Assert.Equal("[<rgb(227,158,255)>{无复活}]没东西喝……", textSimpNoDrink);
     }
@@ -597,7 +602,7 @@ public class Phase3Tests
         };
 
         // 1. 扫描客户端传言
-        var scanned = RumourPatchService.ParseFromBytes(originalDat, waNames, isChina: false);
+        var scanned = RumourPatchService.ParseFromBytes(originalDat, waNames, isSimplified: false);
         Assert.Equal(2, scanned.Count);
         Assert.Equal(0, scanned[0].RowIndex);
         Assert.Equal("漂流者之所", scanned[0].MapName);
@@ -617,7 +622,7 @@ public class Phase3Tests
         Assert.True(patchedDat.Length > originalDat.Length);
 
         // 3. 回读校验 Row 1 已被精准修改，Row 0 保持不变
-        var postScan = RumourPatchService.ParseFromBytes(patchedDat, waNames, isChina: false);
+        var postScan = RumourPatchService.ParseFromBytes(patchedDat, waNames, isSimplified: false);
         Assert.Equal(2, postScan.Count);
         Assert.Equal("閃光的未必是金……", postScan[0].OriginalRumourText);
         Assert.Equal("[<rgb(227,158,255)>{無復活}]沒東西可喝……", postScan[1].OriginalRumourText);

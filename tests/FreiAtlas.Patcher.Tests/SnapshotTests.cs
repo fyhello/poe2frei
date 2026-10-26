@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using FreiAtlas.Patcher;
+using FreiAtlas.Patcher.Core;
 
 namespace FreiAtlas.Patcher.Tests;
 

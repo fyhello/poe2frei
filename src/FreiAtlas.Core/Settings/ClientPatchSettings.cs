@@ -1,11 +1,5 @@
 namespace FreiAtlas.Core.Settings;
 
-public sealed record ClientPatchColorOption(
-    string Key,
-    string DisplayName,
-    string Value,
-    bool Enabled);
-
 public sealed record ColorModRuleItem(
     string Id,
     string Text,
@@ -47,6 +41,26 @@ public sealed record FontCustomPreset(
     int TinyBadgeSizeDelta = 0,
     bool IsBold = false);
 
+public sealed record MinimapColorSettings(
+    int ExploredR = 0,
+    int ExploredG = 0,
+    int ExploredB = 0,
+    int ExploredA = 76,
+    int BorderR = 0,
+    int BorderG = 120,
+    int BorderB = 215,
+    int BorderA = 26,
+    int ExploringR = 0,
+    int ExploringG = 128,
+    int ExploringB = 255,
+    int ExploringA = 128,
+    float BorderGlow = 13f,
+    float ExploringGlow = 1f,
+    float VisibilityThreshold = 0.18f)
+{
+    public static MinimapColorSettings Default { get; } = new();
+}
+
 public sealed record ClientPatchSettings(
     string? CustomGameDirectory = null,
     string FontFamily = "Microsoft YaHei",
@@ -60,24 +74,34 @@ public sealed record ClientPatchSettings(
     IReadOnlyList<FontCustomPreset>? FontCustomPresets = null,
     bool RumourEnhanced = true,
     bool ChestEnhanced = true,
-    bool ArchnemesisEnhanced = true,
     bool ColorModEnabled = true,
     string ColorModStyle = "Whole",
     bool PricePatchEnabled = false,
-    string PricePatchMode = "append",
-    string? PricePatchCsvPath = null,
     string PricePatchSeparator = " ",
     decimal? PricePatchMinExalted = null,
-    string? PricePatchUnitMode = null,
     bool? PricePatchStripExisting = null,
     IReadOnlyList<string>? PricePatchCategories = null,
     bool MapBeamEnabled = true,
-    IReadOnlyList<ClientPatchColorOption>? CustomColors = null,
     IReadOnlyList<ColorModRuleItem>? ColorModRules = null,
     IReadOnlyList<MapBeamTargetOption>? MapBeamTargets = null,
     IReadOnlyList<NamePatchOption>? ChestItems = null,
-    IReadOnlyList<RumourItemOption>? RumourItems = null)
+    IReadOnlyList<RumourItemOption>? RumourItems = null,
+    bool IconPatchEnabled = false,
+    IReadOnlyList<string>? IconPatchSelectedPaths = null,
+    IReadOnlyList<string>? EffectPatchRuleIds = null,
+    IReadOnlyList<string>? BlockedSpellIds = null,
+    bool SpellBlockIncludeAudio = true,
+    double ViewDistanceRatio = 2.0,
+    int MudManTier = -1,
+    bool HealthBarEnabled = false,
+    IReadOnlyList<string>? MtxSelectedNames = null,
+    string? MtxSelectedArmourSet = null,
+    string? MtxSelectedPortal = null,
+    string? MtxSelectedPet = null,
+    string MtxSelectedClass = "all")
 {
+    public MinimapColorSettings MinimapColor { get; init; } = MinimapColorSettings.Default;
+
     public static ClientPatchSettings Default => new(
         CustomGameDirectory: null,
         FontFamily: "Microsoft YaHei",
@@ -91,18 +115,27 @@ public sealed record ClientPatchSettings(
         FontCustomPresets: null,
         RumourEnhanced: true,
         ChestEnhanced: true,
-        ArchnemesisEnhanced: true,
         ColorModEnabled: true,
         ColorModStyle: "Whole",
         PricePatchEnabled: false,
-        PricePatchMode: "append",
-        PricePatchCsvPath: null,
         PricePatchSeparator: " ",
         MapBeamEnabled: true,
-        CustomColors: null,
         ColorModRules: null,
         MapBeamTargets: null,
         ChestItems: null,
-        RumourItems: null);
+        RumourItems: null,
+        IconPatchEnabled: false,
+        IconPatchSelectedPaths: null,
+        EffectPatchRuleIds: null,
+        BlockedSpellIds: null,
+        SpellBlockIncludeAudio: true,
+        ViewDistanceRatio: 2.0,
+        MudManTier: -1,
+        HealthBarEnabled: false,
+        MtxSelectedNames: null,
+        MtxSelectedArmourSet: null,
+        MtxSelectedPortal: null,
+        MtxSelectedPet: null,
+        MtxSelectedClass: "all");
 }
 

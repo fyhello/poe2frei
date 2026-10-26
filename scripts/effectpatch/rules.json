@@ -1,0 +1,122 @@
+[
+  {
+    "id": "monster_dead_life_block",
+    "feature": "怪物死亡特效移除",
+    "path": ".*/monsters/monster\\.ot$",
+    "action": "ReplaceCode",
+    "target": "Life\\s*\\{\\s*\\}",
+    "note": "注入 on_spawned_dead / on_death 回调"
+  },
+  {
+    "id": "monster_dead_idle",
+    "feature": "怪物死亡特效移除",
+    "path": ".*/monsters/monster\\.ot$",
+    "action": "ReplaceCode",
+    "target": "slow_animations_go_to_idle\\s*=\\s*true\\s*\\}",
+    "note": "注入 on_start_Revive 恢复渲染"
+  },
+  {
+    "id": "dark_env_objects",
+    "feature": "去除黑暗",
+    "path": ".*environmentsettings/.*\\.env$",
+    "action": "RemoveObject",
+    "target": "directional_light|player_light|environment_mapping|global_illumination",
+    "note": "删除光源键"
+  },
+  {
+    "id": "dark_env_exposure",
+    "feature": "去除黑暗",
+    "path": ".*environmentsettings/.*\\.env$",
+    "action": "ReplaceCode",
+    "target": "\"exposure\"\\s*:\\s*[\\d\\.]+",
+    "note": "调整曝光值"
+  },
+  {
+    "id": "dark_bloom_cutoff",
+    "feature": "去除黑暗",
+    "path": ".*shaders/bloomcutoff\\.hlsl$",
+    "action": "ReplaceCode",
+    "target": "float4 BloomCutoff\\(",
+    "note": "泛光截止返回 0"
+  },
+  {
+    "id": "dark_bloom_gather",
+    "feature": "去除黑暗",
+    "path": ".*shaders/bloomgather\\.hlsl$",
+    "action": "ReplaceCode",
+    "target": "float4 BloomGather\\(",
+    "note": "泛光收集返回 0"
+  },
+  {
+    "id": "fog_env_objects",
+    "feature": "去除迷雾",
+    "path": ".*environmentsettings/.*\\.env$",
+    "action": "RemoveObject",
+    "target": "fog|area|water|post_transform",
+    "note": "删除雾/水面等对象"
+  },
+  {
+    "id": "fog_affliction",
+    "feature": "去除迷雾",
+    "path": ".*metadata/effects/environment/league_affliction.*\\.(aoc|ao)$",
+    "action": "ClearBlock",
+    "target": "ParticleEffects|WindEvents|TrailsEffects|BaseAnimationEvents|AttachedAnimatedObject|SkinMesh",
+    "note": "清空特定区域特效块"
+  },
+  {
+    "id": "sound_all_aoc",
+    "feature": "移除音效",
+    "path": ".*metadata/.*\\.aoc$",
+    "action": "ClearBlock",
+    "target": "SoundEvents",
+    "note": "清空音效块"
+  },
+  {
+    "id": "view_distance",
+    "feature": "视距调整",
+    "path": ".*metadata/characters/character\\.ot$",
+    "action": "ReplaceCode",
+    "target": "team\\s*=\\s*1\\s*\\}",
+    "note": "注入 CreateCameraZoomNode"
+  },
+  {
+    "id": "minimap_visibility",
+    "feature": "小地图全开",
+    "path": ".*shaders/minimap_visibility_pixel\\.hlsl$",
+    "action": "ReplaceCode",
+    "target": "if\\(visibility_reset > 0\\.5f\\)",
+    "note": "强制可见"
+  },
+  {
+    "id": "minimap_blend",
+    "feature": "小地图全开",
+    "path": ".*shaders/minimap_blending_pixel\\.hlsl$",
+    "action": "ReplaceCode",
+    "target": "res_color\\.rgb \\*= res_color\\.a;",
+    "note": "未探索区域着色"
+  },
+  {
+    "id": "spell_aoc",
+    "feature": "技能特效削减",
+    "path": ".*metadata/effects/spells/(?!.*(ground_effects|portal|black_hole|volatile_dead|curse_aura|atlasofworldsbosses|atlasmemories|atlasexiles|offering)).*\\.aoc$",
+    "action": "ClearBlock",
+    "target": "ParticleEffects|WindEvents|TrailsEffects",
+    "note": "清空技能粒子块（含保护名单）"
+  },
+  {
+    "id": "spell_epk",
+    "feature": "技能特效削减",
+    "path": ".*metadata/effects/spells/(?!.*(ground_effects|portal|black_hole|volatile_dead|curse_aura|atlasofworldsbosses|atlasmemories|atlasexiles|offering)).*\\.epk$",
+    "action": "ReplaceCode",
+    "target": ".*",
+    "note": "清空技能特效包"
+  },
+  {
+    "id": "nini_particles",
+    "feature": "一键全清",
+    "path": ".*metadata/particles/(?!.*(ground_effects|portal|black_hole|volatile_dead|curse_aura|atlasofworldsbosses|atlasmemories|atlasexiles|offering)).*\\.(pet|trl)$",
+    "action": "ReplaceCode",
+    "target": ".*",
+    "note": "粒子/轨迹文件置 0"
+  }
+]

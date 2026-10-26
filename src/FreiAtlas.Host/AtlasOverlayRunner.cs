@@ -659,7 +659,7 @@ public sealed class AtlasOverlayRunner
                 expeditionPanelSurface.Render(
                     window!.ClientBounds,
                     expeditionPanelScene,
-                    panelScale: 1f);
+                    settings.AreaMap.ExpeditionPanel.Scale);
             }
 
             SleepRemaining(startedAt, FrameInterval, cancellationToken);

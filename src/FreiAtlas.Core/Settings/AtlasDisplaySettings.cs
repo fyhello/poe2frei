@@ -61,6 +61,8 @@ public sealed record AreaMapExpeditionPanelSettings(
 {
     public bool ExpandOnAreaEntry { get; init; } = true;
 
+    public float Scale { get; init; } = 1.0f;
+
     public static AreaMapExpeditionPanelSettings Default { get; } =
         new(true, true);
 }
@@ -79,6 +81,8 @@ public sealed record AreaMapDisplaySettings(
     bool ShowBoss,
     float LargeMapLabelFontSize)
 {
+    public float OverlayScale { get; init; } = 1.0f;
+
     public bool ShowAbyss { get; init; } = true;
 
     public bool ShowRitual { get; init; } = true;

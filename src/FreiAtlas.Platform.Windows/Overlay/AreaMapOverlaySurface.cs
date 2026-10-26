@@ -57,7 +57,8 @@ internal sealed record AreaMapOverlayDrawCommand(
     bool DrawCompletionCheck,
     string? Label,
     RectangleF? LabelBounds,
-    AreaMapExpeditionTagLayout? ExpeditionTag);
+    AreaMapExpeditionTagLayout? ExpeditionTag,
+    float OverlayScale = 1.0f);
 
 public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
 {
@@ -168,11 +169,13 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
 
         _window.ResizeAndMove(clientBounds);
         EnsureExpeditionBrushes(settings.ExpeditionTag);
+        var effectiveFontSize = settings.LargeMapLabelFontSize * settings.OverlayScale;
         var commands = BuildDrawCommands(
             clientBounds,
             scene,
-            settings.LargeMapLabelFontSize,
-            MeasureExpeditionText);
+            effectiveFontSize,
+            MeasureExpeditionText,
+            settings.OverlayScale);
         var renderTarget = _window.RenderTarget;
         renderTarget.BeginDraw();
         renderTarget.Clear(new Color4(0f, 0f, 0f, 0f));
@@ -308,13 +311,21 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
                 ? AreaMapOverlayRenderMode.Bitmap
                 : AreaMapOverlayRenderMode.Vector;
 
-    internal static float CalculateIconRadius(float viewportHeight)
-        => float.IsFinite(viewportHeight)
+    internal static float CalculateIconRadius(float viewportHeight, float overlayScale = 1.0f)
+        => (float.IsFinite(viewportHeight)
             ? Math.Clamp(
                 viewportHeight * IconRadiusScale,
                 MinimumIconRadius,
                 MaximumIconRadius)
-            : MinimumIconRadius;
+            : MinimumIconRadius) * overlayScale;
+
+    internal static float CalculatePollenRadius(float viewportHeight, float overlayScale = 1.0f)
+        => (float.IsFinite(viewportHeight)
+            ? Math.Clamp(
+                Math.Clamp(viewportHeight * IconRadiusScale, MinimumIconRadius, MaximumIconRadius) * PollenDotScale,
+                MinimumPollenDotRadius,
+                MaximumPollenDotRadius)
+            : MinimumPollenDotRadius) * overlayScale;
 
     internal static Vortice.RawRectF CalculateBitmapBounds(
         Vector2 center,
@@ -329,7 +340,8 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
         Rectangle clientBounds,
         AreaMapOverlayScene scene,
         float configuredFontSize,
-        Func<string, float, SizeF> measureText)
+        Func<string, float, SizeF> measureText,
+        float overlayScale = 1.0f)
     {
         ArgumentNullException.ThrowIfNull(scene);
         ArgumentNullException.ThrowIfNull(measureText);
@@ -352,7 +364,8 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
             return [];
         }
 
-        var radius = CalculateIconRadius(scene.Viewport.Height);
+        var iconRadius = CalculateIconRadius(scene.Viewport.Height, overlayScale);
+        var pollenRadius = CalculatePollenRadius(scene.Viewport.Height, overlayScale);
         var commands = ImmutableArray.CreateBuilder<AreaMapOverlayDrawCommand>(
             scene.Placements.Length);
         foreach (var placement in scene.Placements)
@@ -362,6 +375,9 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
                 continue;
             }
 
+            var radius = placement.MarkerKind == AreaMapOverlayMarkerKind.Pollen
+                ? pollenRadius
+                : iconRadius;
             var style = ResolveVisualStyle(placement.VisualState);
             var renderMode = ResolveRenderMode(placement.MarkerKind);
             var referenceIconId = ResolveReferenceIconId(placement.MarkerKind);
@@ -371,7 +387,8 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
                 var marker = placement.ExpeditionMarker ?? new AreaMapExpeditionMarker(null);
                 var fontSize = AreaMapExpeditionTagLayoutCalculator.ResolveFontSize(
                     scene.ViewKind,
-                    configuredFontSize);
+                    configuredFontSize,
+                    9f * overlayScale);
                 var holeText = AreaMapExpeditionTagLayoutCalculator.FormatHoleCount(marker.HoleCount);
                 var valueText = scene.ViewKind == AreaMapViewKind.LargeMap
                     ? marker.ValueText
@@ -401,7 +418,8 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
                 style.DrawCompletionCheck,
                 null,
                 null,
-                expeditionTag));
+                expeditionTag,
+                overlayScale));
         }
 
         return commands.ToImmutable();
@@ -522,8 +540,8 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
             ?? throw new InvalidOperationException("Expedition tag command has no layout.");
         var roundedRectangle = new RoundedRectangle(
             ToRawRect(layout.PanelBounds),
-            4f,
-            4f);
+            4f * command.OverlayScale,
+            4f * command.OverlayScale);
         renderTarget.PushAxisAlignedClip(
             ToRawRect(layout.ClipBounds),
             AntialiasMode.Aliased);
@@ -535,7 +553,7 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
             renderTarget.DrawRoundedRectangle(
                 roundedRectangle,
                 _expeditionBorderBrushes[command.ColorHex],
-                2f);
+                2f * command.OverlayScale);
             DrawExpeditionText(
                 renderTarget,
                 layout.HoleText,
@@ -638,8 +656,8 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
         var start = command.Center + new Vector2(-command.Radius * 0.45f, 0f);
         var middle = command.Center + new Vector2(-command.Radius * 0.08f, command.Radius * 0.38f);
         var end = command.Center + new Vector2(command.Radius * 0.55f, -command.Radius * 0.42f);
-        renderTarget.DrawLine(start, middle, _completionBrush!, 2f);
-        renderTarget.DrawLine(middle, end, _completionBrush!, 2f);
+        renderTarget.DrawLine(start, middle, _completionBrush!, 2f * command.OverlayScale);
+        renderTarget.DrawLine(middle, end, _completionBrush!, 2f * command.OverlayScale);
     }
 
     private static void DrawDiamond(
@@ -714,11 +732,7 @@ public sealed class AreaMapOverlaySurface : IAreaMapOverlaySurface
         Vector2 center,
         float radius)
     {
-        var dotRadius = Math.Clamp(
-            radius * PollenDotScale,
-            MinimumPollenDotRadius,
-            MaximumPollenDotRadius);
-        target.FillEllipse(new Ellipse(center, dotRadius, dotRadius), brush);
+        target.FillEllipse(new Ellipse(center, radius, radius), brush);
     }
 
     private static void DrawBreach(

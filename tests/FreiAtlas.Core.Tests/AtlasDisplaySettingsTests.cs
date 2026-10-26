@@ -228,6 +228,63 @@ public sealed class AtlasDisplaySettingsTests
                 ShowNativeRecipeValues: true,
                 AutoHideStandalonePanel: true),
             AtlasDisplaySettings.Default.AreaMap.ExpeditionPanel);
+        Assert.Equal(1.0f, AtlasDisplaySettings.Default.AreaMap.ExpeditionPanel.Scale);
+        Assert.Equal(1.0f, AtlasDisplaySettings.Default.AreaMap.OverlayScale);
+    }
+
+    [Theory]
+    [InlineData(0.5f)]
+    [InlineData(1.0f)]
+    [InlineData(1.5f)]
+    public void Validate_AcceptsScaleBoundaries(float scale)
+    {
+        var settings = AtlasDisplaySettings.Default with
+        {
+            AreaMap = AtlasDisplaySettings.Default.AreaMap with
+            {
+                OverlayScale = scale,
+                ExpeditionPanel = AtlasDisplaySettings.Default.AreaMap.ExpeditionPanel with
+                {
+                    Scale = scale
+                }
+            }
+        };
+
+        var result = AtlasDisplaySettingsValidator.Validate(settings);
+
+        Assert.Equal(scale, result.AreaMap.OverlayScale);
+        Assert.Equal(scale, result.AreaMap.ExpeditionPanel.Scale);
+    }
+
+    [Theory]
+    [InlineData(0.49f)]
+    [InlineData(1.51f)]
+    public void Validate_RejectsOutOfRangeScale(float invalidScale)
+    {
+        var settings = AtlasDisplaySettings.Default with
+        {
+            AreaMap = AtlasDisplaySettings.Default.AreaMap with
+            {
+                OverlayScale = invalidScale
+            }
+        };
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => AtlasDisplaySettingsValidator.Validate(settings));
+
+        var panelSettings = AtlasDisplaySettings.Default with
+        {
+            AreaMap = AtlasDisplaySettings.Default.AreaMap with
+            {
+                ExpeditionPanel = AtlasDisplaySettings.Default.AreaMap.ExpeditionPanel with
+                {
+                    Scale = invalidScale
+                }
+            }
+        };
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => AtlasDisplaySettingsValidator.Validate(panelSettings));
     }
 
     [Theory]
