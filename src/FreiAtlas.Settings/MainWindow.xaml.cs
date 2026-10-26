@@ -130,6 +130,7 @@ public partial class MainWindow : Window
             _patcher = null;
             _patcherError = $"补丁模块初始化失败：{exception.Message}";
         }
+        StartBackupVersionCheck();
         _runtime = new AtlasRuntimeFacade(
             new Poe2ProcessCatalog(),
             _prices.CreateOverlaySession(),
@@ -168,6 +169,46 @@ public partial class MainWindow : Window
         _quickAssistUiTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         _quickAssistUiTimer.Tick += OnQuickAssistUiTick;
         _quickAssistUiTimer.Start();
+    }
+
+    /// <summary>
+    /// 游戏版本不匹配的自动快照，保留 2 天后再清理。
+    ///
+    /// 该参数只在「快照的游戏版本 ≠ 当前客户端版本」时才参与判断；
+    /// 同版本的快照无论多旧都不会被清理。留 2 天是给用户足够的反悔窗口：
+    /// 游戏刚更新时可能想临时切回旧客户端验证，一过性重跑不必立刻丢历史快照。
+    /// </summary>
+    private static readonly TimeSpan StaleSnapshotRetention = TimeSpan.FromDays(2);
+
+    /// <summary>
+    /// 后台校验纯净底包是否对应当前游戏版本。
+    ///
+    /// 游戏更新后旧底包会把客户端还原成旧版本资源，直接导致无法启动，
+    /// 因此每次启动都要确认底包仍匹配。该校验同时清理过期的自动快照。
+    ///
+    /// 放后台执行，不阻塞窗口显示；失败也不会中断启动（该方法内部不抛异常）。
+    /// </summary>
+    private void StartBackupVersionCheck()
+    {
+        if (_patcher is null || !_patcher.IsBackupAvailable) return;
+
+        var patcher = _patcher;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var check = patcher.VerifyBackupVersion(StaleSnapshotRetention);
+                if (string.IsNullOrWhiteSpace(check.Message)) return;
+
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: check.Message));
+            }
+            catch (Exception exception)
+            {
+                // 版本校验失败不影响使用，但要留痕：它关系到底包能否安全还原。
+                Dispatcher.Invoke(() =>
+                    SendPatcherSnapshot(message: $"启动版本校验失败：{exception.Message}"));
+            }
+        });
     }
 
     private async void OnWebMessageReceived(
