@@ -585,7 +585,11 @@ public static class EffectPatchRules
                 Feature = "小地图全开",
                 PathPattern = @".*shaders/minimap_visibility_pixel\.hlsl$",
                 Action = EffectAction.ReplaceCode,
-                TargetPattern = @"res_color\s*=\s*float4\(\s*(?:0(?:\.0*)?|0\.\d+)\s*f?,\s*0(?:\.0*)?f?,\s*0(?:\.0*)?f?,\s*1(?:\.0*)?f?\s*\);",
+                // 第一个分量必须匹配任意浮点数，不能只匹配 0.x。
+                // 阈值调高（如 1.0f）后若正则只认 0.x，就再也匹配不到已写入的值，
+                // 用户无法把阈值改回去 —— 该规则会永久失效。
+                // 后两个分量与 alpha 保持严格 0 / 1，避免误匹配其它 res_color 语句。
+                TargetPattern = @"res_color\s*=\s*float4\(\s*\d+(?:\.\d+)?\s*f?\s*,\s*0(?:\.0*)?f?\s*,\s*0(?:\.0*)?f?\s*,\s*1(?:\.0*)?f?\s*\);",
                 Replacement = $"res_color = float4({threshStr}, 0.0f, 0.0f, 1.0f);",
                 Description = $"将小地图未探索区域底色提升为可见阈值（{threshStr}）。",
                 AppliedSentinel = $"res_color = float4({threshStr}, 0.0f, 0.0f, 1.0f);"
@@ -640,6 +644,10 @@ public static class EffectPatchRules
                 Feature = "小地图全开",
                 PathPattern = @".*shaders/minimap_blending_pixel\.hlsl$",
                 Action = EffectAction.ReplaceCode,
+                // Replacement 里的 $1 引用捕获组，必须走 FunctionBody 才会展开。
+                // Literal 模式用 MatchEvaluator 返回字面量，会把 "$1float4(...)"
+                // 原样写进着色器 —— HLSL 不支持 $ 语法，编译必定失败。
+                ApplyMode = EffectApplyMode.FunctionBody,
                 TargetPattern = @"(walkability_map_color\s*=\s*lerp\(\s*walkability_map_color(?:\s*\*\s*float4\(\s*1\.0f\s*,\s*1\.0f\s*,\s*1\.0f\s*,\s*visibility\s*\))?\s*,\s*)float4\([^)]*\)(?=\s*,\s*pow\(\s*saturate\(\s*unexplored_edge\s*\)\s*,\s*25\.0f\s*\)\s*\);)",
                 Replacement = $"$1float4({explR}, {explG}, {explB}, {explA})",
                 Description = $"设置小地图探索前线动态光晕色（ExploringGlow={settings.ExploringGlow}）。",

@@ -132,7 +132,12 @@ public sealed class SpellEffectBlocker
             }
 
             // 2. 加载已有备份（干净官方原件字典）
-            var existingBackups = LoadAllExistingBackups();
+            // 读取异常不阻断应用（未备份的目标会从客户端现读），但必须让用户知道。
+            var existingBackups = LoadAllExistingBackups(out string? backupReadError);
+            if (backupReadError is not null)
+            {
+                progress?.Invoke($"读取已有技能备份时出错，将重新从客户端读取原件：{backupReadError}");
+            }
 
             // 找出哪些目标文件尚未备份，需从客户端读取原件写入备份
             var unbackedTargets = targetActions.Keys
@@ -292,10 +297,14 @@ public sealed class SpellEffectBlocker
 
         try
         {
-            var allOriginals = LoadAllExistingBackups();
+            var allOriginals = LoadAllExistingBackups(out string? originalsReadError);
             if (allOriginals.Count == 0)
             {
-                message = "没有可用的技能原始备份。";
+                // 区分「确实没有备份」与「备份读不了」：后者用户需要去查磁盘权限，
+                // 而不是以为自己的备份凭空消失了。
+                message = originalsReadError is null
+                    ? "没有可用的技能原始备份。"
+                    : $"读取技能原始备份失败：{originalsReadError}";
                 return false;
             }
 
@@ -324,9 +333,15 @@ public sealed class SpellEffectBlocker
     /// <summary>
     /// 加载当前所有已存在的技能备份原件（合并 spell_block_v2 与旧版单技能分组）。
     /// </summary>
-    private static Dictionary<string, byte[]> LoadAllExistingBackups()
+    /// <param name="readError">
+    /// 读取失败的说明。为 null 表示读取过程没有异常（备份可能确实不存在）。
+    /// 调用方必须区分「没有备份」与「备份目录读不了」—— 前者是正常情况，
+    /// 后者会让用户误以为备份丢了。
+    /// </param>
+    private static Dictionary<string, byte[]> LoadAllExistingBackups(out string? readError)
     {
         var result = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+        var errors = new List<string>(2);
 
         // 1. 旧版单技能备份（如 lightning_spark）
         try
@@ -336,7 +351,10 @@ public sealed class SpellEffectBlocker
                 result[vp] = data;
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            errors.Add($"旧版单技能备份组（lightning_spark）：{ex.Message}");
+        }
 
         // 2. spell_block_v2 统一备份组
         try
@@ -346,8 +364,12 @@ public sealed class SpellEffectBlocker
                 result[vp] = data;
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            errors.Add($"技能屏蔽备份组（{BackupGroup}）：{ex.Message}");
+        }
 
+        readError = errors.Count > 0 ? string.Join("；", errors) : null;
         return result;
     }
 

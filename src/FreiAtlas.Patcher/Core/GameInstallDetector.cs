@@ -8,7 +8,6 @@ public static class GameInstallDetector
 {
     private static readonly string[] KnownSearchPaths =
     [
-        @"E:\PSAutoRecover\ui\rood\Grinding Gear Games\Path of Exile 2",
         @"C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2",
         @"D:\Steam\steamapps\common\Path of Exile 2",
         @"D:\SteamLibrary\steamapps\common\Path of Exile 2",
@@ -35,7 +34,9 @@ public static class GameInstallDetector
         // Try detecting from active process
         try
         {
-            foreach (var name in new[] { "PathOfExile", "PathOfExile_x64", "Client", "PathOfExileSteam" })
+            // 复用 PatcherFacade 的进程名列表，避免两处不一致导致
+            // 韩服 / Epic 客户端检测不到安装路径。
+            foreach (var name in PatcherFacade.PoE2ProcessNames)
             {
                 var procs = Process.GetProcessesByName(name);
                 foreach (var proc in procs)

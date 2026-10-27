@@ -713,6 +713,16 @@ public sealed class PricePatchService
         return replacements.Count == 0 ? data : ApplyWordReplacementsAppend(data, replacements);
     }
 
+    /// <summary>
+    /// 探测 Words.datc64 的行布局。
+    ///
+    /// 不能只按固定行宽推算字符串基址：游戏版本给表加字段时行宽会变，
+    /// 硬编码会让基址算错，后续写字符串会覆盖行数据区。
+    ///
+    /// 优先用哨兵（8 字节 0xBB）定位字符串区起点，并要求
+    /// (哨兵位置 - 4) 能被行数整除；哨兵找不到时退回固定行宽，
+    /// 但同时校验推算结果落在文件内。
+    /// </summary>
     public static DatLayout DetectWordsLayout(byte[] data)
     {
         if (data.Length < 4 + WordsRowSize)
@@ -726,10 +736,28 @@ public sealed class PricePatchService
             throw new InvalidDataException($"Words.datc64 行数无效：{rowCount}。");
         }
 
+        // 首选：哨兵探测。行宽由 (哨兵位置 - 4) / 行数 得出，可适应版本变化。
+        int sentinelPos = DatBinaryUtils.FindSentinel(data, rowCount);
+        if (sentinelPos > 4)
+        {
+            int dataBytes = sentinelPos - 4;
+            if (dataBytes % rowCount == 0)
+            {
+                int detectedRowSize = dataBytes / rowCount;
+                // 行宽至少要能容纳「名称指针 + id 指针」两个 8 字节槽。
+                if (detectedRowSize >= 16)
+                {
+                    return new DatLayout(rowCount, detectedRowSize, sentinelPos);
+                }
+            }
+        }
+
+        // 兜底：哨兵缺失（旧版或异常文件）时用已知行宽，并校验范围。
         int stringBase = 4 + rowCount * WordsRowSize;
         if (stringBase >= data.Length)
         {
-            throw new InvalidDataException("Words.datc64 字符串基址超出文件范围。");
+            throw new InvalidDataException(
+                "Words.datc64 既无法通过哨兵定位字符串区，固定行宽推算也超出文件范围。");
         }
 
         return new DatLayout(rowCount, WordsRowSize, stringBase);

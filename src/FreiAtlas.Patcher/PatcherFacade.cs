@@ -82,10 +82,33 @@ public sealed class PatcherFacade
         _mtxPatchApplier = new FreiAtlas.Patcher.MtxPatch.MtxPatchApplier(_engine);
     }
 
+    /// <summary>
+    /// PoE2 客户端可能使用的进程名。
+    ///
+    /// 必须覆盖所有发行渠道，否则「游戏正在运行」的判定会漏判，
+    /// 导致补丁在游戏占用资源文件时强行写入。
+    ///   · PathOfExile / PathOfExile_x64 —— 官方独立客户端
+    ///   · PathOfExileSteam —— Steam 版
+    ///   · PathOfExile_KG —— 韩服（Kakao Games）
+    ///   · PathOfExileEGS —— Epic Games Store
+    ///   · Client —— 部分渠道的通用可执行名
+    ///
+    /// 该列表与 FreiAtlas.Host 的 Poe2ProcessCandidateReader.SupportedProcessNames
+    /// 保持同步。两处分别位于不同项目，无法共享常量，改动时需同时更新。
+    /// </summary>
+    public static readonly IReadOnlyList<string> PoE2ProcessNames =
+    [
+        "PathOfExile",
+        "PathOfExile_x64",
+        "PathOfExileSteam",
+        "PathOfExile_KG",
+        "PathOfExileEGS",
+        "Client"
+    ];
+
     public static bool IsGameRunning()
     {
-        var procNames = new[] { "PathOfExile", "PathOfExile_x64", "Client", "PathOfExileSteam" };
-        foreach (var name in procNames)
+        foreach (var name in PoE2ProcessNames)
         {
             if (Process.GetProcessesByName(name).Length > 0)
             {

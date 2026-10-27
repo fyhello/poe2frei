@@ -166,6 +166,7 @@ public sealed class ColorModService
         }
 
         var filesToWrite = new List<(string VirtualPath, byte[] Data)>();
+        int matchedFiles = 0;
 
         foreach (var tuple in ColorModDefaults.GroupCsdFiles)
         {
@@ -188,6 +189,8 @@ public sealed class ColorModService
 
             if (chosenPath == null || rawBytes == null) continue;
 
+            matchedFiles++;
+
             byte[] patchedBytes = TransformColorMods(chosenPath, rawBytes, customColorMap, customStyleMap, disabledStats);
             if (patchedBytes != rawBytes && patchedBytes.Length > 0)
             {
@@ -197,7 +200,18 @@ public sealed class ColorModService
 
         if (filesToWrite.Count == 0)
         {
-            progress?.Invoke("未找到需要更新的客户端词缀文件或文件未发生变更。");
+            // 两种情况必须区分，否则调用方无法判断是否真的生效：
+            //   · 一个 CSD 都没读到 —— 客户端资源缺失或路径变了，属失败
+            //   · 读到了但没有改动 —— 已经是目标状态，属成功（幂等）
+            if (matchedFiles == 0)
+            {
+                progress?.Invoke(
+                    "未在客户端找到任何 StatDescriptions 资源文件（data/statdescriptions 与 " +
+                    "metadata/statdescriptions 下均无匹配）。词缀变色未生效。");
+                return false;
+            }
+
+            progress?.Invoke($"已检查 {matchedFiles} 个词缀资源文件，内容已是目标状态，无需改动。");
             return true;
         }
 

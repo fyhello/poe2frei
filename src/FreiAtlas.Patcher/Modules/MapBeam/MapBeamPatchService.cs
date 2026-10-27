@@ -243,16 +243,23 @@ public sealed class MapBeamPatchService
 
         try
         {
-            byte[]? waData = _engine.ReadGameFile(info, "data/balance/worldareas.datc64");
-            byte[]? emData = _engine.ReadGameFile(info, "data/balance/endgamemaps.datc64");
-            byte[]? edData = _engine.ReadGameFile(info, "data/balance/endgamemapdecorations.datc64");
+            // 语言目录不能硬编码：中文客户端的表都在 "traditional chinese/" 或
+            // "simplified chinese/" 子目录下，直接读 data/balance/xxx 必然返回 null，
+            // 导致 BuildCatalog 恒定返回空字典、光柱目标列表为空。
+            // 这里优先用客户端探测出的实际路径，再按同目录推导其余表。
+            string langDir = GetBalanceLanguageDirectory(info);
+
+            byte[]? waData = ReadBalanceTable(info, langDir, "worldareas.datc64", info.WorldAreasPath);
+            byte[]? emData = ReadBalanceTable(info, langDir, "endgamemaps.datc64", info.EndgameMapsPath);
+            byte[]? edData = ReadBalanceTable(info, langDir, "endgamemapdecorations.datc64", null);
 
             if (waData == null || emData == null || edData == null)
             {
                 return result;
             }
 
-            byte[]? waZhData = _engine.ReadGameFile(info, "data/balance/simplified chinese/worldareas.datc64");
+            // 简中名称表仅用于补充显示名，缺失不影响主流程。
+            byte[]? waZhData = ReadBalanceTable(info, "data/balance/simplified chinese", "worldareas.datc64", null);
 
             var waLayout = ParseLayout(waData);
             var emLayout = ParseLayout(emData);
@@ -332,6 +339,49 @@ public sealed class MapBeamPatchService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 取客户端 balance 表所在的语言目录。
+    ///
+    /// 中文客户端的表在 "data/balance/traditional chinese/" 或
+    /// "data/balance/simplified chinese/" 下；非中文客户端可能在
+    /// "data/balance/" 或带英文语言子目录。以客户端探测出的
+    /// WorldAreasPath 为准反推目录，探测失败时退回 "data/balance"。
+    /// </summary>
+    private static string GetBalanceLanguageDirectory(GameModeInfo info)
+    {
+        const string fallback = "data/balance";
+
+        string probe = !string.IsNullOrWhiteSpace(info.WorldAreasPath)
+            ? info.WorldAreasPath
+            : info.EndgameMapsPath;
+
+        if (string.IsNullOrWhiteSpace(probe)) return fallback;
+
+        string normalized = probe.Replace('\\', '/');
+        int slash = normalized.LastIndexOf('/');
+        if (slash <= 0) return fallback;
+
+        string dir = normalized[..slash];
+        return dir.Length > 0 ? dir : fallback;
+    }
+
+    /// <summary>
+    /// 读取 balance 目录下的数据表。
+    ///
+    /// 依次尝试：客户端探测出的精确路径 → 语言目录推导路径 → 无语言目录路径。
+    /// 全部失败返回 null（调用方按「表缺失」处理，不伪造数据）。
+    /// </summary>
+    private byte[]? ReadBalanceTable(GameModeInfo info, string langDir, string fileName, string? exactPath)
+    {
+        var candidates = new List<string>(4);
+
+        if (!string.IsNullOrWhiteSpace(exactPath)) candidates.Add(exactPath);
+        if (!string.IsNullOrWhiteSpace(langDir)) candidates.Add($"{langDir}/{fileName}");
+        candidates.Add($"data/balance/{fileName}");
+
+        return _engine.ReadFirstAvailableFile(info, candidates, out _);
     }
 
     private static int FindDecorationsColumn(byte[] emData, (int Rows, int RowSize, int SentinelPos) em, byte[] waData, (int Rows, int RowSize, int SentinelPos) wa, string[] decoIds, string[] decoAos)

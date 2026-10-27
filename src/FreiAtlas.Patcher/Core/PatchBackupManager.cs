@@ -621,8 +621,10 @@ public sealed class PatchBackupManager
                 var indexPath = PatchEngine.GetBundlesIndexPath(info);
                 var tmpPath = indexPath + ".tmp";
                 File.WriteAllBytes(tmpPath, snapshotBytes);
-                if (File.Exists(indexPath)) File.Delete(indexPath);
-                File.Move(tmpPath, indexPath);
+                // 原子覆盖：不要先 Delete 再 Move。
+                // Windows 下 Delete 成功后若 Move 因句柄占用失败，
+                // _.index.bin 会永久丢失，客户端无法启动。
+                File.Move(tmpPath, indexPath, overwrite: true);
 
                 // 如果恢复的是纯净底包，顺带清理补丁文件夹
                 if (target.Type == PatchSnapshotType.Official)
@@ -1333,8 +1335,8 @@ public sealed class PatchBackupManager
                 var indexPath = PatchEngine.GetBundlesIndexPath(info);
                 var tmpPath = indexPath + ".tmp";
                 File.WriteAllBytes(tmpPath, cleanBytes);
-                if (File.Exists(indexPath)) File.Delete(indexPath);
-                File.Move(tmpPath, indexPath);
+                // 同还原快照：原子覆盖，避免 Delete 成功而 Move 失败导致索引丢失。
+                File.Move(tmpPath, indexPath, overwrite: true);
 
                 foreach (var prefix in KnownPatchPrefixes)
                 {
