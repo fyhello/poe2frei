@@ -192,4 +192,58 @@ public sealed class Round6InteractionAndPerfTests
         // 顶部状态条
         Assert.Contains("patcherFeedback", js);
     }
+
+    // ── 血条纳入批量后的闭环（验收时发现的 2 处回归）──
+
+    [Fact]
+    public void 还原全部特效时必须一并还原血条()
+    {
+        string js = Read("src", "FreiAtlas.Settings", "Web", "patcher.js");
+
+        int start = js.IndexOf("function restoreAllEffectSettings", StringComparison.Ordinal);
+        Assert.True(start >= 0, "未找到 restoreAllEffectSettings");
+        int end = js.IndexOf("function ", start + 50, StringComparison.Ordinal);
+        Assert.True(end > start);
+        string body = js[start..end];
+
+        // 血条已作为特效模块的一项，还原全部必须显式要求还原它。
+        // 漏传时后端看到 null 会跳过，血条被遗留在客户端。
+        Assert.Contains("healthBarEnabled: false", body);
+    }
+
+    [Fact]
+    public void 血条期望值在落盘一致后交回后端()
+    {
+        string js = Read("src", "FreiAtlas.Settings", "Web", "patcher.js");
+
+        // healthBarState 更新处必须检查并清空 healthBarDesired，
+        // 否则用户动过一次勾选后，界面永远死锁在旧期望值上。
+        int idx = js.IndexOf("healthBarState = state.healthBar;", StringComparison.Ordinal);
+        Assert.True(idx >= 0, "未找到 healthBarState 回显");
+
+        string after = js[idx..(idx + 700)];
+        Assert.Contains("healthBarDesired === healthBarState.applied", after);
+        Assert.Contains("healthBarDesired = null", after);
+    }
+
+    [Fact]
+    public void 前端不得有连续重复的Toast提示()
+    {
+        string js = Read("src", "FreiAtlas.Settings", "Web", "patcher.js");
+
+        string[] lines = js.Split('\n');
+        var dupes = new List<string>();
+        for (int i = 0; i < lines.Length - 1; i++)
+        {
+            string a = lines[i].Trim();
+            string b = lines[i + 1].Trim();
+            if (a.StartsWith("showToast(", StringComparison.Ordinal) && a == b)
+            {
+                dupes.Add($"L{i + 1}/L{i + 2}: {a}");
+            }
+        }
+
+        Assert.True(dupes.Count == 0,
+            "存在连续重复的 showToast（删遮罩时手滑残留）：" + string.Join(" | ", dupes));
+    }
 }

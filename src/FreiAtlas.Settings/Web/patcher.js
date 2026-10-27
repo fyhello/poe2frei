@@ -2098,7 +2098,6 @@
     renderMtxUi();
 
     showToast("正在还原外观特效至纯净原版...");
-    showToast("正在还原外观特效至纯净原版...");
 
     post("restoreMtxPatch", {});
   }
@@ -2206,7 +2205,6 @@
     if (!confirm('确定要还原泥人改动的全部文件吗？将回到首次应用泥人之前的干净状态。')) return;
     selectedMudManTier = -1;
     renderMudManUi();
-    showToast('正在还原泥人改动...');
     showToast('正在还原泥人改动...');
     post('restoreMudMan', {});
   }
@@ -2418,7 +2416,6 @@
     const spells = Array.from(selectedBlockedSpells);
     const includeAudio = element("chkSpellIncludeAudio")?.checked ?? true;
     showToast("正在应用技能与装备特效屏蔽...");
-    showToast("正在应用技能与装备特效屏蔽...");
     post("applySpellBlock", { spellIds: spells, includeAudio });
   }
 
@@ -2431,21 +2428,23 @@
     }
     if (!confirm(`确定要还原这 ${spells.length} 个技能的特效吗？`)) return;
     showToast("正在还原技能特效...");
-    showToast("正在还原技能特效...");
     post("restoreSpellBlock", { spellIds: spells });
   }
 
   function restoreAllEffectSettings() {
     if (!confirm("确定要还原所有特效与画面优化吗？此操作将写回官方原版资源。")) return;
     showToast("正在还原所有特效与性能优化...");
-    showToast("正在还原所有特效与性能优化...");
     selectedMudManTier = -1;
     renderMudManUi();
+    // 血条已纳入批量，还原全部时也必须显式要求还原它，
+    // 否则后端看到 healthBarEnabled 为 null 会跳过，血条被遗留在客户端。
+    healthBarDesired = null;
     post("applyAllEffects", {
       ruleIds: [],
       spellIds: [],
       includeAudio: true,
-      mudManTier: -1
+      mudManTier: -1,
+      healthBarEnabled: false
     });
   }
 
@@ -4344,6 +4343,16 @@
         // 6. 头顶血条状态回显
         if (state.healthBar !== undefined) {
           healthBarState = state.healthBar;
+
+          // 用户改过勾选后 healthBarDesired 会一直保留，若不清空，
+          // 之后无论客户端真实状态怎么变（保存成功、恢复纯净、回滚快照），
+          // 勾选框都会死锁在旧的期望值上，无法再与后端同步。
+          // 一旦期望值与实际状态一致，说明这次操作已经落盘完成，交回控制权。
+          if (healthBarDesired !== null
+              && healthBarState
+              && healthBarDesired === healthBarState.applied) {
+            healthBarDesired = null;
+          }
         }
         renderHealthBarUi();
 
