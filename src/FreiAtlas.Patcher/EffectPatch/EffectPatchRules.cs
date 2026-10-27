@@ -651,6 +651,10 @@ public static class EffectPatchRules
                 TargetPattern = @"(walkability_map_color\s*=\s*lerp\(\s*walkability_map_color(?:\s*\*\s*float4\(\s*1\.0f\s*,\s*1\.0f\s*,\s*1\.0f\s*,\s*visibility\s*\))?\s*,\s*)float4\([^)]*\)(?=\s*,\s*pow\(\s*saturate\(\s*unexplored_edge\s*\)\s*,\s*25\.0f\s*\)\s*\);)",
                 Replacement = $"$1float4({explR}, {explG}, {explB}, {explA})",
                 Description = $"设置小地图探索前线动态光晕色（ExploringGlow={settings.ExploringGlow}）。",
+                // 该哨兵是裸颜色值，若文件里恰好存在同色 float4 会被误判为已应用。
+                // 该局限无法靠「哨兵 + 正则」双重判定消除：Replacement 产物本身
+                // 也满足 TargetPattern，正则无法区分已应用与未应用。
+                // 详见 EffectRuleApplier.ApplyReplaceCode 的说明与第三轮评审报告 P1-3。
                 AppliedSentinel = $"float4({explR}, {explG}, {explB}, {explA})"
             },
             new EffectPatchRule

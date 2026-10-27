@@ -120,7 +120,13 @@ public static class EffectRuleApplier
 
     private static ApplyOutcome ApplyReplaceCode(string content, EffectPatchRule rule)
     {
-        // 幂等检测：内容里已有注入特征，说明补丁已应用
+        // 幂等检测：内容里已有注入特征，说明补丁已应用。
+        //
+        // 已知局限：少数规则的哨兵是裸颜色值（如 minimap_exploring_color 的
+        // "float4(r, g, b, a)"），若文件里恰好存在同色字面量，会被误判为已应用
+        // 而跳过。该场景概率极低（需颜色值完全撞车），且改用「哨兵 + 正则」
+        // 双重判定会破坏幂等语义 —— 因为 Replacement 产物本身也满足 TargetPattern，
+        // 无法用正则区分「已应用」与「未应用」。详见第三轮评审报告 P1-3。
         if (rule.AppliedSentinel is not null
             && content.Contains(rule.AppliedSentinel, StringComparison.Ordinal))
         {
