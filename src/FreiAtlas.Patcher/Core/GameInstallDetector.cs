@@ -128,11 +128,18 @@ public static class GameInstallDetector
             // 国际服可以是繁中、简中（打过汉化）或英文，必须以配置文件为准，
             // 硬编码 zh-TW 会让简中环境下输出繁体内容。
             info.LanguageCode = Poe2LanguageDetector.DetectLanguageCode() ?? "zh-TW";
-            info.BaseItemsPath = "data/balance/traditional chinese/baseitemtypes.datc64";
-            info.WordsPath = "data/balance/traditional chinese/words.datc64";
-            info.EndgameMapsPath = "data/balance/traditional chinese/endgamemaps.datc64";
-            info.WorldAreasPath = "data/balance/traditional chinese/worldareas.datc64";
-            info.ChestsPath = "data/balance/traditional chinese/chests.datc64";
+
+            // 数据表目录必须跟随客户端实际语言，与下面 Bundles2 分支保持一致。
+            // 硬编码 traditional chinese 会让简中 GGPK 客户端读错目录，
+            // 表现为所有补丁「找不到文件」而静默失效。
+            string langDirGgpk = info.IsSimplifiedChinese
+                ? "data/balance/simplified chinese"
+                : "data/balance/traditional chinese";
+            info.BaseItemsPath = $"{langDirGgpk}/baseitemtypes.datc64";
+            info.WordsPath = $"{langDirGgpk}/words.datc64";
+            info.EndgameMapsPath = $"{langDirGgpk}/endgamemaps.datc64";
+            info.WorldAreasPath = $"{langDirGgpk}/worldareas.datc64";
+            info.ChestsPath = $"{langDirGgpk}/chests.datc64";
             info.IsValid = true;
             return info;
         }

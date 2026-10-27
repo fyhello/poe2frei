@@ -273,7 +273,13 @@ public static class CsdSmartPatchTransformer
                 continue;
             }
 
-            result.Add($"{prefix}{tag}{inner}</rgb>{suffix}");
+            // CSD 的词缀染色语法是 <rgb(r,g,b)>{{文本}}，没有 </rgb> 闭合标签。
+            // 官方 .csd 里不存在 </rgb>（全仓仅此一处误写），染色补丁写入的也是
+            // {{...}} 形式。原实现用 </rgb> 收尾且丢了 {{}} 包裹，
+            // 游戏无法识别这两个改动，词缀颜色与文本都会异常。
+            const string openWrap = "{{";
+            const string closeWrap = "}}";
+            result.Add($"{prefix}{tag}{openWrap}{inner}{closeWrap}{suffix}");
         }
 
         return result;

@@ -308,7 +308,39 @@ public sealed class SpellEffectBlocker
                 return false;
             }
 
-            var files = allOriginals.Select(kv => (kv.Key, kv.Value)).ToList();
+            // 只还原本次被取消勾选的技能所涉及的文件。
+            //
+            // 原实现无视 spellIds 直接把「全部备份」写回并 Clear 掉备份组，
+            // 结果用户取消一个技能会导致：
+            //   · 其余仍勾选的技能被一起还原（用户设置与实际脱节）
+            //   · 全部备份被删除，之后再也无法单独还原任何一个
+            // 这里用 Plan 反查出这批技能实际影响哪些路径，只处理交集。
+            var plan = Poe2SpellBlockDatabase.Plan(spellList);
+            var targetPaths = new HashSet<string>(plan.PlannedFiles.Keys, StringComparer.OrdinalIgnoreCase);
+
+            if (targetPaths.Count == 0)
+            {
+                message = LoadErrorHint() ?? "未能在数据库中定位所选技能涉及的文件，已跳过还原。";
+                return false;
+            }
+
+            var files = new List<(string VirtualPath, byte[] Data)>();
+            var restoredPaths = new List<string>();
+            foreach (var path in targetPaths)
+            {
+                if (allOriginals.TryGetValue(path, out var bytes) && bytes.Length > 0)
+                {
+                    files.Add((path, bytes));
+                    restoredPaths.Add(path);
+                }
+            }
+
+            if (files.Count == 0)
+            {
+                message = "所选技能涉及的文件中没有可用备份（可能尚未应用过屏蔽）。";
+                return false;
+            }
+
             progress?.Invoke($"正在还原 {files.Count} 个文件至官方原版...");
             if (!_engine.WriteGameFiles(info, files))
             {
@@ -316,11 +348,11 @@ public sealed class SpellEffectBlocker
                 return false;
             }
 
-            // 清空备份记录
-            PatchFileBackup.Clear(BackupGroup);
-            PatchFileBackup.Clear("lightning_spark");
+            // 只移除已还原成功的条目，保留其他技能的原件备份。
+            PatchFileBackup.RemoveOriginals(BackupGroup, restoredPaths);
+            PatchFileBackup.RemoveOriginals("lightning_spark", restoredPaths);
 
-            message = $"已成功还原全部技能与装备特效（共 {files.Count} 个文件）。";
+            message = $"已还原 {spellList.Count} 个技能涉及的特效（共 {files.Count} 个文件）。";
             return true;
         }
         catch (Exception ex)
@@ -338,6 +370,11 @@ public sealed class SpellEffectBlocker
     /// 调用方必须区分「没有备份」与「备份目录读不了」—— 前者是正常情况，
     /// 后者会让用户误以为备份丢了。
     /// </param>
+    private static string? LoadErrorHint()
+        => Poe2SpellBlockDatabase.LoadError is null
+            ? null
+            : $"技能数据库不可用：{Poe2SpellBlockDatabase.LoadError}";
+
     private static Dictionary<string, byte[]> LoadAllExistingBackups(out string? readError)
     {
         var result = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);

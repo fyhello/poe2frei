@@ -294,6 +294,8 @@ public sealed class IconPatchService
         var files = new List<(string VirtualPath, byte[] Data)>(paths.Count + removed.Count);
         var missing = new List<string>();
         int restoredCount = 0;
+        // 待写入成功后清理的备份条目（见下方 RemoveOriginals 的说明）
+        List<string> restoredPathsForCleanup = [];
 
         progress?.Invoke(removed.Count > 0
             ? $"准备写入 {paths.Count} 个图标，还原 {removed.Count} 个已取消的图标..."
@@ -321,11 +323,10 @@ public sealed class IconPatchService
                 }
             }
 
-            if (restoredPaths.Count > 0)
-            {
-                // 还原成功后从备份移除，避免下次重复处理与磁盘残留。
-                PatchFileBackup.RemoveOriginals(BackupGroup, restoredPaths);
-            }
+            // 注意：这里【不能】立刻移除备份。
+            // 必须等下面 WriteGameFiles 真正落盘成功后再删，
+            // 否则写入失败时原版图标已被物理删除，用户永久失去原件。
+            restoredPathsForCleanup = restoredPaths;
         }
 
         try
@@ -388,6 +389,12 @@ public sealed class IconPatchService
         {
             message = PatchEngine.LastWriteException?.Message ?? "写入失败。";
             return false;
+        }
+
+        // 写入已成功落盘，此时才能安全移除已还原项的备份记录。
+        if (restoredPathsForCleanup.Count > 0)
+        {
+            PatchFileBackup.RemoveOriginals(BackupGroup, restoredPathsForCleanup);
         }
 
         progress?.Invoke($"已写入 {files.Count} 个图标。");
@@ -490,10 +497,16 @@ public sealed class IconPatchService
     }
 
     /// <summary>是否有可还原的图标备份。</summary>
-    public static bool HasBackup() => PatchFileBackup.LoadOriginals(BackupGroup).Count > 0;
+    /// <remarks>
+    /// 只查清单条目数，不读实际文件内容。
+    /// 原先走 LoadOriginals 会把每个 DDS 全读进内存：任一文件损坏或被占用就抛异常，
+    /// 而本方法在界面快照路径上被调用（SendPatcherSnapshot），
+    /// 异常会直接打断整个界面刷新。
+    /// </remarks>
+    public static bool HasBackup() => PatchFileBackup.CountOriginals(BackupGroup) > 0;
 
     /// <summary>已备份的图标数量。</summary>
-    public static int BackupCount() => PatchFileBackup.LoadOriginals(BackupGroup).Count;
+    public static int BackupCount() => PatchFileBackup.CountOriginals(BackupGroup);
 
     /// <summary>
     /// 客户端索引探针。封装 GGPK 与 Bundles2 两种形态，只暴露「按路径查大小」。

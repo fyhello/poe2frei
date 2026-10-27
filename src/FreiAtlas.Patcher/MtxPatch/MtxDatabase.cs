@@ -15,7 +15,22 @@ public sealed class MtxDatabase
 {
     private const string ResourceName = "FreiAtlas.Patcher.Resources.mtx.poe2_mtx.json.gz";
 
-    private static readonly Lazy<MtxDatabase> LazyInstance = new(() => new MtxDatabase());
+    /// <summary>
+    /// 内嵌数据库加载失败时记录原因。
+    ///
+    /// Lazy&lt;T&gt; 会缓存工厂函数的异常：一旦加载失败，之后每次访问 .Value 都重抛
+    /// 同一个异常，即使条件已恢复也要重启进程才能重试。因此工厂本身不能抛 ——
+    /// 失败时返回一个空实例，把原因留在这里供调用方查询。
+    /// </summary>
+    public static string? LoadError { get; private set; }
+
+    /// <summary>内嵌数据库是否可用。不可用时 <see cref="Instance"/> 返回空库。</summary>
+    public static bool IsAvailable => LoadError is null;
+
+    private static readonly Lazy<MtxDatabase> LazyInstance = new(
+        () => new MtxDatabase(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
     public static MtxDatabase Instance => LazyInstance.Value;
 
     private readonly List<MtxEntry> _allEntries = [];
@@ -83,7 +98,17 @@ public sealed class MtxDatabase
 
     private MtxDatabase()
     {
-        LoadEmbeddedData();
+        // 构造函数不能抛：异常会被 Lazy 永久缓存（见 LoadError 的说明）。
+        try
+        {
+            LoadEmbeddedData();
+        }
+        catch (Exception ex)
+        {
+            LoadError = $"加载商城外观数据库失败：{ex.Message}";
+            _allEntries.Clear();
+            _byName.Clear();
+        }
     }
 
     private void LoadEmbeddedData()

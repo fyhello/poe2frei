@@ -365,6 +365,21 @@ public sealed class PatchBackupManager
     }
 
     /// <summary>
+    /// 原子写文件：先写同目录临时文件，再改名覆盖目标。
+    ///
+    /// 快照 .bin 与纯净底包都是上百 MB 的索引，直接 WriteAllBytes 一旦中途失败
+    ///（磁盘满、进程被杀、杀软拦截），磁盘上会留下截断文件，而还原时读到的
+    /// 正是这份残缺数据，等于把坏索引写回客户端。先写 .tmp 再改名，
+    /// 目标文件要么是旧的完整内容，要么是新的完整内容。
+    /// </summary>
+    private static void WriteFileAtomic(string path, byte[] bytes)
+    {
+        string tmp = path + ".tmp";
+        File.WriteAllBytes(tmp, bytes);
+        File.Move(tmp, path, overwrite: true);
+    }
+
+    /// <summary>
     /// 写入快照清单。
     ///
     /// 清单是管理全部快照的唯一索引，写失败会让「界面上有快照、磁盘上没登记」
@@ -378,7 +393,11 @@ public sealed class PatchBackupManager
         {
             var manifestPath = GetManifestPath(info);
             var json = JsonSerializer.Serialize(list, JsonOpts);
-            File.WriteAllText(manifestPath, json, Encoding.UTF8);
+            // 原子写：清单是全部快照的索引，截断会让历史快照"消失"。
+            // .tmp 内容在 File.WriteAllText 返回后才改名，中间失败不会破坏原文件。
+            string tmp = manifestPath + ".tmp";
+            File.WriteAllText(tmp, json, Encoding.UTF8);
+            File.Move(tmp, manifestPath, overwrite: true);
             LastManifestError = null;
             return true;
         }
@@ -459,7 +478,10 @@ public sealed class PatchBackupManager
             };
 
             string binPath = Path.Combine(snapDir, $"{snapId}.bin");
-            File.WriteAllBytes(binPath, indexBytes);
+            // 原子写入：先写 .tmp 再改名。直接 WriteAllBytes 若中途失败
+            //（磁盘满 / 进程被杀），会在磁盘上留下截断的 .bin，
+            // 而还原时读到的正是这份残缺数据 —— 等于把坏索引写回客户端。
+            WriteFileAtomic(binPath, indexBytes);
 
             // 将设置独立保存为小文件，避免 manifest.json 和 IPC 传输暴增到数十兆
             if (!string.IsNullOrWhiteSpace(settingsJson))
@@ -600,6 +622,17 @@ public sealed class PatchBackupManager
         {
             logger?.Invoke($"正在读取快照【{target.Name}】数据（{target.SizeBytes / (1024.0 * 1024.0):F2} MB）...");
             byte[] snapshotBytes = File.ReadAllBytes(binPath);
+
+            // 长度校验：快照创建时记录了 SizeBytes，这里必须核对读到的字节数。
+            // 若上次创建被中断（磁盘满 / 进程被杀），磁盘上会留下截断的 .bin；
+            // 不校验就把它当完整索引写回客户端，客户端将无法启动。
+            if (target.SizeBytes > 0 && snapshotBytes.Length != target.SizeBytes)
+            {
+                return new BackupRestoreResult(false,
+                    $"快照【{target.Name}】数据不完整：记录 {target.SizeBytes} 字节，实际读取 {snapshotBytes.Length} 字节。\n" +
+                    "该快照创建时可能被中断，已拒绝还原以避免损坏客户端索引。" +
+                    "请删除该快照后重新创建，或用「恢复纯净客户端」重建。");
+            }
 
             if (info.Mode == GameMode.GGPK)
             {
@@ -835,7 +868,7 @@ public sealed class PatchBackupManager
                     }
 
                     var indexBytes = record.Read();
-                    File.WriteAllBytes(backupPath, indexBytes);
+                    WriteFileAtomic(backupPath, indexBytes);
                     logger?.Invoke($"已成功生成纯净索引备份（{indexBytes.Length / (1024.0 * 1024.0):F2} MB）");
 
                     // 同步固化为 official 快照。必须复用已读到的索引：GGPK 句柄仍由

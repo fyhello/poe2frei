@@ -19,7 +19,20 @@ public static class Poe2SpellBlockDatabase
 {
     private const string ResourceName = "FreiAtlas.Patcher.Resources.poe2_spell_block_db.json.gz";
 
-    private static readonly Lazy<DatabasePayload> _data = new(Load);
+    /// <summary>
+    /// 内嵌数据库加载失败时记录原因。
+    ///
+    /// Lazy&lt;T&gt; 会缓存工厂函数的异常：一旦加载失败，之后每次访问 .Value 都重抛
+    /// 同一个异常，即使条件已恢复也要重启进程才能重试。因此 Load 本身不抛 ——
+    /// 失败时返回空数据，把原因留在这里供调用方查询。
+    /// </summary>
+    public static string? LoadError { get; private set; }
+
+    /// <summary>内嵌数据库是否可用。不可用时各查询返回空集合。</summary>
+    public static bool IsAvailable => LoadError is null;
+
+    private static readonly Lazy<DatabasePayload> _data = new(
+        Load, LazyThreadSafetyMode.ExecutionAndPublication);
 
     public static IReadOnlyList<Poe2SpellOption> Options => _data.Value.Skills;
 
@@ -189,6 +202,19 @@ public static class Poe2SpellBlockDatabase
     }
 
     private static DatabasePayload Load()
+    {
+        try
+        {
+            return LoadCore();
+        }
+        catch (Exception ex)
+        {
+            LoadError = $"加载技能数据库失败：{ex.Message}";
+            return new DatabasePayload([], [], new Dictionary<string, List<Poe2SpellRecord>>(StringComparer.OrdinalIgnoreCase), new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+    }
+
+    private static DatabasePayload LoadCore()
     {
         var asm = Assembly.GetExecutingAssembly();
         using var stream = asm.GetManifestResourceStream(ResourceName)

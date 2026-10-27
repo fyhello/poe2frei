@@ -154,9 +154,16 @@ public sealed class EffectPatchApplier
                     backupable);
             }
 
+            // 差量还原也必须走定点移除：character.ot 等文件与 MTX 翻滚补丁共享，
+            // 直接整文件覆盖 orig.Data 会把对方的注入一起抹掉（单向静默失效）。
+            // 原实现只有 Restore 走了 BuildRestorePayload，Apply 这条路径漏了。
+            var restoredPayload = restoredFiles.Count > 0
+                ? BuildRestorePayload(info, restoredFiles, progress).Files
+                : [];
+
             var files = plan
                 .Select(p => (p.VirtualPath, p.NewBytes))
-                .Concat(restoredFiles.Select(orig => (orig.VirtualPath, orig.Data)))
+                .Concat(restoredPayload)
                 .ToList();
 
             progress?.Invoke($"写入 {files.Count} 个文件...");

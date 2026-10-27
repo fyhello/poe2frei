@@ -113,7 +113,6 @@ public sealed class HealthBarApplier
         message = string.Empty;
 
         // 资源锁：用 FileShare.None 独占打开客户端索引，比只查进程名可靠。
-        // 血条要扫描全部 .ot 再写入，游戏占用资源时开跑会中途失败。
         var (isLocked, lockReason) = PatchBackupManager.CheckResourceLock(info);
         if (isLocked)
         {
@@ -138,15 +137,51 @@ public sealed class HealthBarApplier
                 return false;
             }
 
-            // 还原点：同版本复用，跨版本重建。理由与泥人一致 ——
-            // 每次应用都新建会堆出多份 115 MB 文件，且第二份起记的已是打过补丁的索引。
-            progress?.Invoke("准备还原点...");
-            var restorePoint = EnsureRestorePoint(info, progress, out var restoreError);
-            if (string.IsNullOrEmpty(restorePoint))
+            // 逐文件备份：只涉及几十个怪物定义文件，体积很小。
+            //
+            // 原先复用「全量索引快照 + 指纹校验」，导致血条无法单独关闭：
+            // 用户之后打过任何其他补丁，索引指纹就变了，快照被判为 Stale，
+            // 还原被永久拒绝。逐文件备份只记录这几十个文件的原件，
+            // 与其他补丁互不干扰，也不受索引整体变化影响。
+            var originals = new Dictionary<string, byte[]>(plan.Count, StringComparer.OrdinalIgnoreCase);
+
+            using (var session = ClientIndexSession.Open(info))
             {
-                message = $"无法准备还原点，已中止：{restoreError}";
-                return false;
+                if (session is null)
+                {
+                    message = "未能打开客户端索引，无法备份原始文件。";
+                    return false;
+                }
+
+                foreach (var item in plan)
+                {
+                    byte[]? current;
+                    try
+                    {
+                        current = session.ReadFile(item.VirtualPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        message = $"读取原始文件失败（{item.VirtualPath}）：{ex.Message}";
+                        return false;
+                    }
+
+                    if (current is null || current.Length == 0)
+                    {
+                        // 读不到原件就无法还原，宁可不写，避免留下无法回退的改动。
+                        message = $"原始文件读不到内容（{item.VirtualPath}），已中止。";
+                        return false;
+                    }
+
+                    originals[item.VirtualPath] = current;
+                }
             }
+
+            PatchFileBackup.SaveOriginals(
+                BackupGroup,
+                originals.Keys,
+                originals,
+                gameVersion: PatchBackupManager.ReadGameVersion(info));
 
             var files = plan.Select(p => (p.VirtualPath, p.NewBytes)).ToList();
 
@@ -158,11 +193,6 @@ public sealed class HealthBarApplier
             }
 
             WriteState(files.Count);
-
-            // 本次写入来自血条自身，把还原点指纹同步到最新索引。
-            // 否则同一版本内重复应用后，还原点会被判定为 Stale 而无法还原。
-            _backupManager.RefreshSnapshotFingerprint(info, restorePoint);
-
             message = $"头顶血条已全部显示：改动 {files.Count} 个怪物定义文件。";
             return true;
         }
@@ -173,68 +203,49 @@ public sealed class HealthBarApplier
         }
     }
 
-    /// <summary>
-    /// 还原：回滚到应用前的索引。
-    /// </summary>
     public bool Restore(GameModeInfo info, Action<string>? progress, out string message)
     {
         message = string.Empty;
 
+        var (isLocked, lockReason) = PatchBackupManager.CheckResourceLock(info);
+        if (isLocked)
+        {
+            message = lockReason ?? "客户端资源被占用，无法写入还原。";
+            return false;
+        }
+
         try
         {
-            var point = _backupManager.GetSnapshots(info)
-                .Where(s => s.Name.StartsWith(RestorePointPrefix, StringComparison.Ordinal))
-                .OrderByDescending(s => s.CreatedAt)
-                .FirstOrDefault();
-
-            if (point is not null)
+            // 版本校验：游戏更新后怪物定义可能已变，写回旧版本文件会出问题。
+            string? mismatch = PatchFileBackup.CheckVersionMismatch(
+                BackupGroup, PatchBackupManager.ReadGameVersion(info));
+            if (mismatch is not null)
             {
-                string current = PatchBackupManager.ReadGameVersion(info);
-                if (!string.IsNullOrEmpty(current)
-                    && !string.IsNullOrEmpty(point.GameVersion)
-                    && !string.Equals(point.GameVersion, current, StringComparison.OrdinalIgnoreCase))
-                {
-                    message =
-                        $"血条还原点是 {point.GameVersion} 版本创建的，当前客户端是 {current}。" +
-                        "用旧版本索引还原会让客户端无法启动，已拒绝。";
-                    return false;
-                }
-
-                // 还原是回滚全量索引快照，若快照之后又打过其他补丁，回滚会把它们一起抹掉。
-                // 先比对索引指纹，发现被改写过就拒绝。
-                var staleness = _backupManager.CheckSnapshotStaleness(info, point.Id);
-                if (staleness == SnapshotStaleness.Stale)
-                {
-                    message =
-                        "血条还原点之后，客户端又被其他补丁改动过（物价、汉化、商城外观等）。\n" +
-                        "此时还原血条会把那些改动一并抹掉，已中止。\n\n" +
-                        "如需继续，请先单独还原那些补丁，或使用「恢复纯净客户端」后重新按需打补丁。";
-                    return false;
-                }
-
-                progress?.Invoke("正在还原到血条应用前的索引...");
-                var snap = _backupManager.RestoreSnapshot(info, point.Id, out var snapMessage, progress);
-                if (!snap.Success)
-                {
-                    message = $"还原失败：{snapMessage}";
-                    return false;
-                }
-
-                ClearState();
-                message = "已还原到血条应用前的状态。";
-                return true;
-            }
-
-            progress?.Invoke("正在还原到补丁前的索引...");
-            var result = _backupManager.Restore(info, progress);
-            if (!result.Success)
-            {
-                message = result.Message;
+                message = mismatch;
                 return false;
             }
 
+            var originals = PatchFileBackup.LoadOriginals(BackupGroup);
+            if (originals.Count == 0)
+            {
+                message = PatchFileBackup.LastManifestError is null
+                    ? "没有可用的血条原始备份。"
+                    : $"读取血条原始备份失败：{PatchFileBackup.LastManifestError}";
+                return false;
+            }
+
+            var files = originals.Select(kv => (kv.VirtualPath, kv.Data)).ToList();
+            progress?.Invoke($"正在还原 {files.Count} 个文件至官方原版...");
+            if (!_engine.WriteGameFiles(info, files))
+            {
+                message = PatchEngine.LastWriteException?.Message ?? "还原写入失败。";
+                return false;
+            }
+
+            PatchFileBackup.RemoveOriginals(BackupGroup, files.Select(f => f.VirtualPath));
             ClearState();
-            message = result.Message;
+
+            message = $"已还原 {files.Count} 个怪物定义文件为官方原版。";
             return true;
         }
         catch (Exception ex)
@@ -242,77 +253,6 @@ public sealed class HealthBarApplier
             message = $"还原失败：{ex.Message}";
             return false;
         }
-    }
-
-    /// <summary>
-    /// 确保当前游戏版本有一份血条还原点。同版本复用，跨版本重建。
-    /// </summary>
-    private string? EnsureRestorePoint(GameModeInfo info, Action<string>? progress, out string error)
-    {
-        error = string.Empty;
-
-        string currentVersion = PatchBackupManager.ReadGameVersion(info);
-        if (string.IsNullOrEmpty(currentVersion))
-        {
-            error = "无法读取当前客户端版本，已中止：无法确认还原点是否适用。";
-            return null;
-        }
-
-        var points = _backupManager.GetSnapshots(info)
-            .Where(s => s.Name.StartsWith(RestorePointPrefix, StringComparison.Ordinal))
-            .ToList();
-
-        var matched = points
-            .Where(s => string.Equals(s.GameVersion, currentVersion, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(s => s.CreatedAt)
-            .ToList();
-
-        if (matched.Count > 0)
-        {
-            foreach (var stale in points.Where(s => !ReferenceEquals(s, matched[0])))
-            {
-                _backupManager.DeleteSnapshot(info, stale.Id, out _);
-            }
-
-            progress?.Invoke($"复用现有还原点（{currentVersion}）。");
-            return matched[0].Id;
-        }
-
-        foreach (var old in points)
-        {
-            progress?.Invoke($"游戏版本已变化（{old.GameVersion} → {currentVersion}），重建还原点...");
-            _backupManager.DeleteSnapshot(info, old.Id, out _);
-        }
-
-        var created = _backupManager.CreateSnapshot(
-            info: info,
-            type: PatchSnapshotType.Manual,
-            name: $"{RestorePointPrefix}（{currentVersion}）",
-            description: "血条应用前记录的客户端索引；同一版本内反复应用都回滚到这一份",
-            settingsJson: null,
-            activeModules: null,
-            logger: progress,
-            indexBytes: null);
-
-        if (!created.Success)
-        {
-            error = created.Message;
-            return null;
-        }
-
-        var point = _backupManager.GetSnapshots(info)
-            .Where(s => s.Name.StartsWith(RestorePointPrefix, StringComparison.Ordinal))
-            .OrderByDescending(s => s.CreatedAt)
-            .FirstOrDefault();
-
-        if (point is null)
-        {
-            error = "还原点创建后未能定位其标识。";
-            return null;
-        }
-
-        progress?.Invoke($"已创建还原点（{currentVersion}）。");
-        return point.Id;
     }
 
     private sealed class FilePlan

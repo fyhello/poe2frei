@@ -2957,6 +2957,13 @@
     // 血条开关走 checkbox，不在按钮列表里，单独禁用
     const hbToggle = element('chkOpt-healthbar');
     if (hbToggle) hbToggle.disabled = busy;
+
+    // 动态生成的写操作按钮（快照中心的恢复/删除、各类列表项按钮）
+    // 无法预先登记进 PATCH_ACTION_BUTTON_IDS，用属性标记统一处理。
+    // 之前漏掉这类按钮，用户可以在写盘期间并发点恢复或删除，导致状态错乱。
+    document.querySelectorAll('[data-busy-guard]').forEach(node => {
+      node.disabled = busy;
+    });
   }
 
   /** 收到后端闸门状态同步消息。 */
@@ -2965,7 +2972,11 @@
     applyBusyState(Boolean(payload.patchBusy));
   }
 
-  // 会写客户端文件的按钮。只读扫描按钮（btnScan*）与预览按钮不在此列。
+  // 会写客户端文件的静态按钮。只读扫描按钮（btnScan*）与预览按钮不在此列。
+  //
+  // 这里只管「页面里固定存在的按钮」。快照中心按条目动态生成的恢复/删除按钮
+  // 无法预先登记，由 applyBusyState 统一扫描 data-busy-guard 属性处理。
+  // 新增写操作按钮时：固定按钮加进本清单，动态按钮加 data-busy-guard="1"。
   const PATCH_ACTION_BUTTON_IDS = [
     'btnApplyTranslationPatch',
     'btnRestorePatches',
@@ -2985,7 +2996,9 @@
     'btnSaveFontPreset',
     'btnSaveRemoveDarkModal',
     'btnSaveSpellBlockModal',
-    'btnSaveMudManModal'
+      'btnSaveMudManModal',
+      // 物价清洗也会改写客户端数据表，原先漏掉了
+      'btnCleanPricePatch'
   ];
 
   // 同步 6 个模块卡片的真实状态。
@@ -4151,6 +4164,11 @@
             currentPresetId = id;
             renderPresetSelect();
           }
+        } else {
+          // 后端下发了空配置 —— 可能是「恢复默认设置」。
+          // 必须显式清空内存，否则旧配置继续留在 userConfig 里，
+          // 用户下次点保存又把旧值写回去，表现为「恢复默认无效」。
+          userConfig = new Map();
         }
 
         // 启动时词缀列表保持为空，等待用户显式点击「提取客户端」
@@ -4168,6 +4186,14 @@
               it.enabled = t.enabled;
               it.color = t.color;
             }
+          });
+          renderMapBeam();
+        } else {
+          // 后端无配置（含恢复默认）：把所有条目复位为内置默认值。
+          // 否则内存里仍是上次的开关与颜色，界面看起来「没恢复」。
+          MAP_BEAM_DATA.forEach(it => {
+            it.enabled = true;
+            it.color = "Farudin";
           });
           renderMapBeam();
         }
@@ -4188,6 +4214,14 @@
               it.enabled = c.enabled;
               if (c.modifiedName) it.modifiedName = c.modifiedName;
             }
+          });
+          renderChestsList();
+        } else {
+          // 后端无配置（含恢复默认）：清掉用户自定义名称与开关。
+          // modifiedName 回落到原始名，避免残留上次的标注后缀。
+          CHESTS_DATA.forEach(it => {
+            it.enabled = false;
+            it.modifiedName = it.originalName;
           });
           renderChestsList();
         }

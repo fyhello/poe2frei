@@ -22,6 +22,9 @@ public static class PatchFileBackup
 {
     private const string ManifestName = "manifest.json";
 
+    /// <summary>最近一次清单读写的失败原因。查询失败时为 null。</summary>
+    public static string? LastManifestError { get; private set; }
+
     /// <summary>备份根目录。</summary>
     public static string GetRootDirectory()
     {
@@ -97,7 +100,8 @@ public static class PatchFileBackup
         string groupId,
         IEnumerable<string> targetPaths,
         IReadOnlyDictionary<string, byte[]> originals,
-        ISet<string>? reconstructedPaths = null)
+        ISet<string>? reconstructedPaths = null,
+        string? gameVersion = null)
     {
         var dir = GetGroupDirectory(groupId);
         Directory.CreateDirectory(dir);
@@ -121,7 +125,8 @@ public static class PatchFileBackup
                 Length = data.Length,
                 Sha256 = Convert.ToHexString(SHA256.HashData(data)),
                 SavedAt = DateTime.Now,
-                IsReconstructed = reconstructedPaths?.Contains(virtualPath) == true
+                IsReconstructed = reconstructedPaths?.Contains(virtualPath) == true,
+                GameVersion = gameVersion
             };
             saved++;
         }
@@ -153,14 +158,94 @@ public static class PatchFileBackup
     /// <summary>
     /// 读取某个分组的全部原始字节。
     /// </summary>
+    /// <summary>
+    /// 只统计清单条目数，不读取任何备份文件内容。
+    ///
+    /// 供界面查询使用：LoadOriginals 会把每个文件全读进内存，
+    /// 任一文件损坏或被占用就抛异常，而这些查询位于 UI 快照路径上，
+    /// 一次异常就会打断整个界面刷新。
+    /// </summary>
+    public static int CountOriginals(string groupId)
+    {
+        var dir = GetGroupDirectory(groupId);
+        if (!Directory.Exists(dir)) return 0;
+
+        try
+        {
+            return LoadManifest(dir).Count;
+        }
+        catch
+        {
+            // 查询类接口不抛：清单读不出来按「无备份」处理，
+            // 具体错误由写入路径的 LoadManifest 调用方负责上报。
+            return 0;
+        }
+    }
+
     public static List<(string VirtualPath, byte[] Data)> LoadOriginals(string groupId)
     {
         var result = new List<(string, byte[])>();
+        var failures = new List<string>();
+
         foreach (var (virtualPath, filePath, _) in ListOriginals(groupId))
         {
-            result.Add((virtualPath, File.ReadAllBytes(filePath)));
+            // 单个文件读失败不应让整组加载崩掉：备份目录里可能有几十上百个文件，
+            // 其中一个被杀软隔离或磁盘坏道，不该导致「全部还原」失败。
+            // 失败的条目收集起来，由最后统一上报（不静默吞掉）。
+            try
+            {
+                result.Add((virtualPath, File.ReadAllBytes(filePath)));
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{virtualPath}（{ex.Message}）");
+            }
         }
+
+        LastManifestError = failures.Count == 0
+            ? null
+            : $"有 {failures.Count} 个备份文件读取失败，这些条目将无法还原：" +
+              string.Join("；", failures.Take(5)) +
+              (failures.Count > 5 ? $"…（共 {failures.Count} 个）" : string.Empty);
+
         return result;
+    }
+
+    /// <summary>
+    /// 检查某组备份是否来自其他游戏版本。
+    ///
+    /// 返回 null 表示可安全还原（版本一致，或备份未记录版本号）。
+    /// 返回非 null 时是不可还原的原因，调用方应提示用户而非强行写回。
+    /// </summary>
+    public static string? CheckVersionMismatch(string groupId, string? currentVersion)
+    {
+        if (string.IsNullOrWhiteSpace(currentVersion)) return null;
+
+        var dir = GetGroupDirectory(groupId);
+        if (!Directory.Exists(dir)) return null;
+
+        Dictionary<string, BackupEntry> manifest;
+        try
+        {
+            manifest = LoadManifest(dir);
+        }
+        catch
+        {
+            return null;   // 清单问题由 LoadManifest 的调用方另行上报
+        }
+
+        var stale = manifest
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Value.GameVersion)
+                         && !string.Equals(kv.Value.GameVersion, currentVersion, StringComparison.OrdinalIgnoreCase))
+            .Select(kv => kv.Value.GameVersion!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (stale.Count == 0) return null;
+
+        return $"备份来自其他游戏版本（备份：{string.Join("、", stale.Take(3))}，当前：{currentVersion}）。"
+             + "游戏更新后资源内容已变化，写回旧版本文件可能导致显示异常或客户端报错。\n"
+             + "建议先「恢复纯净客户端」再重新打补丁。";
     }
 
     /// <summary>
@@ -239,14 +324,26 @@ public static class PatchFileBackup
         {
             var json = File.ReadAllText(path);
             var data = JsonSerializer.Deserialize<Dictionary<string, BackupEntry>>(json);
-            return data is null
-                ? new Dictionary<string, BackupEntry>(StringComparer.OrdinalIgnoreCase)
-                : new Dictionary<string, BackupEntry>(data, StringComparer.OrdinalIgnoreCase);
+            if (data is null)
+            {
+                // 空 JSON 也视为损坏：正常清单至少有若干条记录。
+                throw new InvalidDataException("清单内容为空。");
+            }
+            return new Dictionary<string, BackupEntry>(data, StringComparer.OrdinalIgnoreCase);
         }
-        catch
+        catch (Exception ex)
         {
-            // 清单损坏时按空清单处理：宁可重新备份一份，也不要因为清单读不出而跳过备份。
-            return new Dictionary<string, BackupEntry>(StringComparer.OrdinalIgnoreCase);
+            // 清单损坏绝不能静默降级为空清单。
+            //
+            // 空清单会让 SaveOriginals 认为「这些文件都没备份过」，于是从
+            // 【当前客户端】重新读取内容当作原件保存 —— 而当前客户端可能
+            // 已经打过补丁，等于把补丁后的内容冒充原件存下来。用户之后点
+            // 「恢复原版」写回的就是补丁内容，原始文件永久丢失。
+            //
+            // 因此这里必须让错误可见：记录原因并在读取方上报。
+            LastManifestError = $"读取备份清单失败（{path}）：{ex.Message}。" +
+                "请勿在此状态下重新打补丁 —— 否则会把已修改的内容误存为原件。";
+            throw new InvalidDataException(LastManifestError, ex);
         }
     }
 
@@ -269,5 +366,15 @@ public static class PatchFileBackup
         /// 还原时据此提示用户，避免把重建内容误当成官方原件。
         /// </summary>
         public bool IsReconstructed { get; set; }
+
+        /// <summary>
+        /// 备份时客户端的版本号。
+        ///
+        /// 游戏大更新后资源内容会变，此时拿旧版本备份还原会写回过期文件，
+        /// 轻则显示异常，重则资源格式不匹配导致客户端报错。
+        /// 还原前据此提示用户，而不是默默写回。
+        /// 早期版本创建的备份没有该字段（null），按「版本未知」处理。
+        /// </summary>
+        public string? GameVersion { get; set; }
     }
 }

@@ -470,7 +470,14 @@ public sealed class PricePatchService
             var (replacements, warnings) = BuildReplacements(entries, priceRows, separator, keepExistingPrice, mode, patchSameNameDuplicates, enMap);
             result.Warnings.AddRange(warnings);
 
+            // 两张表的改动先全部算好，最后一次性写入。
+            // 分两次写没有事务性：第一张成功、第二张失败时，客户端会停在
+            // 「一半有物价」的状态，而界面已经报失败，用户重试又会基于脏数据继续写。
+            var pendingWrites = new List<(string VirtualPath, byte[] Data)>(2);
             int basePatchedCount = 0;
+            // Words 的替换列表要留到写后校验用，因此在 if 块外声明
+            List<NameReplacement> wordsReplacementsForVerify = [];
+
             if (replacements.Count > 0)
             {
                 progress?.Invoke($"正在为 {replacements.Count} 个基础物品注入地面参考物价（模式：{mode}）...");
@@ -478,22 +485,7 @@ public sealed class PricePatchService
                     ? ApplyReplacementsAppend(sourceBytes, replacements)
                     : ApplyReplacementsFixed(sourceBytes, replacements);
 
-                if (!_engine.WriteGameFiles(info, [(targetPath, patchedBytes)]))
-                {
-                    result.ErrorMessage = "写入 BaseItemTypes 物价补丁文件失败：" + (PatchEngine.LastWriteException?.Message ?? "未知原因");
-                    progress?.Invoke(result.ErrorMessage);
-                    return result;
-                }
-
-                byte[]? verifyBytes = _engine.ReadGameFile(info, targetPath, out _);
-                if (verifyBytes == null || !VerifyPatchedNames(verifyBytes, replacements))
-                {
-                    string restoreMessage = RestorePreviousContent(info, targetPath, rawBytes);
-                    result.ErrorMessage = "BaseItemTypes 物价写入后校验失败，已尝试还原备份。" + restoreMessage;
-                    progress?.Invoke(result.ErrorMessage);
-                    return result;
-                }
-
+                pendingWrites.Add((targetPath, patchedBytes));
                 basePatchedCount = replacements.Count;
             }
 
@@ -513,36 +505,42 @@ public sealed class PricePatchService
                     progress?.Invoke($"正在为 {wordsReplacements.Count} 个暗金装备注入地面参考物价...");
                     byte[] wordsPatchedBytes = ApplyWordReplacementsAppend(wordsSourceBytes, wordsReplacements);
 
-                    if (!_engine.WriteGameFiles(info, [(wordsTargetPath, wordsPatchedBytes)]))
-                    {
-                        // Words 写失败时 BaseItemTypes 已经落盘。不回滚会让客户端停在
-                        // 「一半物价」状态：界面上报失败，实际基础物品已被改写。
-                        string baseRollback = basePatchedCount > 0
-                            ? RestorePreviousContent(info, targetPath, rawBytes)
-                            : string.Empty;
-                        result.ErrorMessage = "写入 Words 暗金装备物价补丁失败："
-                            + (PatchEngine.LastWriteException?.Message ?? "未知原因")
-                            + baseRollback;
-                        progress?.Invoke(result.ErrorMessage);
-                        return result;
-                    }
-
-                    byte[]? verifyWords = _engine.ReadGameFile(info, wordsTargetPath, out _);
-                    if (verifyWords == null || !VerifyPatchedWordNames(verifyWords, wordsReplacements))
-                    {
-                        string restoreMessage = RestorePreviousContent(info, wordsTargetPath, wordsRawBytes);
-                        // 同样要回滚 BaseItemTypes：Words 已还原但 BaseItemTypes 仍是新内容，
-                        // 两表状态不一致，用户重试时会基于脏数据继续写。
-                        string baseRollback = basePatchedCount > 0
-                            ? RestorePreviousContent(info, targetPath, rawBytes)
-                            : string.Empty;
-                        result.ErrorMessage = "Words 暗金物价写入后校验失败，已尝试还原备份。"
-                            + restoreMessage + baseRollback;
-                        progress?.Invoke(result.ErrorMessage);
-                        return result;
-                    }
-
+                    pendingWrites.Add((wordsTargetPath, wordsPatchedBytes));
                     wordsPatchedCount = wordsReplacements.Count;
+                    wordsReplacementsForVerify = wordsReplacements;
+                }
+            }
+
+            // 一次性写入两张表：要么都成功，要么都不写。
+            if (pendingWrites.Count > 0)
+            {
+                progress?.Invoke($"正在写入 {pendingWrites.Count} 个物价数据表...");
+                if (!_engine.WriteGameFiles(info, pendingWrites))
+                {
+                    result.ErrorMessage = "写入物价数据表失败："
+                        + (PatchEngine.LastWriteException?.Message ?? "未知原因");
+                    progress?.Invoke(result.ErrorMessage);
+                    return result;
+                }
+
+                // 写后校验：任一表校验失败则把两张表一起回滚到写入前内容。
+                bool baseOk = basePatchedCount == 0 || VerifyTableContent(info, targetPath, bytes => VerifyPatchedNames(bytes, replacements));
+                bool wordsOk = wordsPatchedCount == 0 || VerifyTableContent(info, wordsTargetPath, bytes => VerifyPatchedWordNames(bytes, wordsReplacementsForVerify));
+
+                if (!baseOk || !wordsOk)
+                {
+                    var rollback = new List<(string VirtualPath, byte[] Data)>(2);
+                    if (basePatchedCount > 0) rollback.Add((targetPath, rawBytes));
+                    if (wordsPatchedCount > 0 && wordsRawBytes is not null) rollback.Add((wordsTargetPath, wordsRawBytes));
+
+                    string restoreMessage = rollback.Count > 0 && _engine.WriteGameFiles(info, rollback)
+                        ? "已回滚两张表到写入前内容。"
+                        : "回滚失败，请使用「恢复纯净客户端」重建。";
+
+                    result.ErrorMessage = (baseOk ? "Words 暗金物价" : "BaseItemTypes 物价")
+                        + "写入后校验失败。" + restoreMessage;
+                    progress?.Invoke(result.ErrorMessage);
+                    return result;
                 }
             }
 
@@ -562,6 +560,15 @@ public sealed class PricePatchService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 读回客户端当前内容并跑断言。读不到或断言失败都返回 false。
+    /// </summary>
+    private bool VerifyTableContent(GameModeInfo info, string path, Func<byte[], bool> predicate)
+    {
+        byte[]? bytes = _engine.ReadGameFile(info, path, out _);
+        return bytes is not null && predicate(bytes);
     }
 
     private static bool VerifyPatchedNames(byte[] bytes, List<NameReplacement> replacements)

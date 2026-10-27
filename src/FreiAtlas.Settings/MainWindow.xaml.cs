@@ -73,7 +73,13 @@ public partial class MainWindow : Window
         string Separator,
         bool KeepExistingPrice,
         string? GameDirectory,
-        DateTimeOffset PriceFetchedAtUtc);
+        DateTimeOffset PriceFetchedAtUtc,
+        // 以下三项用于确认注入后持久化用户配置：
+        // 预览阶段会写一次设置，但用户可能在预览后又改了参数才确认，
+        // 因此确认时必须按「确认这一刻」的值再写一遍。
+        decimal MinExalted,
+        bool StripExisting,
+        IReadOnlyList<string>? Categories);
 
     public MainWindow()
     {
@@ -195,6 +201,16 @@ public partial class MainWindow : Window
         var patcher = _patcher;
         _ = Task.Run(() =>
         {
+            // 必须与用户操作共用同一道闸门。
+            // VerifyBackupVersion 内部会读写 manifest.json（清理过期快照），
+            // 若与用户点击「创建快照」「打补丁」并发执行，两方会同时覆写同一文件，
+            // 导致快照登记条目丢失或 manifest 半写入损坏。
+            //
+            // 最多等 60 秒：等不到说明用户正在打补丁，本次跳过即可，
+            // 下次启动会再检查。不能无限等，否则后台线程长期占着。
+            IDisposable? lease = WaitPatchGate(TimeSpan.FromSeconds(60));
+            if (lease is null) return;
+
             try
             {
                 var check = patcher.VerifyBackupVersion(StaleSnapshotRetention);
@@ -208,7 +224,26 @@ public partial class MainWindow : Window
                 Dispatcher.Invoke(() =>
                     SendPatcherSnapshot(message: $"启动版本校验失败：{exception.Message}"));
             }
+            finally
+            {
+                lease.Dispose();
+            }
         });
+    }
+
+    /// <summary>
+    /// 在后台轮询等待补丁闸门，超时返回 null（调用方放弃本次操作）。
+    /// </summary>
+    private IDisposable? WaitPatchGate(TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            var lease = _patchGate.TryEnter();
+            if (lease is not null) return lease;
+            Thread.Sleep(200);
+        }
+        return null;
     }
 
     private async void OnWebMessageReceived(
@@ -406,17 +441,24 @@ public partial class MainWindow : Window
         catch (OperationCanceledException) when (_shutdownStarted)
         {
         }
-        catch (Exception exception) when (
-            exception is InvalidOperationException
-            or ArgumentException
-            or ObjectDisposedException)
+        catch (Exception exception)
         {
+            // 这里必须捕获全部异常，不能只过滤少数几种类型。
+            // OnWebMessageReceived 是 async void 事件处理器，未捕获的异常会直接
+            // 冒泡到顶层导致进程崩溃 —— 而补丁写入最常见的失败恰恰是
+            // IOException（文件被占用）与 UnauthorizedAccessException（权限不足），
+            // 二者原先都不在过滤列表里。
             if (command is SelectPriceLeagueWebCommand or RefreshPricesWebCommand)
                 SendPricesSnapshot(exception.Message);
             if (command is UpdateQuickAssistWebCommand) SendQuickAssistSnapshot(exception.Message);
             if (command is UpdateHotkeyWebCommand) _runtime.SetHotkeyRegistrationError(exception.Message);
-            if (command is SetPatcherGameDirWebCommand or ApplyFontPatchWebCommand or ApplyRumourPatchWebCommand or ApplyChestPatchWebCommand or ApplyColorModPatchWebCommand or ApplyMtxPatchWebCommand or RestoreMtxPatchWebCommand or RestoreAllPatchesWebCommand or CreatePatcherSnapshotWebCommand or RestorePatcherSnapshotWebCommand or DeletePatcherSnapshotWebCommand)
+
+            // 写命令一律回送错误快照。用 IsWriteCommand 而不是手写白名单：
+            // 手写清单会随命令增减而腐化，漏掉的命令失败时前端收不到任何提示，
+            // 界面会永久停在「处理中」或误显示成功。
+            if (IsWriteCommand(command))
                 SendPatcherSnapshot(error: exception.Message);
+
             if (_runtime is not null)
             {
                 SendSnapshot(_runtime.Current);
@@ -1230,7 +1272,10 @@ public partial class MainWindow : Window
             cmd.Separator,
             !stripExisting,
             _settingsStore.ClientPatch.CustomGameDirectory,
-            fetchedAtUtc);
+            fetchedAtUtc,
+            minExalted,
+            stripExisting,
+            cmd.Categories);
 
         SendPatcherSnapshot(
             message: progressLog ?? $"预览完成：客户端可匹配 {preview.MatchedCount} 个物品，请确认后再注入。",
@@ -1306,7 +1351,17 @@ public partial class MainWindow : Window
         _pendingPricePatch = null;
         if (result.Success)
         {
-            _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with { PricePatchEnabled = true });
+            // 确认注入这条主路径同样要持久化全部过滤参数。
+            // 原先只写 PricePatchEnabled，用户配置的门槛 / 分隔符 / 去旧价 / 类别
+            // 在重启后全部丢失，界面回到默认值而客户端仍是按旧参数打的补丁。
+            _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+            {
+                PricePatchEnabled = true,
+                PricePatchSeparator = pending.Separator,
+                PricePatchMinExalted = pending.MinExalted,
+                PricePatchStripExisting = pending.StripExisting,
+                PricePatchCategories = pending.Categories
+            });
             SendPatcherSnapshot(message: progressLog ?? $"已确认注入 {result.PatchedNames} 个客户端物品物价。");
         }
         else
@@ -1483,6 +1538,17 @@ public partial class MainWindow : Window
 
         if (result.Success)
         {
+            // 索引已回滚，磁盘上的 state.json 必须同步清理 —— 无论本快照是否带设置。
+            //
+            // 原实现只在「无设置 JSON」分支里调用 ClearTransientPatchStates，
+            // 带设置的快照走另一条路，导致 mudman/state.json / healthbar/state.json
+            // 仍记着 applied=true，而索引其实已经回到干净状态：
+            // 用户之后点「应用泥人」会被判定为「已应用、无需写入」而永久跳过。
+            //
+            // 清状态不影响随后恢复的设置项 —— ClearState 只删状态文件，
+            // 不动备份，也不碰 ClientPatchSettings。
+            _patcher.ClearTransientPatchStates();
+
             // 同步回滚配置（双向对齐）
             if (!string.IsNullOrWhiteSpace(restoredSettingsJson))
             {
@@ -1505,9 +1571,7 @@ public partial class MainWindow : Window
             else
             {
                 // 快照未记录设置（官方底包或早期快照）：索引已回滚为纯净版本，
-                // 开关与磁盘状态必须一起复位，否则泥人/血条会因为 state.json
-                // 仍记着 applied=true 而拒绝再次写入。
-                _patcher.ClearTransientPatchStates();
+                // 开关也要一起复位（state.json 已在上方无条件清理）。
                 ResetClientPatchSettingsKeepingDirectory();
             }
 
@@ -2210,6 +2274,51 @@ public partial class MainWindow : Window
                 bool flag = true;
                 bool flag2 = true;
                 bool flag3 = true;
+                // 泥人换档必须先执行。
+                //
+                // 泥人切档时会 RestoreSnapshot 回滚整个客户端索引（见 MudManApplier.Apply），
+                // 若把它放在画面优化 / 技能屏蔽之后，刚写入的内容会被这次回滚整体抹掉 ——
+                // 界面显示全部成功，游戏内却什么都没生效。
+                //
+                // 先做泥人，让回滚落在「旧状态」上，随后写入的画面优化与技能屏蔽
+                // 才是在最终索引之上的有效改动。
+                //
+                int mudManTier = _settingsStore.ClientPatch.MudManTier;
+                bool flag4 = _patcher.IsMudManApplied();
+                if (cmd.MudManTier >= 0 && Enum.IsDefined(typeof(MudManTier), cmd.MudManTier))
+                {
+                    MudManTier mudManTier2 = (MudManTier)cmd.MudManTier;
+                    if (!flag4 || mudManTier != cmd.MudManTier)
+                    {
+                        flag3 = _patcher.ApplyMudManTier(mudManTier2, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                        {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                        }, out string message6);
+                        if (flag3)
+                        {
+                            list.Add(message6);
+                        }
+                        else
+                        {
+                            list2.Add("泥人应用失败：" + message6);
+                        }
+                    }
+                }
+                else if (cmd.MudManTier < 0 && (flag4 || mudManTier >= 0))
+                {
+                    flag3 = _patcher.RestoreMudMan(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                    {
+                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    }, out string message7);
+                    if (flag3)
+                    {
+                        list.Add(message7);
+                    }
+                    else
+                    {
+                        list2.Add("泥人还原失败：" + message7);
+                    }
+                }
                 IReadOnlyList<string> readOnlyList = _settingsStore.ClientPatch.EffectPatchRuleIds ?? Array.Empty<string>();
                 if (cmd.RuleIds.Count > 0)
                 {
@@ -2270,42 +2379,6 @@ public partial class MainWindow : Window
                     else
                     {
                         list2.Add("技能特效还原失败：" + message5);
-                    }
-                }
-                int mudManTier = _settingsStore.ClientPatch.MudManTier;
-                bool flag4 = _patcher.IsMudManApplied();
-                if (cmd.MudManTier >= 0 && Enum.IsDefined(typeof(MudManTier), cmd.MudManTier))
-                {
-                    MudManTier mudManTier2 = (MudManTier)cmd.MudManTier;
-                    if (!flag4 || mudManTier != cmd.MudManTier)
-                    {
-                        flag3 = _patcher.ApplyMudManTier(mudManTier2, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
-                        {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-                        }, out string message6);
-                        if (flag3)
-                        {
-                            list.Add(message6);
-                        }
-                        else
-                        {
-                            list2.Add("泥人应用失败：" + message6);
-                        }
-                    }
-                }
-                else if (cmd.MudManTier < 0 && (flag4 || mudManTier >= 0))
-                {
-                    flag3 = _patcher.RestoreMudMan(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
-                    {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-                    }, out string message7);
-                    if (flag3)
-                    {
-                        list.Add(message7);
-                    }
-                    else
-                    {
-                        list2.Add("泥人还原失败：" + message7);
                     }
                 }
                 return (ruleOk: flag, spellOk: flag2, mudManOk: flag3, msgs: list, errs: list2);
