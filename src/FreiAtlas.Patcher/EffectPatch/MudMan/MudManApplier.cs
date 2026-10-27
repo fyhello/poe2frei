@@ -134,8 +134,54 @@ public sealed class MudManApplier
             return false;
         }
 
+        // 资源锁：用 FileShare.None 独占打开客户端索引，比只查进程名可靠。
+        // 泥人要写 2 万多个文件，若在游戏占用资源时开跑，会中途失败并留下半成品。
+        var (isLocked, lockReason) = PatchBackupManager.CheckResourceLock(info);
+        if (isLocked)
+        {
+            message = lockReason ?? "客户端资源被占用，无法写入。";
+            return false;
+        }
+
         try
         {
+            // 1. 先准备还原点（同版本复用，跨版本重建）。
+            //
+            // 还原点必须是「同版本第一次应用前」的索引：玩家会反复换档位
+            // （中级→高级→低级），每次应用前都新建快照会堆出几十份 115 MB 文件，
+            // 而且第二份开始记的已经是「打过补丁的索引」，拿它还原等于还原到半补丁状态。
+            // 游戏版本变了则重建：旧索引与新的 bundle 布局对不上，用它还原会让偏移错位。
+            progress?.Invoke("准备还原点...");
+            var snapshotId = EnsureRestorePoint(info, progress, out var restorePointError);
+            if (string.IsNullOrEmpty(snapshotId))
+            {
+                // 建不了还原点就不要动客户端：没有可靠回退手段时写补丁，
+                // 等于把用户锁死在「出问题只能验证游戏文件」的境地。
+                message = $"无法准备还原点，已中止：{restorePointError}";
+                return false;
+            }
+
+            // 2. 换档位前必须先回滚到还原点。
+            //
+            // 关键：BuildPlan 从「当前客户端索引」读取内容（ClientIndexSession.Open），
+            // 不是从还原点读。若不先回滚，从高档位切低档位时读到的是已被高档位
+            // 改过的索引 —— 低档位规则只覆盖它自己关心的文件，高档位写入的
+            // 3.2 万张灰贴图与文本清理全部滞留在索引里，降档形同虚设。
+            var currentState = ReadState();
+            bool needRollback = currentState.Applied && currentState.Tier != (int)tier;
+
+            if (needRollback)
+            {
+                progress?.Invoke($"检测到已应用档位 {currentState.Tier}，切换前先回滚到还原点...");
+                var rollback = _backupManager.RestoreSnapshot(info, snapshotId, out _, progress);
+                if (!rollback.Success)
+                {
+                    message = $"切换档位前回滚失败，已中止（避免新旧档位改动叠加）：{rollback.Message}";
+                    return false;
+                }
+            }
+
+            // 3. 基于（已回滚的）客户端索引规划改动
             var rules = tier.Rules();
             var withTextures = tier.HasTextures();
 
@@ -150,6 +196,9 @@ public sealed class MudManApplier
 
             if (plan.Count == 0)
             {
+                // 刚回滚过的话客户端已回到干净状态，状态文件必须同步清掉，
+                // 否则界面仍显示「已应用档位 X」而实际什么都没写。
+                if (needRollback) ClearState();
                 message = "没有需要改动的文件（规则未命中，或该档位已应用）。";
                 return false;
             }
@@ -161,26 +210,6 @@ public sealed class MudManApplier
             var files = plan
                 .Select(p => (p.VirtualPath, p.NewBytes))
                 .ToList();
-
-            // 还原点策略：同一游戏版本只建一次，之后每次应用都回滚到它。
-            //
-            // 这样做的理由：玩家会反复换档位（中级→高级→低级），每次应用前
-            // 都新建快照会堆出几十份 115 MB 的文件，而且第二份开始记的已经是
-            // 「打过补丁的索引」，拿它还原等于还原到半补丁状态。
-            // 只有同版本第一次应用前的那份索引才是真正的「干净起点」。
-            //
-            // 游戏版本变了则重建：旧索引与新的 bundle 布局对不上，
-            // 用它还原会让偏移全部错位、客户端无法启动。
-            progress?.Invoke("准备还原点...");
-            var snapshotId = EnsureRestorePoint(info, progress, out var restorePointError);
-
-            if (string.IsNullOrEmpty(snapshotId))
-            {
-                // 建不了还原点就不要动客户端：没有可靠回退手段时写补丁，
-                // 等于把用户锁死在「出问题只能验证游戏文件」的境地。
-                message = $"无法准备还原点，已中止：{restorePointError}";
-                return false;
-            }
 
             var textureCount = plan.Count(p => p.IsTexture);
             progress?.Invoke(

@@ -112,6 +112,15 @@ public sealed class HealthBarApplier
     {
         message = string.Empty;
 
+        // 资源锁：用 FileShare.None 独占打开客户端索引，比只查进程名可靠。
+        // 血条要扫描全部 .ot 再写入，游戏占用资源时开跑会中途失败。
+        var (isLocked, lockReason) = PatchBackupManager.CheckResourceLock(info);
+        if (isLocked)
+        {
+            message = lockReason ?? "客户端资源被占用，无法写入。";
+            return false;
+        }
+
         try
         {
             progress?.Invoke("血条：正在扫描怪物定义...");
