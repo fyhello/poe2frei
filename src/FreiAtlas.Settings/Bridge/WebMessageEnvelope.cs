@@ -1,11 +1,4 @@
-using System.Text.Json;
-
 namespace FreiAtlas.Settings.Bridge;
-
-public sealed record WebMessageEnvelope(
-    int Version,
-    string Type,
-    JsonElement Payload);
 
 public abstract record WebCommand;
 
@@ -57,7 +50,6 @@ public sealed record ApplyFontPatchWebCommand(
     string PresetId = "default",
     IReadOnlyList<FreiAtlas.Core.Settings.FontCustomPreset>? CustomPresets = null) : WebCommand;
 
-public sealed record ApplyUiColorPatchWebCommand(IReadOnlyList<FreiAtlas.Core.Settings.ClientPatchColorOption> Colors) : WebCommand;
 
 public sealed record ApplyRumourPatchWebCommand(
     bool Enabled,
@@ -67,18 +59,23 @@ public sealed record ApplyChestPatchWebCommand(
     bool Enabled,
     IReadOnlyList<FreiAtlas.Core.Settings.NamePatchOption>? Items = null) : WebCommand;
 
-public sealed record ApplyArchnemesisPatchWebCommand(bool Enabled) : WebCommand;
 
 public sealed record ApplyColorModPatchWebCommand(
     bool Enabled,
     string Style,
     IReadOnlyList<FreiAtlas.Core.Settings.ColorModRuleItem>? Rules = null) : WebCommand;
 
+/// <summary>读取客户端索引，返回当前客户端实际可用的图标清单。</summary>
+public sealed record ScanIconPatchWebCommand : WebCommand;
+
+/// <summary>写入图标。Paths 必须来自扫描结果，后端会再次校验存在性。</summary>
+public sealed record ApplyIconPatchWebCommand(
+    bool Enabled,
+    IReadOnlyList<string>? Paths = null) : WebCommand;
+
 public sealed record ApplyMapBeamPatchWebCommand(
     bool Enabled,
     IReadOnlyList<FreiAtlas.Core.Settings.MapBeamTargetOption>? Targets = null) : WebCommand;
-
-public sealed record ApplyPricePatchWebCommand(string? CsvPath, string Mode, string Separator) : WebCommand;
 
 public sealed record ApplyCurrentPricesPatchWebCommand(
     string Mode,
@@ -116,5 +113,38 @@ public sealed record ScanClientChestsWebCommand : WebCommand;
 
 public sealed record ScanClientFontSettingsWebCommand : WebCommand;
 
-public sealed record ScanClientBaseItemsWebCommand : WebCommand;
+public sealed record ApplyTranslationPatchWebCommand : WebCommand;
 
+public sealed record ApplySpellBlockWebCommand(IReadOnlyList<string> SpellIds, bool IncludeAudio) : WebCommand;
+
+public sealed record RestoreSpellBlockWebCommand(IReadOnlyList<string> SpellIds) : WebCommand;
+
+public sealed record ApplyAllEffectsWebCommand(
+    IReadOnlyList<string> RuleIds,
+    IReadOnlyList<string> SpellIds,
+    bool IncludeAudio,
+    double ViewDistanceRatio = 2.0,
+    int MudManTier = -1) : WebCommand;
+
+/// <summary>还原泥人改动的全部文件。</summary>
+public sealed record RestoreMudManWebCommand : WebCommand;
+
+/// <summary>应用头顶血条补丁（把隐藏的头顶血条全部改为显示）。</summary>
+public sealed record ApplyHealthBarWebCommand : WebCommand;
+
+/// <summary>还原头顶血条补丁。</summary>
+public sealed record RestoreHealthBarWebCommand : WebCommand;
+
+/// <summary>获取商城外观 (MTX) 全部特效元数据与数据库。</summary>
+public sealed record GetMtxDatabaseWebCommand : WebCommand;
+
+/// <summary>应用选中的商城外观 (MTX) 特效。</summary>
+public sealed record ApplyMtxPatchWebCommand(
+    IReadOnlyList<string> SelectedNames,
+    string? SelectedArmourSetName,
+    string? SelectedPortalName,
+    string? SelectedPetName,
+    string SelectedClassCode) : WebCommand;
+
+/// <summary>还原所有商城外观 (MTX) 特效文件。</summary>
+public sealed record RestoreMtxPatchWebCommand : WebCommand;

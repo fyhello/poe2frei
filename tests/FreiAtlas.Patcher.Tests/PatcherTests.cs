@@ -1,5 +1,11 @@
 using System.Text;
 using FreiAtlas.Patcher;
+using FreiAtlas.Patcher.Core;
+using FreiAtlas.Patcher.Modules.ColorMod;
+using FreiAtlas.Patcher.Modules.Price;
+using FreiAtlas.Patcher.Modules.Font;
+using FreiAtlas.Patcher.Modules.Name;
+using FreiAtlas.Patcher.Modules.Rumour;
 
 namespace FreiAtlas.Patcher.Tests;
 
@@ -124,73 +130,12 @@ public class PatcherTests
     }
 
     [Fact]
-    public void ProcessUiColors_ReplacesSpecifiedColorValueInDecimalFormat()
-    {
-        string sampleXml = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <UiSettings>
-                <Props id="MarkupColours">
-                    <Colour id="fractured" value="162,145,98" />
-                    <Colour id="craftaffectremove" value="254,153,0" />
-                </Props>
-            </UiSettings>
-            """;
-
-        byte[] inputBytes = Encoding.Unicode.GetBytes(sampleXml);
-        var targets = new Dictionary<string, (byte[] Rgb, int? Alpha)>
-        {
-            ["fractured"] = (new byte[] { 200, 92, 112 }, null),
-            ["craftaffectremove"] = (new byte[] { 161, 23, 21 }, 255)
-        };
-
-        byte[]? result = UiColorService.ProcessUiColors(inputBytes, targets);
-
-        Assert.NotNull(result);
-
-        string modifiedXml = Encoding.Unicode.GetString(result, 2, result.Length - 2);
-        Assert.Contains("<Colour id=\"fractured\" value=\"200,92,112\"", modifiedXml);
-        Assert.Contains("<Colour id=\"craftaffectremove\" value=\"255,161,23,21\"", modifiedXml);
-    }
-
-    [Fact]
-    public void UiColorEntry_ParseColorString_HandlesVariousFormats()
-    {
-        // 逗号 RGB
-        var (rgb1, a1) = UiColorEntry.ParseColorString("200,92,112");
-        Assert.Equal(200, rgb1[0]);
-        Assert.Equal(92, rgb1[1]);
-        Assert.Equal(112, rgb1[2]);
-        Assert.Null(a1);
-
-        // 逗号 ARGB
-        var (rgb2, a2) = UiColorEntry.ParseColorString("255,161,23,21");
-        Assert.Equal(161, rgb2[0]);
-        Assert.Equal(23, rgb2[1]);
-        Assert.Equal(21, rgb2[2]);
-        Assert.Equal(255, a2);
-
-        // Hex #RRGGBB
-        var (rgb3, a3) = UiColorEntry.ParseColorString("#c85c70");
-        Assert.Equal(0xc8, rgb3[0]);
-        Assert.Equal(0x5c, rgb3[1]);
-        Assert.Equal(0x70, rgb3[2]);
-        Assert.Null(a3);
-
-        // Hex #RRGGBBAA
-        var (rgb4, a4) = UiColorEntry.ParseColorString("#a11715c8");
-        Assert.Equal(0xa1, rgb4[0]);
-        Assert.Equal(0x17, rgb4[1]);
-        Assert.Equal(0x15, rgb4[2]);
-        Assert.Equal(0xc8, a4);
-    }
-
-    [Fact]
     public void RumourPatchService_GetDefaultMemo_FindsMappedText()
     {
-        string memoSimplified = RumourPatchService.GetDefaultMemo("所有闪闪发光之物……", isChina: true);
+        string memoSimplified = RumourPatchService.GetDefaultMemo("所有闪闪发光之物……", isSimplified: true);
         Assert.Contains("颠沛领域", memoSimplified);
 
-        string memoTraditional = RumourPatchService.GetDefaultMemo("閃光的未必是金……", isChina: false);
+        string memoTraditional = RumourPatchService.GetDefaultMemo("閃光的未必是金……", isSimplified: false);
         Assert.Contains("漂流者之所", memoTraditional);
     }
 
@@ -259,16 +204,6 @@ public class PatcherTests
         string fontXml = Encoding.Unicode.GetString(fontResult, 2, fontResult.Length - 2);
         Assert.Contains("Microsoft YaHei", fontXml);
 
-        // 2. 验证从真实 GGPK 提取 uisettings 并应用 UI 配色
-        var targets = new Dictionary<string, (byte[] Rgb, int? Alpha)>
-        {
-            ["fractured"] = (new byte[] { 200, 92, 112 }, null),
-            ["craftaffectremove"] = (new byte[] { 161, 23, 21 }, 255)
-        };
-        var colorResult = UiColorService.ProcessUiColors(uiBytes, targets);
-        Assert.NotNull(colorResult);
-        string colorXml = Encoding.Unicode.GetString(colorResult, 2, colorResult.Length - 2);
-        Assert.Contains("200,92,112", colorXml);
 
         // 3. 验证从真实 GGPK 提取 EndgameMaps 并解析传言条目
         // 依次尝试 繁体中文、简体中文 与 根目录路径
@@ -346,11 +281,8 @@ public class PatcherTests
     [Fact]
     public void NamePatchService_GetDefaultMemo_MatchesPresets()
     {
-        string memoChest = NamePatchService.GetDefaultMemo("秘术保险箱", isChina: true, NamePatchKind.Chests);
+        string memoChest = NamePatchService.GetDefaultMemo("秘术保险箱", isSimplified: true, NamePatchKind.Chests);
         Assert.Equal("秘术保险箱[法系装备]", memoChest);
-
-        string memoArch = NamePatchService.GetDefaultMemo("阿曼娜姆的虚空", isChina: true, NamePatchKind.ArchnemesisMods);
-        Assert.Contains("￥￥￥", memoArch);
     }
 
     [Fact]
@@ -586,75 +518,6 @@ public class PatcherTests
     }
 
     [Fact]
-    public void PriceLayerBackupStore_PersistsBaselineAndRestoresIt()
-    {
-        string root = Path.Combine(Path.GetTempPath(), "frei_pricebackup_" + Guid.NewGuid().ToString("N"));
-        string gameDirectory = Path.Combine(root, "game");
-        Directory.CreateDirectory(gameDirectory);
-        string virtualPath = "data/balance/simplified chinese/baseitemtypes.datc64";
-        var info = new GameModeInfo
-        {
-            IsValid = true,
-            GameDirectory = gameDirectory,
-            Mode = GameMode.Bundles2
-        };
-        var store = new PriceLayerBackupStore(Path.Combine(root, "backup"));
-
-        try
-        {
-            byte[] datBytes = BuildSyntheticBaseItemsDat();
-            var baseline = store.EnsureBaseline(info, virtualPath, datBytes, out var warning);
-            Assert.True(File.Exists(baseline.BaselinePath));
-            Assert.True(string.IsNullOrEmpty(warning));
-            Assert.True(store.TryGetBaseline(info, virtualPath, datBytes, out var loaded));
-            Assert.Equal(datBytes, loaded.Bytes);
-
-            store.RecordApplied(baseline, datBytes, 1);
-            Assert.True(store.TryGetBaseline(info, virtualPath, datBytes, out _));
-        }
-        finally
-        {
-            try { Directory.Delete(root, recursive: true); } catch { }
-        }
-    }
-
-    [Fact]
-    public void PriceLayerBackupStore_RejectsBaselineWhenMetadataSignatureChanges()
-    {
-        string root = Path.Combine(Path.GetTempPath(), "frei_pricebackup_sig_" + Guid.NewGuid().ToString("N"));
-        string gameDirectory = Path.Combine(root, "game");
-        Directory.CreateDirectory(gameDirectory);
-        string virtualPath = "data/balance/simplified chinese/baseitemtypes.datc64";
-        var info = new GameModeInfo
-        {
-            IsValid = true,
-            GameDirectory = gameDirectory,
-            Mode = GameMode.Bundles2
-        };
-        var store = new PriceLayerBackupStore(Path.Combine(root, "backup"));
-
-        try
-        {
-            byte[] first = BuildSyntheticBaseItemsDat();
-            store.EnsureBaseline(info, virtualPath, first, out _);
-            Assert.True(store.TryGetBaseline(info, virtualPath, first, out _));
-
-            byte[] changed = BuildSyntheticBaseItemsDat(
-                "Metadata/Items/Currency/CurrencyDivine",
-                "神圣石");
-            Assert.False(store.TryGetBaseline(info, virtualPath, changed, out _));
-
-            store.EnsureBaseline(info, virtualPath, changed, out var warning);
-            Assert.False(string.IsNullOrEmpty(warning));
-            Assert.True(store.TryGetBaseline(info, virtualPath, changed, out _));
-        }
-        finally
-        {
-            try { Directory.Delete(root, recursive: true); } catch { }
-        }
-    }
-
-    [Fact]
     public void PricePatchService_Maps_English_To_Metadata()
     {
         Assert.True(PricePatchService.EnglishToMetadataMap.ContainsKey("Divine Orb"));
@@ -707,8 +570,9 @@ public class PatcherTests
         stream.Write(new byte[4]);
 
         byte[] bytes = stream.ToArray();
-        Buffer.BlockCopy(BitConverter.GetBytes(metadataOffset), 0, bytes, 4, 4);
-        Buffer.BlockCopy(BitConverter.GetBytes(nameOffset), 0, bytes, 4 + 32, 4);
+        // 指针槽是 8 字节，只写低 4 字节会让高 4 字节保持为 0，读取时才是正确的偏移
+        Buffer.BlockCopy(BitConverter.GetBytes((ulong)metadataOffset), 0, bytes, 4, 8);
+        Buffer.BlockCopy(BitConverter.GetBytes((ulong)nameOffset), 0, bytes, 4 + 32, 8);
         return bytes;
     }
 }

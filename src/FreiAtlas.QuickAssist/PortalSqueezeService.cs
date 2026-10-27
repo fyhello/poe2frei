@@ -98,6 +98,7 @@ public sealed class PortalSqueezeService : IAsyncDisposable
             }
             catch (OperationCanceledException)
             {
+                // Dispose 时取消正在跑的任务属于正常关闭流程，不是错误。
             }
         }
 

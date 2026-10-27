@@ -66,6 +66,16 @@ public static class AtlasDisplaySettingsValidator
             1f,
             "AreaMap.LargeMapLabelFontSize");
         ValidateRange(
+            settings.AreaMap.OverlayScale,
+            0.5f,
+            1.5f,
+            "AreaMap.OverlayScale");
+        ValidateRange(
+            settings.AreaMap.ExpeditionPanel.Scale,
+            0.5f,
+            1.5f,
+            "AreaMap.ExpeditionPanel.Scale");
+        ValidateRange(
             settings.AreaMap.ExpeditionTag.BackgroundOpacity,
             0f,
             1f,

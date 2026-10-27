@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FreiAtlas.Core.Settings;
+using FreiAtlas.Patcher.Modules.ColorMod;
+using FreiAtlas.Patcher.Modules.Name;
 
 namespace FreiAtlas.Settings.Bridge;
 
@@ -110,20 +112,28 @@ public sealed class WebMessageRouter
             "scanClientRumours" => new ScanClientRumoursWebCommand(),
             "scanClientChests" => new ScanClientChestsWebCommand(),
             "scanClientFontSettings" => new ScanClientFontSettingsWebCommand(),
-            "scanClientBaseItems" => new ScanClientBaseItemsWebCommand(),
             "setPatcherGameDir" => RouteSetPatcherGameDir(payload),
             "applyFontPatch" => RouteApplyFontPatch(payload),
-            "applyUiColorPatch" => RouteApplyUiColorPatch(payload),
             "applyRumourPatch" => RouteApplyRumourPatch(payload),
             "applyChestPatch" => RouteApplyChestPatch(payload),
-            "applyArchnemesisPatch" => RouteApplyArchnemesisPatch(payload),
             "applyColorModPatch" => RouteApplyColorModPatch(payload),
             "applyMapBeamPatch" => RouteApplyMapBeamPatch(payload),
-            "applyPricePatch" => RouteApplyPricePatch(payload),
+            "scanIconPatch" => new ScanIconPatchWebCommand(),
+            "applyIconPatch" => RouteApplyIconPatch(payload),
             "applyCurrentPricesPatch" => RouteApplyCurrentPricesPatch(payload),
             "previewCurrentPricesPatch" => RoutePreviewCurrentPricesPatch(payload),
             "confirmCurrentPricesPatch" => RouteConfirmCurrentPricesPatch(payload),
             "cleanPricePatch" => RouteCleanPricePatch(payload),
+            "applyTranslationPatch" => new ApplyTranslationPatchWebCommand(),
+            "applySpellBlock" => RouteApplySpellBlock(payload),
+            "restoreSpellBlock" => RouteRestoreSpellBlock(payload),
+            "applyAllEffects" => RouteApplyAllEffects(payload),
+            "restoreMudMan" => new RestoreMudManWebCommand(),
+            "applyHealthBar" => new ApplyHealthBarWebCommand(),
+            "restoreHealthBar" => new RestoreHealthBarWebCommand(),
+            "getMtxDatabase" => new GetMtxDatabaseWebCommand(),
+            "applyMtxPatch" => RouteApplyMtxPatch(payload),
+            "restoreMtxPatch" => new RestoreMtxPatchWebCommand(),
             "restoreAllPatches" => new RestoreAllPatchesWebCommand(),
             "getPatcherSnapshots" => new GetPatcherSnapshotsWebCommand(),
             "createPatcherSnapshot" => RouteCreatePatcherSnapshot(payload),
@@ -302,28 +312,6 @@ public sealed class WebMessageRouter
             customPresets);
     }
 
-    private static WebCommand? RouteApplyUiColorPatch(JsonElement payload)
-    {
-        if (!payload.TryGetProperty("colors", out var colorsElement) || colorsElement.ValueKind != JsonValueKind.Array)
-        {
-            return null;
-        }
-
-        var list = new List<FreiAtlas.Core.Settings.ClientPatchColorOption>();
-        foreach (var item in colorsElement.EnumerateArray())
-        {
-            string key = item.TryGetProperty("key", out var k) && k.ValueKind == JsonValueKind.String ? k.GetString() ?? "" : "";
-            string displayName = item.TryGetProperty("displayName", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString() ?? "" : "";
-            string val = item.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
-            bool enabled = !item.TryGetProperty("enabled", out var e) || e.ValueKind != JsonValueKind.False;
-            if (!string.IsNullOrEmpty(key))
-            {
-                list.Add(new FreiAtlas.Core.Settings.ClientPatchColorOption(key, displayName, val, enabled));
-            }
-        }
-        return new ApplyUiColorPatchWebCommand(list);
-    }
-
     private static WebCommand? RouteApplyRumourPatch(JsonElement payload)
     {
         bool enabled = !payload.TryGetProperty("enabled", out var e) || e.ValueKind != JsonValueKind.False;
@@ -370,10 +358,28 @@ public sealed class WebMessageRouter
         return new ApplyChestPatchWebCommand(enabled, items);
     }
 
-    private static WebCommand? RouteApplyArchnemesisPatch(JsonElement payload)
+    /// <summary>
+    /// 解析图标写入请求。
+    ///
+    /// Paths 由前端从扫描结果里带回来，后端不信任其完整性——写入时会再次
+    /// 对照客户端索引校验，失效路径一律跳过。
+    /// </summary>
+    private static WebCommand RouteApplyIconPatch(JsonElement payload)
     {
         bool enabled = !payload.TryGetProperty("enabled", out var e) || e.ValueKind != JsonValueKind.False;
-        return new ApplyArchnemesisPatchWebCommand(enabled);
+        List<string>? paths = null;
+        if (payload.TryGetProperty("paths", out var pathsElem) && pathsElem.ValueKind == JsonValueKind.Array)
+        {
+            paths = [];
+            foreach (var el in pathsElem.EnumerateArray())
+            {
+                if (el.ValueKind != JsonValueKind.String) continue;
+                var path = el.GetString();
+                if (string.IsNullOrWhiteSpace(path)) continue;
+                paths.Add(path);
+            }
+        }
+        return new ApplyIconPatchWebCommand(enabled, paths);
     }
 
     private static WebCommand? RouteApplyColorModPatch(JsonElement payload)
@@ -387,17 +393,21 @@ public sealed class WebMessageRouter
             foreach (var el in rulesElem.EnumerateArray())
             {
                 string id = el.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String ? idEl.GetString() ?? "" : "";
-                string text = el.TryGetProperty("text", out var tEl) && tEl.ValueKind == JsonValueKind.String ? tEl.GetString() ?? "" : "";
                 string group = el.TryGetProperty("group", out var gEl) && gEl.ValueKind == JsonValueKind.String ? gEl.GetString() ?? "通用" : "通用";
                 string color = el.TryGetProperty("color", out var cEl) && cEl.ValueKind == JsonValueKind.String ? cEl.GetString() ?? "#e64545" : "#e64545";
                 string itemStyle = el.TryGetProperty("style", out var stEl) && stEl.ValueKind == JsonValueKind.String ? stEl.GetString() ?? "Whole" : "Whole";
                 string tag = el.TryGetProperty("tag", out var tagEl) && tagEl.ValueKind == JsonValueKind.String ? tagEl.GetString() ?? "" : "";
                 bool isDanger = el.TryGetProperty("isDanger", out var dEl) && dEl.ValueKind == JsonValueKind.True;
                 bool itemEnabled = !el.TryGetProperty("enabled", out var ie) || ie.ValueKind != JsonValueKind.False;
-                if (!string.IsNullOrEmpty(text))
+
+                // 前端只提交启用中的条目，这里的列表就是要写进客户端的完整集合。
+                // 词缀文本不持久化：它来自客户端实时提取，写进设置后会在下次启动时
+                // 顶替当前内容，客户端语言或版本变化后必然误导。
+                if (string.IsNullOrEmpty(id))
                 {
-                    rules.Add(new FreiAtlas.Core.Settings.ColorModRuleItem(id, text, group, color, itemStyle, tag, isDanger, itemEnabled));
+                    continue;
                 }
+                rules.Add(new FreiAtlas.Core.Settings.ColorModRuleItem(id, string.Empty, group, color, itemStyle, tag, isDanger, itemEnabled));
             }
         }
         return new ApplyColorModPatchWebCommand(enabled, style, rules);
@@ -426,14 +436,6 @@ public sealed class WebMessageRouter
         return new ApplyMapBeamPatchWebCommand(enabled, targets);
     }
 
-
-    private static WebCommand? RouteApplyPricePatch(JsonElement payload)
-    {
-        string? csvPath = payload.TryGetProperty("csvPath", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
-        string mode = payload.TryGetProperty("mode", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() ?? "append" : "append";
-        string separator = payload.TryGetProperty("separator", out var s) && s.ValueKind == JsonValueKind.String ? s.GetString() ?? " " : " ";
-        return new ApplyPricePatchWebCommand(csvPath, mode, separator);
-    }
 
     private static WebCommand? RouteApplyCurrentPricesPatch(JsonElement payload)
     {
@@ -528,6 +530,94 @@ public sealed class WebMessageRouter
         if (!payload.TryGetProperty("snapshotId", out var id) || id.ValueKind != JsonValueKind.String)
             return null;
         return new DeletePatcherSnapshotWebCommand(id.GetString() ?? "");
+    }
+
+    private static WebCommand? RouteApplySpellBlock(JsonElement payload)
+    {
+        if (!payload.TryGetProperty("spellIds", out var arr) || arr.ValueKind != JsonValueKind.Array)
+            return null;
+        var ids = arr.EnumerateArray()
+            .Where(e => e.ValueKind == JsonValueKind.String)
+            .Select(e => e.GetString()!)
+            .ToList();
+        bool includeAudio = payload.TryGetProperty("includeAudio", out var a) && a.ValueKind == JsonValueKind.True;
+        return new ApplySpellBlockWebCommand(ids, includeAudio);
+    }
+
+    private static WebCommand? RouteRestoreSpellBlock(JsonElement payload)
+    {
+        if (!payload.TryGetProperty("spellIds", out var arr) || arr.ValueKind != JsonValueKind.Array)
+            return null;
+        var ids = arr.EnumerateArray()
+            .Where(e => e.ValueKind == JsonValueKind.String)
+            .Select(e => e.GetString()!)
+            .ToList();
+        return new RestoreSpellBlockWebCommand(ids);
+    }
+
+    private static WebCommand? RouteApplyAllEffects(JsonElement payload)
+    {
+        var ruleIds = new List<string>();
+        if (payload.TryGetProperty("ruleIds", out var rArr) && rArr.ValueKind == JsonValueKind.Array)
+        {
+            ruleIds.AddRange(rArr.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.String)
+                .Select(e => e.GetString()!));
+        }
+
+        var spellIds = new List<string>();
+        if (payload.TryGetProperty("spellIds", out var sArr) && sArr.ValueKind == JsonValueKind.Array)
+        {
+            spellIds.AddRange(sArr.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.String)
+                .Select(e => e.GetString()!));
+        }
+
+        bool includeAudio = payload.TryGetProperty("includeAudio", out var a) && a.ValueKind == JsonValueKind.True;
+
+        double ratio = 2.0;
+        if (payload.TryGetProperty("viewDistanceRatio", out var vEl) && vEl.TryGetDouble(out var vr))
+        {
+            ratio = vr;
+        }
+
+        int mudManTier = -1;
+        if (payload.TryGetProperty("mudManTier", out var mEl) && mEl.TryGetInt32(out var mt))
+        {
+            mudManTier = mt;
+        }
+
+        return new ApplyAllEffectsWebCommand(ruleIds, spellIds, includeAudio, ratio, mudManTier);
+    }
+
+    private static WebCommand? RouteApplyMtxPatch(JsonElement payload)
+    {
+        var names = new List<string>();
+        if (payload.TryGetProperty("selectedNames", out var nArr) && nArr.ValueKind == JsonValueKind.Array)
+        {
+            names.AddRange(nArr.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.String)
+                .Select(e => e.GetString()!)
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+        }
+
+        string? armour = payload.TryGetProperty("selectedArmourSetName", out var aEl) && aEl.ValueKind == JsonValueKind.String
+            ? aEl.GetString()
+            : null;
+
+        string? portal = payload.TryGetProperty("selectedPortalName", out var pEl) && pEl.ValueKind == JsonValueKind.String
+            ? pEl.GetString()
+            : null;
+
+        string? pet = payload.TryGetProperty("selectedPetName", out var petEl) && petEl.ValueKind == JsonValueKind.String
+            ? petEl.GetString()
+            : null;
+
+        string cls = payload.TryGetProperty("selectedClassCode", out var cEl) && cEl.ValueKind == JsonValueKind.String
+            ? cEl.GetString() ?? "all"
+            : "all";
+
+        return new ApplyMtxPatchWebCommand(names, armour, portal, pet, cls);
     }
 }
 

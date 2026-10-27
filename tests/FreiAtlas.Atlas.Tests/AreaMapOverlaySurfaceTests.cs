@@ -116,6 +116,64 @@ public sealed class AreaMapOverlaySurfaceTests
         Assert.Equal(expected, AreaMapOverlaySurface.CalculateIconRadius(viewportHeight), 3);
     }
 
+    [Theory]
+    [InlineData(600f, 0.5f, 4.2f)]
+    [InlineData(600f, 1.0f, 8.4f)]
+    [InlineData(600f, 1.5f, 12.6f)]
+    [InlineData(2000f, 0.5f, 6.5f)]
+    [InlineData(2000f, 1.0f, 13f)]
+    [InlineData(2000f, 1.5f, 19.5f)]
+    public void CalculateIconRadius_ScalesWithOverlayScale(
+        float viewportHeight,
+        float overlayScale,
+        float expected)
+    {
+        Assert.Equal(expected, AreaMapOverlaySurface.CalculateIconRadius(viewportHeight, overlayScale), 3);
+    }
+
+    [Theory]
+    [InlineData(600f, 0.5f, 1.008f)]
+    [InlineData(600f, 1.0f, 2.016f)]
+    [InlineData(600f, 1.5f, 3.024f)]
+    public void CalculatePollenRadius_ScalesWithOverlayScale(
+        float viewportHeight,
+        float overlayScale,
+        float expected)
+    {
+        Assert.Equal(expected, AreaMapOverlaySurface.CalculatePollenRadius(viewportHeight, overlayScale), 3);
+    }
+
+    [Fact]
+    public void BuildDrawCommands_ScalesCommandsAndExpeditionTagWithOverlayScale()
+    {
+        var bossPlacement = Placement(AreaMapOverlayMarkerKind.Boss, 0, new Vector2(100, 100));
+        var pollenPlacement = Placement(AreaMapOverlayMarkerKind.Pollen, 1, new Vector2(120, 120));
+        var expeditionPlacement = Placement(AreaMapOverlayMarkerKind.Expedition, 2, new Vector2(150, 150));
+        var scene = new AreaMapOverlayScene(
+            AreaMapViewKind.LargeMap,
+            new AreaUiRect(0, 0, 800, 600),
+            [bossPlacement, pollenPlacement, expeditionPlacement]);
+
+        var normalCommands = AreaMapOverlaySurface.BuildDrawCommands(
+            new Rectangle(0, 0, 800, 600),
+            scene,
+            13f,
+            Measure,
+            1.0f);
+        var scaledCommands = AreaMapOverlaySurface.BuildDrawCommands(
+            new Rectangle(0, 0, 800, 600),
+            scene,
+            13f * 0.5f,
+            Measure,
+            0.5f);
+
+        Assert.Equal(normalCommands[0].Radius * 0.5f, scaledCommands[0].Radius, 3);
+        Assert.Equal(normalCommands[1].Radius * 0.5f, scaledCommands[1].Radius, 3);
+        Assert.NotNull(scaledCommands[2].ExpeditionTag);
+        Assert.True(scaledCommands[2].ExpeditionTag!.PanelBounds.Width < normalCommands[2].ExpeditionTag!.PanelBounds.Width);
+        Assert.Equal(0.5f, scaledCommands[0].OverlayScale);
+    }
+
     [Fact]
     public void CalculateBitmapBounds_UsesExistingMarkerDiameter()
     {

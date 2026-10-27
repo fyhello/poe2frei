@@ -23,11 +23,22 @@
 /reference-analysis/
 /a94fbc792c44897f-PoeFixer/
 
+# 第三方工具与参考实现（体积过大，不入库）
+# cs/ 含 Exile.Forge.exe 等第三方分发包，共约 700 MB，仅供本地对照参考
+/cs/
+
+# 本地脚本临时分析产物
+/scripts/*.txt
+
 # 本地工具和索引缓存
 **/.gitnexus/
 **/.cache/
 **/.codex/
 **/.agy-mcp/
+
+# Python 字节码缓存（翻译流水线脚本）
+**/__pycache__/
+*.pyc
 
 # 本地发布/审计生成物
 *.zip

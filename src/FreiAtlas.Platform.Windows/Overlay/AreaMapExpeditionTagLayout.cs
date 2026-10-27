@@ -25,9 +25,12 @@ internal static class AreaMapExpeditionTagLayoutCalculator
     private const float ValueGap = 7f;
     private const float BorderWidth = 2f;
 
-    internal static float ResolveFontSize(AreaMapViewKind kind, float configured)
+    internal static float ResolveFontSize(
+        AreaMapViewKind kind,
+        float configured,
+        float minimumFontSize = MinimumFontSize)
         => kind == AreaMapViewKind.MiniMap
-            ? MathF.Max(MinimumFontSize, configured * MiniMapScale)
+            ? MathF.Max(minimumFontSize, configured * MiniMapScale)
             : configured;
 
     internal static string FormatHoleCount(int? holeCount)

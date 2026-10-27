@@ -1,6 +1,7 @@
 using System.Globalization;
 using FreiAtlas.Expedition;
 using FreiAtlas.Patcher;
+using FreiAtlas.Patcher.Modules.Price;
 
 namespace FreiAtlas.Settings;
 

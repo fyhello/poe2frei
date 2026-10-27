@@ -60,4 +60,29 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 子目录资源必须显式列出并指定 LogicalName：
+         通配符 Resources\*.gz 与子目录同名扩展名会争抢同一文件，导致其中一条被静默丢弃。 -->
+    <EmbeddedResource Include="Resources\*.json;Resources\*.gz" Exclude="Resources\iconpatch\**;Resources\mudman\**;Resources\mtx\**" />
+    <EmbeddedResource Include="Resources\iconpatch\icons.dat">
+      <LogicalName>FreiAtlas.Patcher.Resources.iconpatch.icons.dat</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\iconpatch\icons.index.json">
+      <LogicalName>FreiAtlas.Patcher.Resources.iconpatch.icons.index.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\iconpatch\icons.sheet.webp">
+      <LogicalName>FreiAtlas.Patcher.Resources.iconpatch.icons.sheet.webp</LogicalName>
+    </EmbeddedResource>
+    <!-- 泥人贴图表：38,798 条精确路径，gzip 后约 0.58 MB。
+         子目录资源必须指定 LogicalName，否则资源名会被压平成难以定位的形式。 -->
+    <EmbeddedResource Include="Resources\mudman\graytables.gz">
+      <LogicalName>FreiAtlas.Patcher.Resources.mudman.graytables.gz</LogicalName>
+    </EmbeddedResource>
+    <!-- PoE 2 商城外观 (MTX) 数据库与鼠标指针位图 -->
+    <EmbeddedResource Include="Resources\mtx\poe2_mtx.json.gz">
+      <LogicalName>FreiAtlas.Patcher.Resources.mtx.poe2_mtx.json.gz</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\mtx\cursors\**\*.bmp" />
+  </ItemGroup>
+
 </Project>

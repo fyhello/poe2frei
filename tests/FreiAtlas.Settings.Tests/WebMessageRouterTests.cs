@@ -32,13 +32,15 @@ public sealed class WebMessageRouterTests
         { "getPatcherStatus", new { }, typeof(GetPatcherStatusWebCommand) },
         { "setPatcherGameDir", new { path = "C:\\Games\\PoE2" }, typeof(SetPatcherGameDirWebCommand) },
         { "applyFontPatch", new { fontFamily = "Microsoft YaHei", fontSizeDelta = 2, applyPresetScales = false }, typeof(ApplyFontPatchWebCommand) },
-        { "applyUiColorPatch", new { colors = new[] { new { key = "fractured", displayName = "分裂", value = "c85c70ff", enabled = true } } }, typeof(ApplyUiColorPatchWebCommand) },
         { "scanClientDictionary", new { }, typeof(ScanClientDictionaryWebCommand) },
         { "applyColorModPatch", new { enabled = true, style = "Whole", rules = new[] { new { id = "1", text = "生命", group = "通用", color = "#ff0000", style = "Whole", tag = "生", isDanger = false, enabled = true } } }, typeof(ApplyColorModPatchWebCommand) },
         { "applyMapBeamPatch", new { enabled = true, targets = new[] { new { mapName = "The Jade Isles", displayName = "青玉群岛", color = "Farudin", enabled = true } } }, typeof(ApplyMapBeamPatchWebCommand) },
         { "applyChestPatch", new { enabled = true, items = new[] { new { originalName = "秘术保险箱", modifiedName = "秘术保险箱[法系装备]", enabled = true } } }, typeof(ApplyChestPatchWebCommand) },
         { "applyRumourPatch", new { enabled = true, items = new[] { new { originalText = "近乎天堂。", modifiedText = "[纯净乐园]近乎天堂。", enabled = true } } }, typeof(ApplyRumourPatchWebCommand) },
         { "restoreAllPatches", new { }, typeof(RestoreAllPatchesWebCommand) },
+        { "restoreMudMan", new { }, typeof(RestoreMudManWebCommand) },
+        { "applyHealthBar", new { }, typeof(ApplyHealthBarWebCommand) },
+        { "restoreHealthBar", new { }, typeof(RestoreHealthBarWebCommand) },
         { "resetAll", new { }, typeof(ResetAllWebCommand) }
     };
 
@@ -341,10 +343,6 @@ public sealed class WebMessageRouterTests
         Assert.True(router.TryRoute(Envelope(1, "applyChestPatch", new { enabled = true }), out var cmdChest, out _));
         var chest = Assert.IsType<ApplyChestPatchWebCommand>(cmdChest);
         Assert.True(chest.Enabled);
-
-        Assert.True(router.TryRoute(Envelope(1, "applyArchnemesisPatch", new { enabled = false }), out var cmdArch, out _));
-        var arch = Assert.IsType<ApplyArchnemesisPatchWebCommand>(cmdArch);
-        Assert.False(arch.Enabled);
 
         Assert.True(router.TryRoute(Envelope(1, "applyColorModPatch", new { enabled = true, style = "NumberOnly" }), out var cmdColor, out _));
         var color = Assert.IsType<ApplyColorModPatchWebCommand>(cmdColor);

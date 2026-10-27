@@ -338,6 +338,40 @@ select option:checked {
   filter: grayscale(40%);
 }
 
+/*
+ * Hub 卡片的主题色。
+ *
+ * 这三张卡片原先各自内联一套 border-color + 渐变，渐变的暗端写死为
+ * rgba(26, 31, 46, 0.6)（深色主题底色）。浅色主题下无法覆盖，卡片底部
+ * 会残留一块深色 —— 这是把主题色搬到 CSS 变量的直接原因。
+ *
+ * 每张卡片只需声明自己的色相（--hub-accent 是 RGB 三元组），
+ * 边框与渐变由统一规则消费，暗端跟随主题切换。
+ */
+:root {
+  --hub-accent-translation: 239, 68, 68;
+  --hub-accent-effectpatch: 56, 189, 248;
+  --hub-accent-mtxpatch: 245, 158, 11;
+  --patcher-card-tint-end: rgba(26, 31, 46, 0.6);
+}
+
+html[data-theme="light"] {
+  --patcher-card-tint-end: rgba(255, 255, 255, 0.72);
+}
+
+.hub-card[data-accent] {
+  border-color: rgba(var(--hub-accent), 0.35);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--hub-accent), 0.05) 0%,
+    var(--patcher-card-tint-end) 100%
+  );
+}
+
+.hub-card[data-accent="translation"] { --hub-accent: var(--hub-accent-translation); }
+.hub-card[data-accent="effectpatch"] { --hub-accent: var(--hub-accent-effectpatch); }
+.hub-card[data-accent="mtxpatch"]    { --hub-accent: var(--hub-accent-mtxpatch); }
+
 .hub-card-head {
   display: flex;
   align-items: center;
@@ -755,57 +789,6 @@ table.compact-table tr:hover td {
   transition: font-size 120ms;
 }
 
-/* 小地图雷达圆盘 (HUD) */
-@keyframes minimap-ping {
-  0% { transform: scale(0.8); opacity: 0.95; }
-  50% { transform: scale(1.6); opacity: 0.35; }
-  100% { transform: scale(2.2); opacity: 0; }
-}
-
-.radar-circle {
-  width: 170px;
-  height: 170px;
-  border-radius: 50%;
-  background: #0d1117;
-  border: 2px solid #30363d;
-  position: relative;
-  margin: 0 auto;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.8);
-}
-
-.minimap-pin-wrapper {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-  transition: all 150ms;
-}
-
-.minimap-pin-core {
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 9px;
-  position: relative;
-}
-
-.minimap-pin-ring {
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 2px solid currentColor;
-  animation: minimap-ping 1.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-}
-
 /* 字体卡片样式 */
 .font-card {
   border: 1px solid var(--line);
@@ -983,6 +966,21 @@ table.compact-table tr:hover td {
   font-weight: 500;
 }
 
+.snapshot-tag.stale {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.snapshot-card.stale {
+  opacity: 0.7;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.snapshot-card.stale .btn-restore-snap {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .snapshot-tag.official {
   background: rgba(234, 179, 8, 0.15);
   color: #eab308;
@@ -1078,3 +1076,395 @@ table.compact-table tr:hover td {
   border: 1px dashed var(--line);
   border-radius: 4px;
 }
+
+/* 特效与性能优化 (EffectPatch) 全屏阻断遮罩 */
+.effect-patch-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 12, 0.88);
+  backdrop-filter: blur(6px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.effect-overlay-card {
+  width: 440px;
+  background: #111827;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.effect-overlay-spinner {
+  font-size: 32px;
+  color: #38bdf8;
+  margin-bottom: 12px;
+}
+
+.effect-overlay-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #f1f5f9;
+  margin-bottom: 8px;
+}
+
+.effect-overlay-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.effect-overlay-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.effect-overlay-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #0284c7 0%, #38bdf8 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.effect-overlay-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.effect-opt-card {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  transition: all 120ms ease;
+  color: var(--text);
+}
+
+.effect-opt-card:hover {
+  background: var(--hover) !important;
+  border-color: var(--line-strong) !important;
+}
+
+.effect-opt-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.effect-opt-desc {
+  color: var(--muted);
+  font-size: 11px;
+  display: block;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+.spell-modal-card {
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  transition: all 120ms ease;
+  color: var(--text);
+}
+
+.spell-modal-card:hover {
+  background: var(--hover) !important;
+  border-color: var(--line-strong) !important;
+}
+
+#btnOpenSpellBlockSettings {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
+  transition: all 120ms ease;
+}
+
+#btnOpenSpellBlockSettings:hover {
+  background: var(--hover) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.spell-grid-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11.5px;
+  color: var(--text);
+  transition: all 120ms ease;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.spell-grid-item:hover {
+  background: var(--hover);
+  border-color: var(--line-strong);
+}
+
+.spell-grid-item.active {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: var(--accent);
+}
+
+.spell-grid-item input[type="checkbox"] {
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.spell-grid-item .spell-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* =========================================================================
+   PoE 2 商城外观特效替换 (MTX) 专属样式
+   ========================================================================= */
+
+.mtx-tab-btn {
+  padding: 4px 10px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  color: var(--muted, #94a3b8);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 120ms ease;
+  user-select: none;
+}
+
+.mtx-tab-btn:hover {
+  background: var(--hover, rgba(255, 255, 255, 0.08));
+  color: var(--text, #f1f5f9);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.mtx-tab-btn.active {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+  color: #d97706;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .mtx-tab-btn.active {
+  color: #fbbf24;
+}
+
+.mtx-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  min-height: 56px;
+  background: var(--surface, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 120ms ease;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.mtx-card:hover {
+  background: var(--hover, rgba(255, 255, 255, 0.07));
+  border-color: rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+
+.mtx-card.selected {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.06) 100%);
+  border-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+}
+
+.mtx-card-thumb {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  flex: 0 0 38px;
+  border-radius: 4px;
+  background: var(--control, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  overflow: hidden;
+}
+
+.mtx-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mtx-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.mtx-card-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #1e2529);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mtx-card.selected .mtx-card-title {
+  color: #d97706;
+}
+
+[data-theme="dark"] .mtx-card.selected .mtx-card-title {
+  color: #fbbf24;
+}
+
+.mtx-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--muted, #6a7781);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mtx-card-tag {
+  display: inline-block;
+  padding: 0 5px;
+  font-size: 9.5px;
+  line-height: 16px;
+  border-radius: 3px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  color: var(--muted, #6a7781);
+  white-space: nowrap;
+}
+
+.mtx-card-check {
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.mtx-card-check input {
+  cursor: pointer;
+  accent-color: #f59e0b;
+  width: 15px;
+  height: 15px;
+}
+
+/* 共享数据表补丁的还原提示。
+   词缀染色 / 光柱 / 宝箱 / 传言 / 字体 / 图标 这 6 个补丁改写的是
+   baseitemtypes、uisettings、.csd 这类被多个补丁共用的文件，
+   没有逐文件备份，无法单独还原，只能通过版本快照或恢复纯净整体回退。
+   这里明确告知用户，避免误以为有独立还原入口。 */
+.patch-restore-hint {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(96, 165, 250, 0.08);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  color: var(--text-muted, #94a3b8);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.patch-restore-hint strong {
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+/*
+ * 布局工具类。
+ *
+ * 补丁页里大量元素用内联 style 重复写同一组 flex 布局，其中
+ * 「横向排列 + 垂直居中 + 间距 6px」这类组合出现了 30 余次。
+ * 抽成工具类后，HTML 只需一个 class，主题切换与后续调整也集中在一处。
+ *
+ * 只收敛高频、语义明确的组合；逐元素的微调仍保留内联，
+ * 强行归一反而会掩盖各自的差异。
+ */
+.fx-row-4,
+.fx-row-5,
+.fx-row-6,
+.fx-row-8,
+.fx-row-10 {
+  display: flex;
+  align-items: center;
+}
+
+.fx-row-4 { gap: 4px; }
+.fx-row-5 { gap: 5px; }
+.fx-row-6 { gap: 6px; }
+.fx-row-8 { gap: 8px; }
+.fx-row-10 { gap: 10px; }
+
+/* 横向两端对齐 */
+.fx-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 纵向排列 */
+.fx-col-6,
+.fx-col-8,
+.fx-col-10 {
+  display: flex;
+  flex-direction: column;
+}
+
+.fx-col-6 { gap: 6px; }
+.fx-col-8 { gap: 8px; }
+.fx-col-10 { gap: 10px; }
+
+/* 纯文本色，用于替代重复的 color: var(--text) */
+.fx-text {
+  color: var(--text);
+}
+
+.fx-text-muted {
+  color: var(--text-muted);
+}
+

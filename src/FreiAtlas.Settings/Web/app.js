@@ -646,6 +646,23 @@ function configureVisualControls() {
   visualRenderers.push(bindPair('highlightOpacity', 'highlightOpacityNumber', s => s.highlight.opacity, (s, v) => s.highlight.opacity = v));
   visualRenderers.push(bindPair('fontSize', 'fontSizeNumber', s => s.labels.fontSize, (s, v) => s.labels.fontSize = v));
   visualRenderers.push(bindPair('backgroundOpacity', 'backgroundOpacityNumber', s => s.labels.backgroundOpacity, (s, v) => s.labels.backgroundOpacity = v));
+  visualRenderers.push(bindPair(
+    'expeditionPanelScale',
+    'expeditionPanelScaleNumber',
+    s => s.areaMap?.expeditionPanel?.scale ?? 1.0,
+    (s, v) => {
+      if (!s.areaMap) s.areaMap = {};
+      if (!s.areaMap.expeditionPanel) s.areaMap.expeditionPanel = {};
+      s.areaMap.expeditionPanel.scale = v;
+    }));
+  visualRenderers.push(bindPair(
+    'areaMapOverlayScale',
+    'areaMapOverlayScaleNumber',
+    s => s.areaMap?.overlayScale ?? 1.0,
+    (s, v) => {
+      if (!s.areaMap) s.areaMap = {};
+      s.areaMap.overlayScale = v;
+    }));
   $('backgroundToggle').addEventListener('click', () => {
     const settings = editableSettings();
     if (!settings) return;
@@ -659,6 +676,18 @@ function renderVisuals() {
   if (!settings) return;
   visualRenderers.forEach(render => render(settings));
   setToggle($('backgroundToggle'), settings.labels.showBackground);
+}
+
+function resetPageSettings(page) {
+  if (page === 'visuals') {
+    const settings = editableSettings();
+    if (settings?.areaMap) {
+      if (settings.areaMap.expeditionPanel) {
+        settings.areaMap.expeditionPanel.scale = 1.0;
+      }
+      settings.areaMap.overlayScale = 1.0;
+    }
+  }
 }
 
 function submitSettings(settings) {
@@ -742,6 +771,7 @@ async function initialize() {
   document.querySelectorAll('.reset-page').forEach(button => button.addEventListener('click', () => {
     window.pricesUi?.resetDraft();
     window.quickAssistUi?.resetDraft();
+    resetPageSettings(button.dataset.reset);
     draftSettings = null;
     post('resetPage', { page: button.dataset.reset });
   }));
@@ -801,6 +831,9 @@ async function initialize() {
     if (message?.version === protocolVersion && message.type === 'quickAssistSnapshot') window.quickAssistUi?.receive(message.payload);
     if (message?.version === protocolVersion && message.type === 'pricesSnapshot') window.pricesUi?.receive(message.payload);
     if (message?.version === protocolVersion && message.type === 'patcherSnapshot') window.patcherUi?.receive(message.payload);
+    // 补丁闸门释放后的轻量同步：只更新按钮可用状态，不重绘整页。
+    if (message?.version === protocolVersion && message.type === 'patcherBusyState') window.patcherUi?.receiveBusyState?.(message.payload);
+    if (message?.version === protocolVersion && message.type === 'mtxDatabase') window.patcherUi?.receiveMtxDatabase?.(message.payload);
     if (message?.version === protocolVersion && message.type === 'snapshot') {
       const snapshot = message.payload;
       if (draftSettings && settingsEqual(snapshot.settings, draftSettings)) {
@@ -816,7 +849,8 @@ async function initialize() {
   post('ready');
 }
 
-initialize().catch(() => {
+initialize().catch(err => {
+  console.error('Initialize failed:', err);
   $('saveStatus').className = 'failed';
   $('saveStatus').textContent = '界面资源加载失败';
 });
