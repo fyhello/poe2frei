@@ -2119,16 +2119,34 @@ public partial class MainWindow : Window
             }));
             if (translationPatchResult.Success)
             {
-                SendPatcherSnapshot($"官方简中汉化补丁全量注入完成！共改写 {translationPatchResult.CsdCount} 个 CSD 文件，注入 {translationPatchResult.BaseItemsCount} 个基础道具，全量汉化 {translationPatchResult.PatchedDatTablesCount} 个核心数据表（共 {translationPatchResult.PatchedDatCellsCount} 个文本单元格）。正在刷新客户端数据...");
+                // 中间进度：告诉用户还在跑，但这不是终点。
+                SendPatcherSnapshot($"汉化已写入客户端，正在刷新词库...（改写 {translationPatchResult.CsdCount} 个 CSD、注入 {translationPatchResult.BaseItemsCount} 个底子、汉化 {translationPatchResult.PatchedDatTablesCount} 个数据表）");
+
+                // 必须发一条【非 null】的 message 作为收尾。
+                // SendPatcherSnapshot 在 message 为 null 时会复用 _patcherMessage，
+                // 导致前端一直停在「正在刷新词库...」，用户看不到完成。
                 try
                 {
-                    SendPatcherSnapshot(null, null, await Task.Run(() => _patcher.ScanClientDictionary(_settingsStore.ClientPatch.CustomGameDirectory)));
-                    return;
+                    var scanned = await Task.Run(
+                        () => _patcher.ScanClientDictionary(_settingsStore.ClientPatch.CustomGameDirectory));
+
+                    SendPatcherSnapshot(
+                        $"官方简中汉化补丁全部完成！共改写 {translationPatchResult.CsdCount} 个 CSD 词缀文件，"
+                        + $"注入 {translationPatchResult.BaseItemsCount} 个基础道具名称，"
+                        + $"全量汉化 {translationPatchResult.PatchedDatTablesCount} 个核心数据表"
+                        + $"（{translationPatchResult.PatchedDatCellsCount} 个文本单元格）。客户端词库已刷新。",
+                        null,
+                        scanned);
                 }
-                catch
+                catch (Exception scanEx)
                 {
-                    return;
+                    // 词库刷新失败不该让用户以为整个补丁失败：索引已经写入成功了。
+                    SendPatcherSnapshot(
+                        $"汉化补丁已写入并生效（改写 {translationPatchResult.CsdCount} 个 CSD、"
+                        + $"汉化 {translationPatchResult.PatchedDatTablesCount} 个数据表），"
+                        + $"但刷新词库失败：{scanEx.Message}。可重新进入本页重试刷新，不影响已打的补丁。");
                 }
+                return;
             }
             SendPatcherSnapshot(null, translationPatchResult.ErrorMessage);
         }
@@ -2267,13 +2285,14 @@ public partial class MainWindow : Window
                 return;
             }
             SendPatcherSnapshot("正在保存并应用特效优化，请稍候（写入期间请勿关闭窗口）...");
-            (bool, bool, bool, List<string>, List<string>) tuple = await Task.Run(() =>
+            (bool, bool, bool, bool, List<string>, List<string>) tuple = await Task.Run(() =>
             {
                 List<string> list = new List<string>();
                 List<string> list2 = new List<string>();
                 bool flag = true;
                 bool flag2 = true;
                 bool flag3 = true;
+                bool healthBarOk = true;   // 头顶血条操作结果
                 // 泥人换档必须先执行。
                 //
                 // 泥人切档时会 RestoreSnapshot 回滚整个客户端索引（见 MudManApplier.Apply），
@@ -2381,13 +2400,44 @@ public partial class MainWindow : Window
                         list2.Add("技能特效还原失败：" + message5);
                     }
                 }
-                return (ruleOk: flag, spellOk: flag2, mudManOk: flag3, msgs: list, errs: list2);
+
+                // 头顶血条随批量一起处理。
+                //
+                // 原先前端勾选框 change 事件直接发 applyHealthBar/restoreHealthBar，
+                // 点一下就跑一次写盘并弹出全屏遮罩，与其余 10 项特效「勾选只改状态、
+                // 统一保存」的交互不一致。现在改为在这里比对期望值与实际状态。
+                if (cmd.HealthBarEnabled is bool wantHealthBar)
+                {
+                    bool applied = _patcher.IsHealthBarApplied();
+                    if (wantHealthBar && !applied)
+                    {
+                        healthBarOk = _patcher.ApplyHealthBar(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                        {
+                            Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                        }, out string hbMsg);
+                        if (healthBarOk) list.Add(hbMsg);
+                        else list2.Add("头顶血条应用失败：" + hbMsg);
+                    }
+                    else if (!wantHealthBar && applied)
+                    {
+                        healthBarOk = _patcher.RestoreHealthBar(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                        {
+                            Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                        }, out string hbMsg2);
+                        if (healthBarOk) list.Add(hbMsg2);
+                        else list2.Add("头顶血条还原失败：" + hbMsg2);
+                    }
+                    // 状态已一致：无需写盘。
+                }
+
+                return (ruleOk: flag, spellOk: flag2, mudManOk: flag3, healthBarOk: healthBarOk, msgs: list, errs: list2);
             });
             bool item = tuple.Item1;
             bool item2 = tuple.Item2;
             bool item3 = tuple.Item3;
-            List<string> item4 = tuple.Item4;
-            List<string> item5 = tuple.Item5;
+            bool item3b = tuple.Item4;   // 头顶血条
+            List<string> item4 = tuple.Item5;
+            List<string> item5 = tuple.Item6;
             ClientPatchSettings clientPatch = _settingsStore.ClientPatch;
             ClientPatchSettings clientPatchSettings = clientPatch;
             if (item)

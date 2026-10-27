@@ -17,6 +17,16 @@
 
   <ItemGroup>
     <Content Include="Web\**" CopyToOutputDirectory="PreserveNewest" />
+
+    <!--
+      图标预览雪碧图来自 FreiAtlas.Patcher 的内嵌资源，必须同步输出到 Web 根目录。
+      前端 patcher.js 用 background-image: url(icons.sheet.webp) 直接引用它，
+      缺失时 WebView2 会 404，784 个图标预览全部显示空白。
+    -->
+    <Content Include="..\FreiAtlas.Patcher\Resources\iconpatch\icons.sheet.webp">
+      <Link>Web\icons.sheet.webp</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="..\..\THIRD-PARTY-NOTICES.md">
       <Link>THIRD-PARTY-NOTICES.md</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

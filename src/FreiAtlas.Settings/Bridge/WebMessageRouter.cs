@@ -587,7 +587,16 @@ public sealed class WebMessageRouter
             mudManTier = mt;
         }
 
-        return new ApplyAllEffectsWebCommand(ruleIds, spellIds, includeAudio, ratio, mudManTier);
+        // 血条开关：前端勾选框只改状态，保存时才随批量命令下发。
+        // 未提供该字段表示不涉及血条。
+        bool? healthBarEnabled = null;
+        if (payload.TryGetProperty("healthBarEnabled", out var hbEl)
+            && (hbEl.ValueKind == JsonValueKind.True || hbEl.ValueKind == JsonValueKind.False))
+        {
+            healthBarEnabled = hbEl.ValueKind == JsonValueKind.True;
+        }
+
+        return new ApplyAllEffectsWebCommand(ruleIds, spellIds, includeAudio, ratio, mudManTier, healthBarEnabled);
     }
 
     private static WebCommand? RouteApplyMtxPatch(JsonElement payload)

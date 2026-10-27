@@ -124,7 +124,10 @@ public sealed record ApplyAllEffectsWebCommand(
     IReadOnlyList<string> SpellIds,
     bool IncludeAudio,
     double ViewDistanceRatio = 2.0,
-    int MudManTier = -1) : WebCommand;
+    int MudManTier = -1,
+    // 头顶血条也纳入统一保存：勾选框只改前端状态，点保存时随其他特效一起下发。
+    // null 表示本次不涉及血条（保持客户端现状）。
+    bool? HealthBarEnabled = null) : WebCommand;
 
 /// <summary>还原泥人改动的全部文件。</summary>
 public sealed record RestoreMudManWebCommand : WebCommand;

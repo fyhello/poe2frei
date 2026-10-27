@@ -2077,7 +2077,7 @@
     }
 
     showToast("正在应用外观商城特效替换...");
-    showEffectOperationOverlay("正在应用 PoE 2 外观商城特效替换，写入期间请勿关闭窗口...", 90);
+    showToast("正在应用 PoE 2 外观商城特效替换，写入期间请勿关闭窗口...");
 
     post("applyMtxPatch", {
       selectedNames: Array.from(selectedMtxNames),
@@ -2098,12 +2098,15 @@
     renderMtxUi();
 
     showToast("正在还原外观特效至纯净原版...");
-    showEffectOperationOverlay("正在还原外观特效至纯净原版...", 90);
+    showToast("正在还原外观特效至纯净原版...");
 
     post("restoreMtxPatch", {});
   }
 
   let selectedMudManTier = -1;
+  // 血条勾选状态：只保存在内存里，点「保存并同步当前功能」时才连同其他特效一起写入。
+  // 与泥人档位、小地图等 10 项特效保持一致，不再勾选即写盘。
+  let healthBarDesired = null;
   let healthBarState = null;
   let mudManState = null;
 
@@ -2113,25 +2116,23 @@
     const applied = healthBarState ? healthBarState.applied : false;
     const files = healthBarState ? healthBarState.patchedFiles : 0;
 
-    if (chk) chk.checked = applied;
+    // 用户改了勾选但还没保存时，勾选框显示用户的选择，
+    // 徽章如实标注「未保存」，避免让人以为已经生效。
+    const desired = healthBarDesired === null ? applied : healthBarDesired;
+    const pending = desired !== applied;
+
+    if (chk) chk.checked = desired;
     if (badge) {
-      badge.innerHTML = applied
-        ? '<span style="color: #34d399;">(已开启 · ' + files + ' 个文件)</span>'
-        : '(未开启)';
+      if (pending) {
+        badge.innerHTML = '<span style="color: #fbbf24;">(待保存)</span>';
+      } else {
+        badge.innerHTML = applied
+          ? '<span style="color: #34d399;">(已开启 · ' + files + ' 个文件)</span>'
+          : '(未开启)';
+      }
     }
   }
 
-  function toggleHealthBar(enabled) {
-    if (enabled) {
-      showToast('正在应用头顶血条补丁...');
-      showEffectOperationOverlay('正在应用头顶血条补丁，写入期间请勿关闭窗口...', 90);
-      post('applyHealthBar', {});
-    } else {
-      showToast('正在还原头顶血条补丁...');
-      showEffectOperationOverlay('正在还原头顶血条补丁...', 90);
-      post('restoreHealthBar', {});
-    }
-  }
   function renderMudManUi() {
     const radios = document.querySelectorAll('.mudman-tier-radio');
     radios.forEach(radio => {
@@ -2206,7 +2207,7 @@
     selectedMudManTier = -1;
     renderMudManUi();
     showToast('正在还原泥人改动...');
-    showEffectOperationOverlay('正在还原泥人改动...', 90);
+    showToast('正在还原泥人改动...');
     post('restoreMudMan', {});
   }
 
@@ -2391,73 +2392,7 @@
     }
   }
 
-  function showEffectOperationOverlay(actionTitle, timeoutSeconds = 60) {
-    let overlay = element("effectPatchOperationOverlay");
-    if (!overlay) {
-      overlay = document.createElement("div");
-      overlay.id = "effectPatchOperationOverlay";
-      overlay.className = "effect-patch-overlay";
-      overlay.innerHTML = `
-        <div class="effect-overlay-card">
-          <div class="effect-overlay-spinner animate-spin">⟳</div>
-          <div id="effectOverlayTitle" class="effect-overlay-title">正在重写游戏索引...</div>
-          <div class="effect-overlay-desc">正在写入游戏资源并重新校验，预计耗时约 25~35 秒。<br><strong style="color: #f87171;">⚠️ 写入过程中请勿关闭窗口、勿启动游戏或拔掉硬盘！</strong></div>
-          <div class="effect-overlay-progress-bar">
-            <div id="effectOverlayProgressFill" class="effect-overlay-progress-fill"></div>
-          </div>
-          <div id="effectOverlayTime" class="effect-overlay-time">预计剩余时间: 30 秒</div>
-        </div>
-      `;
-      document.body.appendChild(overlay);
-    }
 
-    const titleEl = element("effectOverlayTitle");
-    if (titleEl) titleEl.innerText = actionTitle || "正在应用特效优化...";
-    overlay.classList.remove("hidden");
-    overlay.style.display = "flex";
-
-    let remaining = 30;
-    let elapsed = 0;
-    const fill = element("effectOverlayProgressFill");
-    const timeText = element("effectOverlayTime");
-    if (fill) fill.style.width = "0%";
-
-    if (window._effectOverlayTimer) clearInterval(window._effectOverlayTimer);
-    window._effectOverlayTimer = setInterval(() => {
-      remaining--;
-      elapsed++;
-      if (remaining < 0) remaining = 0;
-      if (timeText) {
-        if (remaining > 0) {
-          timeText.innerText = `预计剩余时间: 约 ${remaining} 秒`;
-        } else if (elapsed < 60) {
-          timeText.innerText = "正在完成最终校验与安全备份落盘...";
-        } else {
-          timeText.innerHTML = `已耗时超 60 秒，<a href="javascript:void(0)" onclick="window.patcherUi?.hideOverlay()" style="color:#38bdf8;text-decoration:underline;">点此解除锁定</a>`;
-        }
-      }
-      if (fill) {
-        const percent = Math.min(95, Math.round(((30 - remaining) / 30) * 100));
-        fill.style.width = percent + "%";
-      }
-    }, 1000);
-  }
-
-  function hideEffectOperationOverlay() {
-    if (window._effectOverlayTimer) {
-      clearInterval(window._effectOverlayTimer);
-      window._effectOverlayTimer = null;
-    }
-    const overlay = element("effectPatchOperationOverlay");
-    if (overlay) {
-      const fill = element("effectOverlayProgressFill");
-      if (fill) fill.style.width = "100%";
-      setTimeout(() => {
-        overlay.classList.add("hidden");
-        overlay.style.display = "none";
-      }, 500);
-    }
-  }
 
   function getSelectedEffectRulesWithRatio() {
     const rules = [];
@@ -2483,7 +2418,7 @@
     const spells = Array.from(selectedBlockedSpells);
     const includeAudio = element("chkSpellIncludeAudio")?.checked ?? true;
     showToast("正在应用技能与装备特效屏蔽...");
-    showEffectOperationOverlay("正在应用技能与装备特效屏蔽...", 60);
+    showToast("正在应用技能与装备特效屏蔽...");
     post("applySpellBlock", { spellIds: spells, includeAudio });
   }
 
@@ -2496,14 +2431,14 @@
     }
     if (!confirm(`确定要还原这 ${spells.length} 个技能的特效吗？`)) return;
     showToast("正在还原技能特效...");
-    showEffectOperationOverlay("正在还原技能特效...", 60);
+    showToast("正在还原技能特效...");
     post("restoreSpellBlock", { spellIds: spells });
   }
 
   function restoreAllEffectSettings() {
     if (!confirm("确定要还原所有特效与画面优化吗？此操作将写回官方原版资源。")) return;
     showToast("正在还原所有特效与性能优化...");
-    showEffectOperationOverlay("正在还原所有特效与性能优化...", 60);
+    showToast("正在还原所有特效与性能优化...");
     selectedMudManTier = -1;
     renderMudManUi();
     post("applyAllEffects", {
@@ -2534,15 +2469,22 @@
       if (!confirm("检测到商城外观补丁已应用。\n\n泥人与商城外观会互相覆盖（两者都改角色模型 .ao 文件）：\n· 现在应用泥人，商城外观会失效\n· 之后重新应用外观，泥人又会被覆盖\n\n确定继续吗？")) return;
     }
 
+    // 头顶血条随批量一起提交：只传「用户期望的状态」，
+    // 后端会与客户端实际状态比对，一致则不写盘。
+    const healthBarChecked = element("chkOpt-healthbar")?.checked;
+    const healthBarEnabled = healthBarDesired === null
+      ? (typeof healthBarChecked === "boolean" ? healthBarChecked : null)
+      : healthBarDesired;
+
     showToast("正在保存并应用特效设置...");
-    showEffectOperationOverlay("正在保存并应用特效设置...", 60);
 
     post("applyAllEffects", {
       ruleIds: rules,
       spellIds: spells,
       includeAudio: includeAudio,
       viewDistanceRatio: ratio,
-      mudManTier: mudManTier
+      mudManTier: mudManTier,
+      healthBarEnabled: healthBarEnabled
     });
   }
 
@@ -2948,7 +2890,6 @@
    */
   function applyBusyState(busy) {
     if (!busy) {
-      hideEffectOperationOverlay();
     }
     for (const id of PATCH_ACTION_BUTTON_IDS) {
       const button = element(id);
@@ -3385,7 +3326,7 @@
       if (!confirm('确定要清除已写入客户端的价格后缀吗？\n\n这会把物品名恢复为纯名称（如「混沌石 [150C]」→「混沌石」），\n物品名本身的汉化不受影响。')) return;
       const sep = element('priceSepSelect')?.value ?? ' ';
       showToast('正在清除客户端价格后缀...');
-      showEffectOperationOverlay('正在清除价格后缀，写入期间请勿关闭窗口...', 60);
+      showToast('正在清除价格后缀，写入期间请勿关闭窗口...');
       post('cleanPricePatch', { separator: sep });
     });
 
@@ -3618,9 +3559,11 @@
       restoreMudMan();
     });
 
-    // 头顶血条开关
+    // 头顶血条开关：只记录用户选择，不立即写盘。
+    // 真正的写入发生在「保存并同步当前功能」时，与其他 10 项特效一起提交。
     element('chkOpt-healthbar')?.addEventListener('change', (e) => {
-      toggleHealthBar(e.target.checked);
+      healthBarDesired = e.target.checked;
+      renderHealthBarUi();
     });
     // 泥人外层卡片主开关与档位单选
     element('chkOpt-mudman')?.addEventListener('change', (e) => {
@@ -4019,7 +3962,7 @@
   }
 
   window.patcherUi = {
-    hideOverlay: hideEffectOperationOverlay,
+    hideOverlay: () => { },   // 遮罩已废除，保留空实现避免旧调用点报错
     receiveBusyState,
     initialize() {
       // 事件绑定按功能区拆到独立方法，避免单函数过长。

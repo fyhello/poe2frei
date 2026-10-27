@@ -257,12 +257,17 @@ public sealed class FontPatchService
 
     public FontSettingsInfo? ScanFontSettings(GameModeInfo info)
     {
+        // 批量读：ReadGameFiles 每次调用都要打开并解析整份 _.index.bin
+        //（Bundles2 下约 100~200 MB，单次 1~2 秒）。
+        // 逐个 ReadGameFile 会在最坏情况下重复解析 8 次，这是字体页卡顿的主因。
+        var batch = _engine.ReadGameFiles(info, UiSettingPaths);
+
         foreach (var path in UiSettingPaths)
         {
-            var bytes = _engine.ReadGameFile(info, path, out var actualPath);
-            if (bytes == null || bytes.Length == 0) continue;
+            var cleanPath = path.Replace('\\', '/').TrimStart('/');
+            if (!batch.TryGetValue(cleanPath, out var bytes) || bytes.Length == 0) continue;
 
-            var res = ParseFontSettings(bytes, actualPath);
+            var res = ParseFontSettings(bytes, cleanPath);
             if (res != null && res.Fonts.Count > 0)
             {
                 return res;
@@ -341,10 +346,14 @@ public sealed class FontPatchService
         progress?.Invoke("正在读取游戏 UI 设置文件...");
         var filesToReplace = new List<(string VirtualPath, byte[] Data)>();
 
+        // 同 ScanFontSettings：8 个路径共用一次索引解析。
+        var settingsBatch = _engine.ReadGameFiles(info, UiSettingPaths);
+
         foreach (var path in UiSettingPaths)
         {
-            var bytes = _engine.ReadGameFile(info, path, out var actualPath);
-            if (bytes == null || bytes.Length == 0) continue;
+            var cleanPath = path.Replace('\\', '/').TrimStart('/');
+            if (!settingsBatch.TryGetValue(cleanPath, out var bytes) || bytes.Length == 0) continue;
+            string actualPath = cleanPath;
 
             // 语言覆盖文件（繁中 / 国服 / 韩文）同样走正常的字体处理，不再写空代理。
             //
