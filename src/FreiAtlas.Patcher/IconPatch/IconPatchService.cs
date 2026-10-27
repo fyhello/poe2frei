@@ -246,6 +246,23 @@ public sealed class IconPatchService
         IReadOnlyList<string> paths,
         Action<string>? progress,
         out string message)
+        => Apply(info, paths, previousPaths: null, progress, out message);
+
+    /// <summary>
+    /// 应用图标替换，并把「上次选过、这次取消」的图标还原成官方原版。
+    ///
+    /// 为什么需要 <paramref name="previousPaths"/>：图标补丁直接覆盖 DDS，
+    /// 没有「取消勾选即还原」的语义。若只写入本次选中的图标，
+    /// 被取消的那些在客户端里仍然是修改版 —— 用户看到勾选数变少，
+    /// 实际残留没清，只有关总开关才能全量恢复。
+    /// </summary>
+    /// <param name="previousPaths">上次应用时选中的路径；null 表示不做差集还原。</param>
+    public bool Apply(
+        GameModeInfo info,
+        IReadOnlyList<string> paths,
+        IReadOnlyList<string>? previousPaths,
+        Action<string>? progress,
+        out string message)
     {
         message = string.Empty;
 
@@ -254,7 +271,7 @@ public sealed class IconPatchService
             message = info.ErrorMessage ?? "游戏客户端无效。";
             return false;
         }
-        if (paths.Count == 0)
+        if (paths.Count == 0 && (previousPaths is null || previousPaths.Count == 0))
         {
             message = "未选择任何图标。";
             return false;
@@ -267,11 +284,49 @@ public sealed class IconPatchService
             return false;
         }
 
-        var items = IconPatchAssets.Entries.ToDictionary(i => i.Path, StringComparer.OrdinalIgnoreCase);
-        var files = new List<(string VirtualPath, byte[] Data)>(paths.Count);
-        var missing = new List<string>();
+        // 差集：上次选过但这次取消的图标，需要写回官方原件。
+        var current = new HashSet<string>(paths, StringComparer.OrdinalIgnoreCase);
+        var removed = previousPaths is null
+            ? []
+            : previousPaths.Where(p => !current.Contains(p)).ToList();
 
-        progress?.Invoke($"准备写入 {paths.Count} 个图标...");
+        var items = IconPatchAssets.Entries.ToDictionary(i => i.Path, StringComparer.OrdinalIgnoreCase);
+        var files = new List<(string VirtualPath, byte[] Data)>(paths.Count + removed.Count);
+        var missing = new List<string>();
+        int restoredCount = 0;
+
+        progress?.Invoke(removed.Count > 0
+            ? $"准备写入 {paths.Count} 个图标，还原 {removed.Count} 个已取消的图标..."
+            : $"准备写入 {paths.Count} 个图标...");
+
+        // 先处理取消项：从备份读官方原件写回。
+        if (removed.Count > 0)
+        {
+            var backups = PatchFileBackup.LoadOriginals(BackupGroup)
+                .ToDictionary(x => x.VirtualPath, x => x.Data, StringComparer.OrdinalIgnoreCase);
+
+            var restoredPaths = new List<string>(removed.Count);
+            foreach (var path in removed)
+            {
+                if (backups.TryGetValue(path, out var original) && original.Length > 0)
+                {
+                    files.Add((path, original));
+                    restoredPaths.Add(path);
+                    restoredCount++;
+                }
+                else
+                {
+                    // 没有备份说明该图标从未被本工具改过，无需还原。
+                    progress?.Invoke($"图标 {path} 没有备份记录，跳过还原。");
+                }
+            }
+
+            if (restoredPaths.Count > 0)
+            {
+                // 还原成功后从备份移除，避免下次重复处理与磁盘残留。
+                PatchFileBackup.RemoveOriginals(BackupGroup, restoredPaths);
+            }
+        }
 
         try
         {
@@ -319,7 +374,14 @@ public sealed class IconPatchService
 
         // 首次改写前把客户端原始 DDS 存进逐文件备份，供「恢复原版图标」写回。
         // 已存在同名备份时不覆盖，保证保存的始终是最初的原件。
-        SaveOriginalIcons(info, files.Select(f => f.VirtualPath).ToList(), progress);
+        // 只备份本次真正要新写入的图标（还原项已在上方处理）。
+        var newWritePaths = files.Select(f => f.VirtualPath)
+            .Where(p => !removed.Contains(p, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+        if (newWritePaths.Count > 0)
+        {
+            SaveOriginalIcons(info, newWritePaths, progress);
+        }
 
         bool ok = _engine.WriteGameFiles(info, files);
         if (!ok)
@@ -329,8 +391,12 @@ public sealed class IconPatchService
         }
 
         progress?.Invoke($"已写入 {files.Count} 个图标。");
-        message = $"已成功写入 {files.Count} 个图标" +
-                  (missing.Count > 0 ? $"（跳过 {missing.Count} 个不存在的）" : "");
+        var parts = new List<string>(3);
+        if (newWritePaths.Count > 0) parts.Add($"写入 {newWritePaths.Count} 个图标");
+        if (restoredCount > 0) parts.Add($"还原 {restoredCount} 个取消项");
+        if (missing.Count > 0) parts.Add($"跳过 {missing.Count} 个不存在的");
+
+        message = "已成功" + string.Join("，", parts) + "。";
         return true;
     }
 

@@ -371,15 +371,6 @@ public partial class MainWindow : Window
                 case ApplyTranslationPatchWebCommand:
                     await HandleApplyTranslationPatchAsync();
                     break;
-                case ApplyEffectPatchWebCommand applyEffect:
-                    await HandleApplyEffectPatchAsync(applyEffect);
-                    break;
-                case RestoreEffectPatchWebCommand:
-                    await HandleRestoreEffectPatchAsync();
-                    break;
-                case ApplyMudManTierWebCommand applyMudMan:
-                    await HandleApplyMudManTierAsync(applyMudMan);
-                    break;
                 case RestoreMudManWebCommand:
                     await HandleRestoreMudManAsync();
                     break;
@@ -474,12 +465,9 @@ public partial class MainWindow : Window
         or RestoreAllPatchesWebCommand
         or ApplyTranslationPatchWebCommand
         or ApplyIconPatchWebCommand
-        or ApplyEffectPatchWebCommand
-        or RestoreEffectPatchWebCommand
         or ApplySpellBlockWebCommand
         or RestoreSpellBlockWebCommand
         or ApplyAllEffectsWebCommand
-        or ApplyMudManTierWebCommand
         or RestoreMudManWebCommand
         or ApplyHealthBarWebCommand
         or RestoreHealthBarWebCommand
@@ -1984,6 +1972,10 @@ public partial class MainWindow : Window
                 return;
             }
             IReadOnlyList<string> paths = cmd.Paths ?? Array.Empty<string>();
+            // 更新设置前先取出上次选中的路径：取消勾选的图标需要写回官方原件，
+            // 否则界面上勾选数变少，但客户端里仍是修改版。
+            IReadOnlyList<string> previousPaths =
+                _settingsStore.ClientPatch.IconPatchSelectedPaths ?? Array.Empty<string>();
             _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
             {
                 IconPatchEnabled = cmd.Enabled,
@@ -2033,7 +2025,7 @@ public partial class MainWindow : Window
             RecordAutoSnapshot("图标替换写入前");
             IconPatchService service = _patcher.IconPatchService;
             string message = string.Empty;
-            if (await Task.Run(() => service.Apply(gameInfo, paths, (string msg) =>
+            if (await Task.Run(() => service.Apply(gameInfo, paths, previousPaths, (string msg) =>
             {
                 progressLog = msg;
                 Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
@@ -2075,90 +2067,6 @@ public partial class MainWindow : Window
                 }
             }
             SendPatcherSnapshot(null, translationPatchResult.ErrorMessage);
-        }
-
-        private async Task HandleApplyEffectPatchAsync(ApplyEffectPatchWebCommand cmd)
-        {
-            if (_patcher == null || _settingsStore == null)
-            {
-                return;
-            }
-            SendPatcherSnapshot("正在应用画面与环境特效优化，请稍候（写入期间请勿关闭窗口）...");
-            string? progressLog = null;
-            var (flag, text) = await Task.Run(() => (r: _patcher.ApplyEffectRules(cmd.RuleIds, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
-            {
-                progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-            }, out string message), m: message));
-            if (flag)
-            {
-                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
-                {
-                    EffectPatchRuleIds = cmd.RuleIds,
-                    ViewDistanceRatio = cmd.ViewDistanceRatio
-                });
-                SendPatcherSnapshot(text);
-            }
-            else
-            {
-                SendPatcherSnapshot(null, text);
-            }
-        }
-
-        private async Task HandleRestoreEffectPatchAsync()
-        {
-            if (_patcher == null || _settingsStore == null)
-            {
-                return;
-            }
-            SendPatcherSnapshot("正在还原画面与环境特效优化，请稍候...");
-            var (flag, text) = await Task.Run(() => (r: _patcher.RestoreEffectRules(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
-            {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-            }, out string message), m: message));
-            if (flag)
-            {
-                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
-                {
-                    EffectPatchRuleIds = Array.Empty<string>()
-                });
-                SendPatcherSnapshot(text);
-            }
-            else
-            {
-                SendPatcherSnapshot(null, text);
-            }
-        }
-
-        private async Task HandleApplyMudManTierAsync(ApplyMudManTierWebCommand cmd)
-        {
-            if (_patcher == null || _settingsStore == null)
-            {
-                return;
-            }
-            if (!Enum.IsDefined(typeof(MudManTier), cmd.Tier))
-            {
-                SendPatcherSnapshot(null, $"未知的泥人档位：{cmd.Tier}");
-                return;
-            }
-            MudManTier tier = (MudManTier)cmd.Tier;
-            SendPatcherSnapshot("正在应用泥人：" + tier.DisplayName() + "，请稍候（写入期间请勿关闭窗口）...");
-            var (flag, text) = await Task.Run(() => (r: _patcher.ApplyMudManTier(tier, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
-            {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-            }, out string message), m: message));
-            if (flag)
-            {
-                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
-                {
-                    MudManTier = cmd.Tier
-                });
-                SendPatcherSnapshot(text);
-            }
-            else
-            {
-                SendPatcherSnapshot(null, text);
-            }
         }
 
         private async Task HandleRestoreMudManAsync()

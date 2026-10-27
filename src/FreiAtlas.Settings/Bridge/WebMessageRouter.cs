@@ -125,12 +125,9 @@ public sealed class WebMessageRouter
             "confirmCurrentPricesPatch" => RouteConfirmCurrentPricesPatch(payload),
             "cleanPricePatch" => RouteCleanPricePatch(payload),
             "applyTranslationPatch" => new ApplyTranslationPatchWebCommand(),
-            "applyEffectPatch" => RouteApplyEffectPatch(payload),
-            "restoreEffectPatch" => new RestoreEffectPatchWebCommand(),
             "applySpellBlock" => RouteApplySpellBlock(payload),
             "restoreSpellBlock" => RouteRestoreSpellBlock(payload),
             "applyAllEffects" => RouteApplyAllEffects(payload),
-            "applyMudManTier" => RouteApplyMudManTier(payload),
             "restoreMudMan" => new RestoreMudManWebCommand(),
             "applyHealthBar" => new ApplyHealthBarWebCommand(),
             "restoreHealthBar" => new RestoreHealthBarWebCommand(),
@@ -533,26 +530,6 @@ public sealed class WebMessageRouter
         if (!payload.TryGetProperty("snapshotId", out var id) || id.ValueKind != JsonValueKind.String)
             return null;
         return new DeletePatcherSnapshotWebCommand(id.GetString() ?? "");
-    }
-
-    private static WebCommand? RouteApplyEffectPatch(JsonElement payload)
-    {
-        if (!payload.TryGetProperty("ruleIds", out var arr) || arr.ValueKind != JsonValueKind.Array)
-            return null;
-        var ids = arr.EnumerateArray()
-            .Where(e => e.ValueKind == JsonValueKind.String)
-            .Select(e => e.GetString()!)
-            .ToList();
-        return new ApplyEffectPatchWebCommand(ids);
-    }
-
-    private static WebCommand? RouteApplyMudManTier(JsonElement payload)
-    {
-        if (!payload.TryGetProperty("tier", out var tierEl) || tierEl.ValueKind != JsonValueKind.Number)
-            return null;
-        if (!tierEl.TryGetInt32(out var tier))
-            return null;
-        return new ApplyMudManTierWebCommand(tier);
     }
 
     private static WebCommand? RouteApplySpellBlock(JsonElement payload)

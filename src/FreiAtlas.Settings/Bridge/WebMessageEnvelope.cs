@@ -115,10 +115,6 @@ public sealed record ScanClientFontSettingsWebCommand : WebCommand;
 
 public sealed record ApplyTranslationPatchWebCommand : WebCommand;
 
-public sealed record ApplyEffectPatchWebCommand(IReadOnlyList<string> RuleIds, double ViewDistanceRatio = 2.0) : WebCommand;
-
-public sealed record RestoreEffectPatchWebCommand : WebCommand;
-
 public sealed record ApplySpellBlockWebCommand(IReadOnlyList<string> SpellIds, bool IncludeAudio) : WebCommand;
 
 public sealed record RestoreSpellBlockWebCommand(IReadOnlyList<string> SpellIds) : WebCommand;
@@ -129,9 +125,6 @@ public sealed record ApplyAllEffectsWebCommand(
     bool IncludeAudio,
     double ViewDistanceRatio = 2.0,
     int MudManTier = -1) : WebCommand;
-
-/// <summary>应用泥人档位。<see cref="Tier"/> 是 <c>MudManTier</c> 的整数值（0~5）。</summary>
-public sealed record ApplyMudManTierWebCommand(int Tier) : WebCommand;
 
 /// <summary>还原泥人改动的全部文件。</summary>
 public sealed record RestoreMudManWebCommand : WebCommand;

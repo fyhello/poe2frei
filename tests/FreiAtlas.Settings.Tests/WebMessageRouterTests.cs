@@ -38,7 +38,6 @@ public sealed class WebMessageRouterTests
         { "applyChestPatch", new { enabled = true, items = new[] { new { originalName = "秘术保险箱", modifiedName = "秘术保险箱[法系装备]", enabled = true } } }, typeof(ApplyChestPatchWebCommand) },
         { "applyRumourPatch", new { enabled = true, items = new[] { new { originalText = "近乎天堂。", modifiedText = "[纯净乐园]近乎天堂。", enabled = true } } }, typeof(ApplyRumourPatchWebCommand) },
         { "restoreAllPatches", new { }, typeof(RestoreAllPatchesWebCommand) },
-        { "applyMudManTier", new { tier = 4 }, typeof(ApplyMudManTierWebCommand) },
         { "restoreMudMan", new { }, typeof(RestoreMudManWebCommand) },
         { "applyHealthBar", new { }, typeof(ApplyHealthBarWebCommand) },
         { "restoreHealthBar", new { }, typeof(RestoreHealthBarWebCommand) },

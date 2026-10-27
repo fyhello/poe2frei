@@ -178,8 +178,15 @@ public sealed class MapBeamPatchService
             byte[]? originalAoData = _engine.ReadGameFile(info, aoPath);
             if (originalAoData == null || originalAoData.Length == 0)
             {
-                // 如果原文件不存在或为空，生成一份最小骨架避免崩溃
-                originalAoData = Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes("version 3\nextends \"nothing\"\n")).ToArray();
+                // 读不到原件时必须跳过：光柱的做法是「复制原件 + 把原路径改写成 wrapper」。
+                // 原件缺失时复制出来的是空壳，wrapper 会指向一份没有实际模型的文件，
+                // 该地图地貌渲染会异常。
+                //
+                // 这里绝不能凭空生成 `version 3 / extends "nothing"` 之类的假骨架 ——
+                // 那等于把伪造内容当成原件存进备份，之后还原时还会写回客户端。
+                progress?.Invoke(
+                    $"地图 [{target.DisplayName ?? target.MapName}] 的模型文件 {aoPath} 读取失败或为空，已跳过。");
+                continue;
             }
 
             // 检查是否已经是光柱（避免重复包装）

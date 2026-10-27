@@ -515,7 +515,14 @@ public sealed class PricePatchService
 
                     if (!_engine.WriteGameFiles(info, [(wordsTargetPath, wordsPatchedBytes)]))
                     {
-                        result.ErrorMessage = "写入 Words 暗金装备物价补丁失败：" + (PatchEngine.LastWriteException?.Message ?? "未知原因");
+                        // Words 写失败时 BaseItemTypes 已经落盘。不回滚会让客户端停在
+                        // 「一半物价」状态：界面上报失败，实际基础物品已被改写。
+                        string baseRollback = basePatchedCount > 0
+                            ? RestorePreviousContent(info, targetPath, rawBytes)
+                            : string.Empty;
+                        result.ErrorMessage = "写入 Words 暗金装备物价补丁失败："
+                            + (PatchEngine.LastWriteException?.Message ?? "未知原因")
+                            + baseRollback;
                         progress?.Invoke(result.ErrorMessage);
                         return result;
                     }
@@ -524,7 +531,13 @@ public sealed class PricePatchService
                     if (verifyWords == null || !VerifyPatchedWordNames(verifyWords, wordsReplacements))
                     {
                         string restoreMessage = RestorePreviousContent(info, wordsTargetPath, wordsRawBytes);
-                        result.ErrorMessage = "Words 暗金物价写入后校验失败，已尝试还原备份。" + restoreMessage;
+                        // 同样要回滚 BaseItemTypes：Words 已还原但 BaseItemTypes 仍是新内容，
+                        // 两表状态不一致，用户重试时会基于脏数据继续写。
+                        string baseRollback = basePatchedCount > 0
+                            ? RestorePreviousContent(info, targetPath, rawBytes)
+                            : string.Empty;
+                        result.ErrorMessage = "Words 暗金物价写入后校验失败，已尝试还原备份。"
+                            + restoreMessage + baseRollback;
                         progress?.Invoke(result.ErrorMessage);
                         return result;
                     }
