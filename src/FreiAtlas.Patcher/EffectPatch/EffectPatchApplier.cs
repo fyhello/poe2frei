@@ -612,7 +612,45 @@ public sealed class EffectPatchApplier
                 }
 
                 byte[]? bytes;
-                if (existingBackups.TryGetValue(path, out var backedUpBytes) && backedUpBytes.Length > 0)
+                if (SharedFileRestore.IsSharedFile(path))
+                {
+                    // 共享文件（character.ot）与商城外观模块共用：MTX 会往同一文件里注入
+                    // 翻滚 AddEffectPack。若这里拿「本模块私有备份」当基底，MTX 的注入
+                    // 在基底里根本不存在，写回后就被彻底抹掉 —— 反之亦然，两边互相踩。
+                    //
+                    // 正确做法：从客户端当前内容读，先剥掉本模块自己上次注入的行，
+                    // 再在其上重新注入。这样对方模块的注入被完整保留。
+                    try
+                    {
+                        bytes = session.ReadFile(path);
+                    }
+                    catch (Exception ex)
+                    {
+                        failures.Add($"{Path.GetFileName(path)}: 读取失败 - {ex.Message}");
+                        continue;
+                    }
+
+                    if (bytes is { Length: > 0 })
+                    {
+                        try
+                        {
+                            var currentText = EffectTextCodec.Decode(
+                                bytes, EffectTextCodec.Detect(bytes, path));
+                            var stripped = SharedFileRestore.RemoveMatchingLines(
+                                currentText, SharedFileRestore.ViewDistanceLine);
+                            if (!string.Equals(stripped, currentText, StringComparison.Ordinal))
+                            {
+                                bytes = EffectTextCodec.Encode(
+                                    stripped, EffectTextCodec.Detect(bytes, path));
+                            }
+                        }
+                        catch
+                        {
+                            // 剥离失败不致命：下面按规则重新注入仍会覆盖旧视距块（规则幂等）。
+                        }
+                    }
+                }
+                else if (existingBackups.TryGetValue(path, out var backedUpBytes) && backedUpBytes.Length > 0)
                 {
                     bytes = backedUpBytes;
                 }

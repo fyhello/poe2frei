@@ -614,6 +614,11 @@ public sealed class WebMessageRouter
             ? aEl.GetString()
             : null;
 
+        // 套装资源目录：用于区分同名套装（Assassin Armour / Blood Guard Armour 各有两个）。
+        string? armourFolder = payload.TryGetProperty("selectedArmourSetFolder", out var afEl) && afEl.ValueKind == JsonValueKind.String
+            ? afEl.GetString()
+            : null;
+
         string? portal = payload.TryGetProperty("selectedPortalName", out var pEl) && pEl.ValueKind == JsonValueKind.String
             ? pEl.GetString()
             : null;
@@ -626,7 +631,7 @@ public sealed class WebMessageRouter
             ? cEl.GetString() ?? "all"
             : "all";
 
-        return new ApplyMtxPatchWebCommand(names, armour, portal, pet, cls);
+        return new ApplyMtxPatchWebCommand(names, armour, portal, pet, cls, armourFolder);
     }
 }
 

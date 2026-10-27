@@ -1010,6 +1010,14 @@ public partial class MainWindow : Window
                 .Where(c => c.Enabled && !string.IsNullOrWhiteSpace(c.OriginalName))
                 .ToDictionary(c => c.OriginalName, c => c.ModifiedName);
 
+            // 显式选择集合：未勾选的条目必须被真正禁用。
+            // 只传 customMappings 不够 —— 未勾选的条目在字典里查不到，
+            // 会落到「有默认 Memo 就启用」的分支，导致取消勾选无效。
+            HashSet<string> selectedChestNames = new(
+                cmd.Items?.Where(c => c.Enabled && !string.IsNullOrWhiteSpace(c.OriginalName))
+                    .Select(c => c.OriginalName) ?? Enumerable.Empty<string>(),
+                StringComparer.OrdinalIgnoreCase);
+
             bool success = await Task.Run(() => _patcher.ApplyNamePatch(
                 NamePatchKind.Chests,
                 _settingsStore.ClientPatch.CustomGameDirectory,
@@ -1018,8 +1026,8 @@ public partial class MainWindow : Window
                 {
                     progressLog = msg;
                     Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-                }));
-
+                },
+                selectedNames: selectedChestNames));
             if (success)
             {
                 SendPatcherSnapshot(message: progressLog ?? "保险箱掉落类型标注补丁已成功应用！");
@@ -1761,6 +1769,10 @@ public partial class MainWindow : Window
         var gameInfo = _patcher.GetGameInfo(_settingsStore.ClientPatch.CustomGameDirectory);
         var isRunning = PatcherFacade.IsGameRunning();
         var hasBackup = _patcher.HasBackup(gameInfo);
+        // 快照必须带上版本与失效标记，否则前端无法阻止用户把旧版本索引
+        // 还原到新客户端上 —— 那会让客户端直接起不来（实测 12,481 个文件读不出）。
+        // PatchSnapshotInfo 本来就记录了 IndexFingerprint 与 GameVersion，此前忘了投影。
+        string snapshotCurrentFingerprint = _patcher.BackupManager.GetCurrentFingerprint(gameInfo);
         var snapshots = _patcher.GetSnapshots(gameInfo)
             .Select(s => new
             {
@@ -1770,7 +1782,13 @@ public partial class MainWindow : Window
                 description = s.Description,
                 createdAt = s.CreatedAt,
                 sizeBytes = s.SizeBytes,
-                enabledModules = s.EnabledModules
+                enabledModules = s.EnabledModules,
+                gameVersion = s.GameVersion,
+                // 指纹缺失或读不到当前指纹时判为 false（未知不等于失效），
+                // 避免把全部快照一律标成不可用。
+                isStale = !string.IsNullOrEmpty(s.IndexFingerprint)
+                          && !string.IsNullOrEmpty(snapshotCurrentFingerprint)
+                          && !string.Equals(s.IndexFingerprint, snapshotCurrentFingerprint, StringComparison.OrdinalIgnoreCase)
             })
             .ToList();
 
@@ -1800,7 +1818,20 @@ public partial class MainWindow : Window
                 clientChests = clientChests,
                 fontSettings = fontSettings,
                 clientBaseItems = clientBaseItems,
-                defaultRumours = gameInfo.IsChina ? RumourPatchService.DefaultModifiedRumourTextsSimplified : RumourPatchService.DefaultModifiedRumourTextsTraditional,
+                // 前端按数组消费（Array.isArray 判定 + 逐项读 rowIndex/mapName）。
+                // 后端原样下发的却是 Dictionary<string,string>，序列化成 JSON 对象，
+                // 前端那个分支永远不成立 —— 不扫描客户端时传言表恒为空。
+                // 这里投影成数组，字段名与前端读取的一致。
+                defaultRumours = (gameInfo.IsChina
+                        ? RumourPatchService.DefaultModifiedRumourTextsSimplified
+                        : RumourPatchService.DefaultModifiedRumourTextsTraditional)
+                    .Select(kv => new
+                    {
+                        originalText = kv.Key,
+                        modifiedText = kv.Value,
+                        enabled = true
+                    })
+                    .ToList(),
                 defaultMapBeams = MapBeamPatchService.DefaultTargets,
                 scannedEntries = scannedEntries,
                 message = _patcherMessage,
@@ -1917,6 +1948,7 @@ public partial class MainWindow : Window
         {
             SelectedNames = new HashSet<string>(cmd.SelectedNames, StringComparer.OrdinalIgnoreCase),
             SelectedArmourSetName = cmd.SelectedArmourSetName,
+            SelectedArmourSetFolder = cmd.SelectedArmourSetFolder,
             SelectedPortalName = cmd.SelectedPortalName,
             SelectedPetName = cmd.SelectedPetName,
             SelectedClassCode = cmd.SelectedClassCode
@@ -2157,23 +2189,66 @@ public partial class MainWindow : Window
             {
                 return;
             }
-            SendPatcherSnapshot("正在还原泥人改动，请稍候...");
-            var (flag, text) = await Task.Run(() => (r: _patcher.RestoreMudMan(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+
+            bool force = await TryRestoreMudManAsync(force: false);
+            if (!force)
             {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-            }, out string message), m: message));
+                return;
+            }
+
+            // 用户已确认「会抹掉其他补丁」，带 force 重新执行。
+            await TryRestoreMudManAsync(force: true);
+        }
+
+        /// <summary>
+        /// 执行一次泥人还原。返回 true 表示需要用户二次确认后重试。
+        ///
+        /// 泥人还原是索引级回滚：若还原点之后客户端又被其他补丁改过（指纹已变），
+        /// 回滚会把那些补丁一并抹掉。旧实现直接拒绝并永久死锁 —— 同版本换档
+        /// 必然改变指纹，导致「还原泥人」再也点不动。
+        /// 现在改为把后果讲清楚，由用户决定是否继续。
+        /// </summary>
+        private async Task<bool> TryRestoreMudManAsync(bool force)
+        {
+            if (_patcher == null || _settingsStore == null)
+            {
+                return false;
+            }
+
+            SendPatcherSnapshot(force
+                ? "正在还原泥人改动（已确认，将重置索引）..."
+                : "正在还原泥人改动，请稍候...");
+
+            var (flag, text) = await Task.Run(() => (r: _patcher.RestoreMudMan(
+                _settingsStore.ClientPatch.CustomGameDirectory,
+                (string msg) => { Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg)); },
+                out string message,
+                force), m: message));
+
             if (flag)
             {
-                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
-                {
-                    MudManTier = -1
-                });
+                _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with { MudManTier = -1 });
                 SendPatcherSnapshot(text);
+                return false;
             }
-            else
+
+            // 后端要求确认：弹出明确后果的对话框，用户同意则带 force 重试。
+            if (!force && text.StartsWith(MudManApplier.StaleRequiresConfirmPrefix, StringComparison.Ordinal))
             {
-                SendPatcherSnapshot(null, text);
+                string detail = text[MudManApplier.StaleRequiresConfirmPrefix.Length..].Trim();
+                var choice = MessageBox.Show(
+                    this,
+                    detail,
+                    "还原泥人 — 需要确认",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+
+                return choice == MessageBoxResult.Yes;
             }
+
+            SendPatcherSnapshot(null, text);
+            return false;
         }
 
         private async Task HandleApplyHealthBarAsync()
@@ -2312,7 +2387,7 @@ public partial class MainWindow : Window
                         flag3 = _patcher.ApplyMudManTier(mudManTier2, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
                         {
                 Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
-                        }, out string message6);
+                        }, out string message6, refreshFingerprint: false);
                         if (flag3)
                         {
                             list.Add(message6);
@@ -2428,6 +2503,17 @@ public partial class MainWindow : Window
                         else list2.Add("头顶血条还原失败：" + hbMsg2);
                     }
                     // 状态已一致：无需写盘。
+                }
+
+                // 整批写入结束后统一刷新泥人还原点指纹。
+                //
+                // 泥人自己收尾时不刷新（上面传了 refreshFingerprint: false），
+                // 因为随后特效/技能/血条还会改写索引，提前刷新会让指纹立刻失效，
+                // 导致「还原泥人」被误判为 Stale 而永远失败。
+                if (cmd.MudManTier >= 0)
+                {
+                    try { _patcher.RefreshMudManFingerprint(_settingsStore.ClientPatch.CustomGameDirectory); }
+                    catch { /* 指纹刷新失败不影响本批写入结果 */ }
                 }
 
                 return (ruleOk: flag, spellOk: flag2, mudManOk: flag3, healthBarOk: healthBarOk, msgs: list, errs: list2);

@@ -621,17 +621,18 @@ public sealed class PricePatchService
         {
             int totalCleaned = 0;
 
+            // 两张表的清洗结果先算好，最后一次写入。
+            // 分两次写没有事务性：第一张成功、第二张失败时会停在「一半清洗」状态。
+            var pendingWrites = new List<(string VirtualPath, byte[] Data)>(2);
+
             // 1. 清洗 BaseItemTypes
             progress?.Invoke("正在定位 BaseItemTypes 数据表以准备清洗物价...");
             byte[]? rawBytes = ReadBaseItemsFile(info, out string targetPath);
             if (rawBytes != null && rawBytes.Length > 0 && ContainsPriceSuffix(rawBytes))
             {
                 progress?.Invoke("正在剥离 BaseItemTypes 旧物价后缀...");
-                byte[] cleaned = StripAllPriceSuffixes(rawBytes, separator);
-                if (_engine.WriteGameFiles(info, [(targetPath, cleaned)]))
-                {
-                    totalCleaned++;
-                }
+                pendingWrites.Add((targetPath, StripAllPriceSuffixes(rawBytes, separator)));
+                totalCleaned++;
             }
 
             // 2. 清洗 Words (暗金装备)
@@ -639,10 +640,22 @@ public sealed class PricePatchService
             if (wordsRawBytes != null && wordsRawBytes.Length > 0 && ContainsWordsPriceSuffix(wordsRawBytes))
             {
                 progress?.Invoke("正在剥离 Words 表暗金装备物价后缀...");
-                byte[] cleanedWords = StripAllWordsPriceSuffixes(wordsRawBytes, separator);
-                if (_engine.WriteGameFiles(info, [(wordsTargetPath, cleanedWords)]))
+                pendingWrites.Add((wordsTargetPath, StripAllWordsPriceSuffixes(wordsRawBytes, separator)));
+                totalCleaned++;
+            }
+
+            if (pendingWrites.Count > 0)
+            {
+                progress?.Invoke($"正在写入 {pendingWrites.Count} 个清洗后的数据表...");
+                if (!_engine.WriteGameFiles(info, pendingWrites))
                 {
-                    totalCleaned++;
+                    // 写入失败必须如实上报。旧实现只跳过计数就走到 Success = true，
+                    // 磁盘满或文件被锁时界面照样提示「清洗成功」，用户被误导。
+                    result.Success = false;
+                    result.ErrorMessage = "写入清洗后的物价数据表失败："
+                        + (PatchEngine.LastWriteException?.Message ?? "未知原因");
+                    progress?.Invoke(result.ErrorMessage);
+                    return result;
                 }
             }
 

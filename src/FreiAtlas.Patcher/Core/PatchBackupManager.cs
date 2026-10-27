@@ -596,6 +596,23 @@ public sealed class PatchBackupManager
             return new BackupRestoreResult(false, $"快照索引数据文件丢失（目标位置: {binPath}）。");
         }
 
+        // 版本硬拦截：用旧版本的 _.index.bin 覆盖新客户端，索引与资源布局会错位，
+        // 客户端直接起不来（实测 2026-10-22 一次误还原导致 12,481 个文件读不出）。
+        // 前端虽然会置灰按钮，但按钮状态可能因缓存或直接调用而被绕过，这里必须自己挡。
+        //
+        // 只在两边的版本都读得到时才比较：读不到版本说明客户端损坏或快照来自旧格式，
+        // 此时放行由调用方按指纹判断，避免把「未知」当成「不匹配」而误拒。
+        string currentVersion = ReadGameVersion(info);
+        if (!string.IsNullOrEmpty(target.GameVersion)
+            && !string.IsNullOrEmpty(currentVersion)
+            && !string.Equals(target.GameVersion, currentVersion, StringComparison.OrdinalIgnoreCase))
+        {
+            return new BackupRestoreResult(false,
+                $"快照【{target.Name}】创建于 {target.GameVersion} 版本，当前客户端是 {currentVersion}。\n" +
+                "跨版本还原会让索引与资源布局错位，客户端将无法启动，已拒绝。\n" +
+                "如需回退，请用「恢复纯净客户端」重建当前版本的底包，再按需重新打补丁。");
+        }
+
         string settingsPath = Path.Combine(GetSnapshotsDirectory(info), $"{target.Id}.settings.json");
         if (File.Exists(settingsPath))
         {

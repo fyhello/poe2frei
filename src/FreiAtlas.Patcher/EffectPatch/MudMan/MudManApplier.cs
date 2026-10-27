@@ -124,7 +124,8 @@ public sealed class MudManApplier
         GameModeInfo info,
         MudManTier tier,
         Action<string>? progress,
-        out string message)
+        out string message,
+        bool refreshFingerprint = true)
     {
         message = string.Empty;
 
@@ -226,8 +227,15 @@ public sealed class MudManApplier
             WriteState((int)tier, files.Count);
 
             // 本次写入来自泥人自身，把还原点指纹同步到最新索引。
-            // 否则同一版本内换档位后，还原点会被判定为 Stale 而无法还原。
-            _backupManager.RefreshSnapshotFingerprint(info, snapshotId);
+            //
+            // 注意：批处理（applyAllEffects）里泥人之后还会写特效/技能/血条，
+            // 那会把索引再改一次，此刻刷新的指纹立刻作废，导致后续 Restore 被判 Stale
+            // 而永远无法还原泥人。所以批处理调用方会传 refreshFingerprint: false，
+            // 等整批写完后由调用方统一刷新（见 MainWindow.HandleApplyAllEffectsAsync）。
+            if (refreshFingerprint)
+            {
+                _backupManager.RefreshSnapshotFingerprint(info, snapshotId);
+            }
 
             message = textureCount > 0
                 ? $"泥人 {tier.DisplayName()} 已应用：改动 {files.Count} 个文件，其中贴图 {textureCount} 张。"
@@ -244,6 +252,12 @@ public sealed class MudManApplier
     /// <summary>泥人还原点固定使用的快照 id，便于跨版本定位与替换。</summary>
     /// <summary>泥人还原点的名字前缀。快照 id 由 PatchBackupManager 内部生成，只能按名前缀识别。</summary>
     public const string RestorePointPrefix = "泥人还原点";
+
+    /// <summary>
+    /// 还原因指纹失效需要用户二次确认时的消息前缀。
+    /// UI 识别该前缀后弹确认框，用户同意则带 force 重发。
+    /// </summary>
+    public const string StaleRequiresConfirmPrefix = "[MUDMAN_STALE_CONFIRM]";
 
     /// <summary>
     /// 确保当前游戏版本有一份可用的泥人还原点，返回它的 id。
@@ -342,6 +356,24 @@ public sealed class MudManApplier
     /// 客户端直接无法启动（实测 2026-10-22 一次误还原导致 12,481 个文件读取失败）。
     /// </summary>
     public bool Restore(GameModeInfo info, Action<string>? progress, out string message)
+        => Restore(info, force: false, progress, out message);
+
+    /// <summary>
+    /// 还原泥人改动。
+    ///
+    /// <paramref name="force"/> 为 false 时，若还原点之后客户端又被其他补丁改过
+    /// （指纹已变），返回带 <see cref="StaleRequiresConfirmPrefix"/> 前缀的提示，
+    /// 由 UI 弹二次确认；用户确认后以 force: true 重发，才真正执行回滚。
+    ///
+    /// 为什么不一概拒绝：同版本内泥人换档会先回滚再重写，指纹必然变过，
+    /// 一概拒绝等于让「还原泥人」永远失败。把决定权交给知情的用户，
+    /// 同时在提示里讲清后果（其他补丁需要重新应用）。
+    /// </summary>
+    public bool Restore(
+        GameModeInfo info,
+        bool force,
+        Action<string>? progress,
+        out string message)
     {
         message = string.Empty;
 
@@ -371,12 +403,14 @@ public sealed class MudManApplier
                 // 还原是回滚全量索引快照，若快照之后又打过其他补丁（物价/汉化/MTX 等），
                 // 回滚会把它们一起抹掉。这里先比对索引指纹，发现被改写过就拒绝。
                 var staleness = _backupManager.CheckSnapshotStaleness(info, point.Id);
-                if (staleness == SnapshotStaleness.Stale)
+                if (staleness == SnapshotStaleness.Stale && !force)
                 {
+                    // 交给 UI 二次确认：用户知情后可以继续，不再是死路。
                     message =
-                        "泥人还原点之后，客户端又被其他补丁改动过（物价、汉化、商城外观等）。\n" +
-                        "此时还原泥人会把那些改动一并抹掉，已中止。\n\n" +
-                        "如需继续，请先单独还原那些补丁，或使用「恢复纯净客户端」后重新按需打补丁。";
+                        StaleRequiresConfirmPrefix +
+                        "泥人还原点之后，客户端又被其他补丁改动过（物价、汉化、商城外观等）。\n\n" +
+                        "继续还原会把客户端索引重置为「泥人首次应用前」的状态，" +
+                        "那些补丁需要重新应用一次。\n\n是否继续？";
                     return false;
                 }
 

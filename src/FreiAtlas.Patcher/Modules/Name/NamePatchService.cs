@@ -214,7 +214,8 @@ public sealed class NamePatchService
         GameModeInfo info,
         NamePatchKind kind,
         Dictionary<string, string>? customMappings = null,
-        Action<string>? progress = null)
+        Action<string>? progress = null,
+        IReadOnlySet<string>? selectedNames = null)
     {
         const string label = "保险箱标注";
         progress?.Invoke($"正在定位 {label} 数据文件...");
@@ -240,10 +241,24 @@ public sealed class NamePatchService
         progress?.Invoke($"已读取 {actualPath}，正在解析条目...");
         var items = ParseFromBytes(datBytes, info.IsSimplifiedChinese, kind);
 
-        // 应用预设或用户自定义覆盖
+        // 应用预设或用户自定义覆盖。
+        //
+        // enabled 由调用方的选择集合决定：
+        //   · 传了集合 → 只有集合内的条目才启用，其余一律禁用。
+        //     旧实现只看 Memo 是否非空，而绝大多数宝箱都能匹配到兜底规则拿到 Memo，
+        //     于是用户在界面取消勾选完全无效，保存后照样被注入标注。
+        //   · 没传集合（内部扫描等场景）→ 保持「有预设就启用」的原行为。
         int enabledCount = 0;
+        bool hasExplicitSelection = selectedNames != null;
         foreach (var item in items)
         {
+            if (hasExplicitSelection && !selectedNames!.Contains(item.OriginalName))
+            {
+                item.Memo = string.Empty;
+                item.Enabled = false;
+                continue;
+            }
+
             if (customMappings != null && customMappings.TryGetValue(item.OriginalName, out var userCustom))
             {
                 item.Memo = userCustom;

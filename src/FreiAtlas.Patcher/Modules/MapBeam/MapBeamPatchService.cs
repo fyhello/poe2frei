@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.IO;
 using System.Text;
 using FreiAtlas.Patcher.Core;
 
@@ -20,6 +21,53 @@ public sealed record MapBeamColorDef(string Key, string Label, string PrimaryMat
 public sealed class MapBeamPatchService
 {
     private readonly PatchEngine _engine;
+
+    /// <summary>光柱模块的逐文件备份分组。</summary>
+    private const string BackupGroup = "map_beam";
+
+    /// <summary>记录本模块上次实际应用了哪些地图，用于取消勾选时的差集还原。</summary>
+    private static string GetStateFilePath()
+        => Path.Combine(PatchFileBackup.GetGroupDirectory(BackupGroup), "applied_targets.txt");
+
+    private static List<string> ReadAppliedTargets()
+    {
+        try
+        {
+            var path = GetStateFilePath();
+            if (!File.Exists(path)) return [];
+            return File.ReadAllLines(path)
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .ToList();
+        }
+        catch { return []; }
+    }
+
+    private static void WriteAppliedTargets(IEnumerable<string> names)
+    {
+        try
+        {
+            var path = GetStateFilePath();
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllLines(path, names.ToArray(), Encoding.UTF8);
+        }
+        catch { /* 状态记录失败不阻断主流程 */ }
+    }
+
+    /// <summary>
+    /// 把地图名解析成 .ao 虚拟路径。逻辑与 ApplyPatch 里的匹配顺序一致：
+    /// 先按 MapName、再按 DisplayName，最后走内置回退表。
+    /// </summary>
+    private static string? ResolveAoPath(
+        string mapName,
+        string? displayName,
+        Dictionary<string, string> mapCatalog)
+    {
+        if (mapCatalog.TryGetValue(mapName, out var found)) return found;
+        if (!string.IsNullOrEmpty(displayName) && mapCatalog.TryGetValue(displayName, out found)) return found;
+        if (FallbackAoPaths.TryGetValue(mapName, out var fb)) return fb;
+        if (!string.IsNullOrEmpty(displayName) && FallbackAoPaths.TryGetValue(displayName, out fb)) return fb;
+        return null;
+    }
 
     public static readonly MapBeamColorDef[] Colors =
     [
@@ -135,14 +183,62 @@ public sealed class MapBeamPatchService
         Action<string>? progress = null)
     {
         var targetList = (targets ?? DefaultTargets).Where(t => t.Enabled).ToList();
-        if (targetList.Count == 0)
-        {
-            progress?.Invoke("未启用任何神图光柱目标。");
-            return true;
-        }
 
         progress?.Invoke("正在解析游戏客户端地图目录与装饰物模型...");
         var mapCatalog = BuildCatalog(info);
+
+        // 差集还原：先把「上次启用、这次取消」的目标恢复成官方原件。
+        //
+        // 旧实现只遍历本次启用的目标，取消勾选的地图完全不会进入循环 ——
+        // 界面显示已关闭，客户端里的光柱仍然在，只能靠「恢复纯净客户端」清掉。
+        // 与图标模块的 previousPaths 差集还原保持一致的做法。
+        var previouslyApplied = ReadAppliedTargets();
+        var currentNames = new HashSet<string>(
+            targetList.Select(t => t.MapName),
+            StringComparer.OrdinalIgnoreCase);
+
+        var removedTargets = previouslyApplied
+            .Where(name => !currentNames.Contains(name))
+            .ToList();
+
+        if (removedTargets.Count > 0)
+        {
+            progress?.Invoke($"正在还原 {removedTargets.Count} 个已取消的光柱目标...");
+            var restoreFiles = new List<(string VirtualPath, byte[] Data)>();
+            var restoreCopies = new List<string>();
+
+            foreach (var removedName in removedTargets)
+            {
+                string? removedAo = ResolveAoPath(removedName, null, mapCatalog);
+                if (string.IsNullOrWhiteSpace(removedAo)) continue;
+
+                // 从本模块的备份里取官方原件写回。
+                var originals = PatchFileBackup.LoadOriginals(BackupGroup)
+                    .ToDictionary(x => x.VirtualPath, x => x.Data, StringComparer.OrdinalIgnoreCase);
+                if (originals.TryGetValue(removedAo, out var originalBytes) && originalBytes.Length > 0)
+                {
+                    restoreFiles.Add((removedAo, originalBytes));
+                    restoreCopies.Add(GetCopyFilePath(removedAo));
+                }
+            }
+
+            if (restoreFiles.Count > 0 && _engine.WriteGameFiles(info, restoreFiles))
+            {
+                PatchFileBackup.RemoveOriginals(BackupGroup, restoreFiles.Select(f => f.VirtualPath));
+                progress?.Invoke($"已还原 {restoreFiles.Count} 个光柱目标至官方原版。");
+            }
+        }
+
+        if (targetList.Count == 0)
+        {
+            // 全关：上面已还原取消项，这里只需清状态。
+            if (removedTargets.Count == 0)
+            {
+                progress?.Invoke("未启用任何神图光柱目标。");
+            }
+            WriteAppliedTargets([]);
+            return true;
+        }
 
         var filesToWrite = new List<(string VirtualPath, byte[] Data)>();
         int appliedCount = 0;
@@ -228,10 +324,37 @@ public sealed class MapBeamPatchService
                 .Where(p => p.Contains("EF_SceneryChild_", StringComparison.OrdinalIgnoreCase)),
             StringComparer.OrdinalIgnoreCase);
 
+        // 写入前先备份原件：差集还原靠它把取消项恢复成官方原版。
+        var originalsToBackup = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+        var existingBackupKeys = new HashSet<string>(
+            PatchFileBackup.LoadOriginals(BackupGroup).Select(o => o.VirtualPath),
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var target in targetList)
+        {
+            string? aoPath = ResolveAoPath(target.MapName, target.DisplayName, mapCatalog);
+            if (string.IsNullOrWhiteSpace(aoPath) || existingBackupKeys.Contains(aoPath)) continue;
+
+            // 只备份「还没被本模块包装过」的原件，避免把 wrapper 当原件存下来。
+            byte[]? raw = _engine.ReadGameFile(info, aoPath);
+            if (raw is { Length: > 0 }
+                && !Encoding.Unicode.GetString(raw).Contains("EF_SceneryChild_", StringComparison.Ordinal))
+            {
+                originalsToBackup[aoPath] = raw;
+            }
+        }
+
+        if (originalsToBackup.Count > 0)
+        {
+            PatchFileBackup.SaveOriginals(
+                BackupGroup, originalsToBackup.Keys, originalsToBackup,
+                gameVersion: PatchBackupManager.ReadGameVersion(info));
+        }
+
         progress?.Invoke($"正在将 {appliedCount} 个神图光柱注入游戏客户端...");
         bool writeSuccess = _engine.WriteGameFiles(info, filesToWrite, allowedNewPaths);
         if (writeSuccess)
         {
+            WriteAppliedTargets(targetList.Select(t => t.MapName));
             progress?.Invoke($"成功应用 {appliedCount} 个异界神图醒目光柱！掉落时将冲天显现。");
             return true;
         }

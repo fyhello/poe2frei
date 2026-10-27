@@ -147,7 +147,8 @@ public sealed record ApplyMtxPatchWebCommand(
     string? SelectedArmourSetName,
     string? SelectedPortalName,
     string? SelectedPetName,
-    string SelectedClassCode) : WebCommand;
+    string SelectedClassCode,
+    string? SelectedArmourSetFolder = null) : WebCommand;
 
 /// <summary>还原所有商城外观 (MTX) 特效文件。</summary>
 public sealed record RestoreMtxPatchWebCommand : WebCommand;

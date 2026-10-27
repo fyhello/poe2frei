@@ -144,7 +144,16 @@ public sealed class ColorModService
         progress?.Invoke($"准备为 {enabledEntries.Count} 条词缀应用染色规则...");
 
         var customColorMap = enabledEntries.ToDictionary(e => e.StatId, e => e.Color, StringComparer.Ordinal);
-        var customStyleMap = enabledEntries.ToDictionary(e => e.StatId, e => e.Style, StringComparer.Ordinal);
+
+        // 全局样式下拉必须真的生效。
+        //
+        // 旧实现把 globalStyle 收进参数后从未读取，界面上切「整行染色 / 仅数值染色 /
+        // 跟随游戏原生」完全没反应，用户以为改了实际写进去的还是每行各自的默认值。
+        // 现在按 UI 语义处理：全局样式覆盖所有行；只有 FollowGame 时保留逐行取值。
+        var customStyleMap = enabledEntries.ToDictionary(
+            e => e.StatId,
+            e => globalStyle == ColorModStyle.FollowGame ? e.Style : globalStyle,
+            StringComparer.Ordinal);
         var disabledStats = entryList.Where(e => !e.Enabled).Select(e => e.StatId).ToHashSet(StringComparer.Ordinal);
 
         var csdFilesToRead = new List<string>();

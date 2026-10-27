@@ -215,14 +215,23 @@ public sealed class PatchEngine
     {
         actualPath = string.Empty;
 
-        foreach (var path in candidatePaths
-                     .Where(p => !string.IsNullOrEmpty(p))
-                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        // 一次性批量读，避免逐路径调用 ReadGameFile。
+        // ReadGameFile 每次都会打开并解析整份 _.index.bin（Bundles2 下 100~200 MB），
+        // 候选路径有 7~8 条时就会重复解析 7~8 次，物价/宝箱/传言的读取因此明显卡顿。
+        var candidates = candidatePaths
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (candidates.Count == 0) return null;
+
+        var batch = ReadGameFiles(info, candidates);
+        foreach (var path in candidates)
         {
-            var bytes = ReadGameFile(info, path, out var resolved);
-            if (bytes is { Length: > 0 })
+            var cleanPath = path.Replace('\\', '/').TrimStart('/');
+            if (batch.TryGetValue(cleanPath, out var bytes) && bytes.Length > 0)
             {
-                actualPath = resolved;
+                actualPath = cleanPath;
                 return bytes;
             }
         }

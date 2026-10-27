@@ -112,6 +112,15 @@ public sealed class MtxPatchOptions
     public string? SelectedArmourSetName { get; set; }
 
     /// <summary>
+    /// 选中套装所在的资源目录。
+    ///
+    /// 205 款防具里有 2 组同名（Assassin Armour / Blood Guard Armour），
+    /// 只靠名称无法区分。前端把这个目录一起传上来，后端据此精确定位，
+    /// 避免「界面显示 A、实际写入 B」。为空时退回按名称取第一条。
+    /// </summary>
+    public string? SelectedArmourSetFolder { get; set; }
+
+    /// <summary>
     /// 选中的传送门外观名称（单选；空则不替换门）。
     /// </summary>
     public string? SelectedPortalName { get; set; }

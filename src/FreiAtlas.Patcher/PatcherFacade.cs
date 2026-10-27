@@ -607,7 +607,8 @@ public sealed class PatcherFacade
         NamePatchKind kind,
         string? preferredDirectory = null,
         Dictionary<string, string>? customMappings = null,
-        Action<string>? progress = null)
+        Action<string>? progress = null,
+        IReadOnlySet<string>? selectedNames = null)
     {
         if (IsGameRunning())
         {
@@ -622,7 +623,7 @@ public sealed class PatcherFacade
             return false;
         }
 
-        return _nameService.ApplyNamePatch(info, kind, customMappings, progress);
+        return _nameService.ApplyNamePatch(info, kind, customMappings, progress, selectedNames);
     }
 
     public bool ApplyColorMods(
@@ -787,11 +788,34 @@ public sealed class PatcherFacade
     public int MudManListCount => MudManTables.ListCount;
 
     /// <summary>应用指定泥人档位。</summary>
+    /// <summary>
+    /// 把泥人还原点的索引指纹同步到当前客户端索引。
+    ///
+    /// 批处理（applyAllEffects）里泥人之后还会写特效/技能/血条，会把索引再改一次。
+    /// 若泥人在自己收尾时立刻刷指纹，那次写入会让指纹马上作废，后续「还原泥人」
+    /// 就被判定为 Stale 而永远失败。所以批处理会让泥人跳过刷新，等整批写完后
+    /// 由调用方在这里统一刷新一次。
+    /// </summary>
+    public bool RefreshMudManFingerprint(string? preferredDirectory)
+    {
+        var info = GetGameInfo(preferredDirectory);
+        if (!info.IsValid) return false;
+
+        var point = _backupManager.GetSnapshots(info)
+            .Where(s => s.Name.StartsWith(MudManApplier.RestorePointPrefix, StringComparison.Ordinal))
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefault();
+
+        return point is not null
+               && _backupManager.RefreshSnapshotFingerprint(info, point.Id);
+    }
+
     public bool ApplyMudManTier(
         MudManTier tier,
         string? preferredDirectory,
         Action<string>? progress,
-        out string message)
+        out string message,
+        bool refreshFingerprint = true)
     {
         message = string.Empty;
         if (IsGameRunning())
@@ -807,14 +831,15 @@ public sealed class PatcherFacade
             return false;
         }
 
-        return _mudManApplier.Apply(info, tier, progress, out message);
+        return _mudManApplier.Apply(info, tier, progress, out message, refreshFingerprint);
     }
 
     /// <summary>还原泥人改动的全部文件。</summary>
     public bool RestoreMudMan(
         string? preferredDirectory,
         Action<string>? progress,
-        out string message)
+        out string message,
+        bool force = false)
     {
         message = string.Empty;
         if (IsGameRunning())
@@ -830,7 +855,7 @@ public sealed class PatcherFacade
             return false;
         }
 
-        return _mudManApplier.Restore(info, progress, out message);
+        return _mudManApplier.Restore(info, force, progress, out message);
     }
 
     /// <summary>当前泥人是否已应用（存在可还原的备份）。</summary>

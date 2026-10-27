@@ -658,15 +658,19 @@
         const tr = document.createElement("tr");
         const displayName = item.text || item.displayName || item.id;
         const isDanger = item.isDanger;
-        const effectiveColor = getAffixFallbackColor(item);
-        if (!item.color || item.color === "#000000" || item.color.toLowerCase() === "#000") {
-          item.color = effectiveColor;
-        }
+        // 兜底色只用于显示，绝不能写回 item.color。
+        //
+        // item.color 是「用户是否改过」的判据（extractDiff 拿它和 clientAffixes 比对）。
+        // 旧实现在渲染时把 #000000 替换成兜底色，于是任何被渲染过的行都被判定为
+        // 「用户改过」—— 扫完词缀翻一页，再点保存，整页词缀就被改成兜底色。
+        const displayColor = (!item.color || item.color === "#000000" || String(item.color).toLowerCase() === "#000")
+          ? getAffixFallbackColor(item)
+          : item.color;
 
         const tagText = item.tag || (isDanger ? "高危" : (item.group || "通用"));
         const tagBadge = isDanger
           ? `<span style="font-size: 9px; padding: 1px 5px; background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); border-radius: 3px; font-weight: 600; white-space: nowrap;">高危</span>`
-          : `<span style="font-size: 10px; color: ${item.enabled ? effectiveColor : 'var(--muted)'}; font-weight: 500; white-space: nowrap;">${escapeHtml(tagText)}</span>`;
+          : `<span style="font-size: 10px; color: ${item.enabled ? displayColor : 'var(--muted)'}; font-weight: 500; white-space: nowrap;">${escapeHtml(tagText)}</span>`;
 
         tr.innerHTML = `
           <td style="text-align: center;">
@@ -674,7 +678,7 @@
           </td>
           <td>
             <div style="display: flex; align-items: center; gap: 6px;">
-              ${renderAffixTextHtml(displayName, item, effectiveColor)}
+              ${renderAffixTextHtml(displayName, item, displayColor)}
               ${item.isCustom ? '<span style="font-size: 9px; padding: 1px 4px; background: rgba(59,130,246,0.15); color: #3b82f6; border-radius: 3px; white-space: nowrap;">自定</span>' : ''}
             </div>
           </td>
@@ -684,7 +688,7 @@
             </span>
           </td>
           <td style="text-align: center;">
-            <input type="color" class="color-picker-input" data-id="${item.id}" value="${effectiveColor}" style="width: 24px; height: 22px; padding: 0; border: 1px solid var(--border-color); border-radius: 3px; background: none; cursor: pointer;">
+            <input type="color" class="color-picker-input" data-id="${item.id}" value="${displayColor}" style="width: 24px; height: 22px; padding: 0; border: 1px solid var(--border-color); border-radius: 3px; background: none; cursor: pointer;">
           </td>
           <td>
             <select class="style-select preset-select" data-id="${item.id}" style="height: 22px; font-size: 10px; width: 72px; padding: 0 4px;">
@@ -1169,15 +1173,19 @@
     post('applyColorModPatch', {
       enabled: moduleMasters.colormod,
       style: element('patcherColorModStyle')?.value || 'Whole',
-      // 只提交启用中的条目。样式与颜色由前端算好，后端仅负责写入 CSD。
-      rules: colorModData.filter(r => r.enabled).map(r => ({
+      // 必须提交全部条目，包括 enabled: false 的。
+      //
+      // 后端按「customColorMap 里没有 = 该词缀已禁用」来剥离上次注入的颜色。
+      // 旧实现只传启用项，后端永远收不到禁用项，剥离分支不可达 ——
+      // 用户取消勾选某条词缀再保存，客户端里那行颜色根本不会被清掉。
+      rules: colorModData.map(r => ({
         id: r.id,
         group: r.group || '通用',
         color: r.color || '#ffffff',
         style: r.style === 'NumberOnly' ? 'NumberOnly' : 'Whole',
         tag: r.tag || '',
         isDanger: !!r.isDanger,
-        enabled: true
+        enabled: !!r.enabled
       }))
     });
   }
@@ -1196,6 +1204,12 @@
   }
 
   function applyChests() {
+    // 列表为空说明还没扫描过客户端。此时保存会把 items: [] 发给后端，
+    // 而后端会无条件覆盖 ChestItems，导致上次保存的配置被清空。
+    if (CHESTS_DATA.length === 0) {
+      showToast("请先点击「读取客户端宝箱」再保存；直接保存会清空已有配置。");
+      return;
+    }
     showToast("正在将【宝箱掉落透视标注】配置写入 PoE2 游戏客户端，请稍候...");
     post('applyChestPatch', {
       enabled: moduleMasters.chests,
@@ -1208,6 +1222,11 @@
   }
 
   function applyRumours() {
+    // 同上：未扫描时保存会清空已保存的 RumourItems。
+    if (RUMOURS_DATA.length === 0) {
+      showToast("请先点击「读取客户端传言」再保存；直接保存会清空已有配置。");
+      return;
+    }
     showToast("正在将【异界地图传言标注】配置写入 PoE2 游戏客户端，请稍候...");
     post('applyRumourPatch', {
       enabled: moduleMasters.rumours,
@@ -1408,10 +1427,20 @@
     });
   }
 
-  function renderPricePreview(preview) {
+  /**
+   * 复位预览按钮与转圈。成功与失败路径都必须调用，
+   * 否则预览失败后按钮会永久停在「正在读取客户端...」。
+   */
+  function resetPricePreviewButton() {
     element("pricePreviewSpinner")?.classList.add("hidden");
     const btnText = element("pricePreviewBtnText");
     if (btnText) btnText.innerText = "🎮 读取客户端并预览";
+    const btn = element("btnPreviewPricePatch");
+    if (btn) btn.disabled = false;
+  }
+
+  function renderPricePreview(preview) {
+    resetPricePreviewButton();
     if (!preview || !preview.success) return;
     pendingPricePreviewToken = preview.token;
     currentPreviewItems = Array.isArray(preview.items) ? preview.items : (Array.isArray(preview.Items) ? preview.Items : []);
@@ -1647,6 +1676,11 @@
       case "effectpatch":
         applyAllEffectSettings();
         break;
+      case "mtxpatch":
+        // 商城外观此前没有分支：用户在 MTX 工作台点「保存并同步当前功能」
+        // 只会命中 default 的 console.warn，界面毫无反应。
+        applyMtxPatchAction();
+        break;
       default:
         console.warn("未知当前功能模块:", currentActiveModule);
         break;
@@ -1786,6 +1820,8 @@
     "991.5": "包含光影-增强3"
   };
   let selectedRemoveDarkLevel = localStorage.getItem("frei_remove_dark_level") || "1.0";
+  // 弹窗内的临时选择：只有点「保存」才写进 selectedEffectRules。
+  let pendingRemoveDarkLevel = null;
 
   // ── 小地图颜色设置状态与默认值 ──
   const DEFAULT_MINIMAP_COLOR = {
@@ -1835,6 +1871,8 @@
   let mtxSearchQuery = "";
   let selectedMtxNames = new Set();
   let selectedArmourSet = null;
+  // 同名套装需要目录才能区分，随选择一起记录。
+  let selectedArmourSetFolder = null;
   let selectedPortal = null;
   let selectedPet = null;
   let selectedMtxClass = "all";
@@ -1987,7 +2025,9 @@
         const isPet = cat === "Pets";
 
         if (isArmour) {
-          selectedArmourSet = (selectedArmourSet === entryName) ? null : entryName;
+          const same = selectedArmourSet === entryName;
+      selectedArmourSet = same ? null : entryName;
+      selectedArmourSetFolder = same ? null : (entry.armourSetFolder || entry.ArmourSetFolder || null);
         } else if (isPortal) {
           selectedPortal = (selectedPortal === entryName) ? null : entryName;
         } else if (isPet) {
@@ -2082,6 +2122,7 @@
     post("applyMtxPatch", {
       selectedNames: Array.from(selectedMtxNames),
       selectedArmourSetName: selectedArmourSet,
+      selectedArmourSetFolder: selectedArmourSetFolder,
       selectedPortalName: selectedPortal,
       selectedPetName: selectedPet,
       selectedClassCode: clsCode
@@ -2092,6 +2133,7 @@
     if (!confirm("确定要还原所有商城外观特效吗？这将恢复客户端被修改的全部外观文件至官方纯净原版。")) return;
 
     selectedArmourSet = null;
+    selectedArmourSetFolder = null;
     selectedPortal = null;
     selectedPet = null;
     selectedMtxNames.clear();
@@ -2717,12 +2759,12 @@
               </div>
             </div>
             <div class="snapshot-actions">
-              <button class="btn-restore-snap" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}"
+              <button class="btn-restore-snap" data-busy-guard="1" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}"
                       ${stale ? "disabled" : ""}
                       title="${stale ? "版本不匹配，已禁用恢复" : "恢复此版本"}">
                 ↺ 恢复此版本
               </button>
-              <button class="btn-delete-snap" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}">
+              <button class="btn-delete-snap" data-busy-guard="1" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}">
                 🗑️ 删除
               </button>
             </div>
@@ -3588,15 +3630,33 @@
     // 环境去黑暗与全局亮度调整设置弹窗控制
     element('btnOpenRemoveDarkSettings')?.addEventListener('click', (e) => {
       e.stopPropagation();
+      // 以当前已生效档位为基准，不预填未提交的临时选择。
+      pendingRemoveDarkLevel = null;
       element('removeDarkSettingsModal')?.classList.remove('hidden');
     });
     element('btnCloseRemoveDarkModal')?.addEventListener('click', () => {
+      pendingRemoveDarkLevel = null;   // 直接关窗 = 放弃本次改动
       element('removeDarkSettingsModal')?.classList.add('hidden');
       renderEffectPatchUi();
     });
     element('btnSaveRemoveDarkModal')?.addEventListener('click', () => {
+      // 点保存才把弹窗里的选择提交到待应用集合。
+      if (pendingRemoveDarkLevel !== null) {
+        selectedRemoveDarkLevel = pendingRemoveDarkLevel;
+        localStorage.setItem('frei_remove_dark_level', selectedRemoveDarkLevel);
+
+        Array.from(selectedEffectRules)
+          .filter(x => x === 'remove_dark' || x.startsWith('remove_dark:') || x === 'dark_light_objects')
+          .forEach(x => selectedEffectRules.delete(x));
+        selectedEffectRules.add(`remove_dark:${selectedRemoveDarkLevel}`);
+
+        const chkDark = element('chkOpt-remove_dark');
+        if (chkDark) chkDark.checked = true;
+      }
+      pendingRemoveDarkLevel = null;
       element('removeDarkSettingsModal')?.classList.add('hidden');
       renderEffectPatchUi();
+      showToast('已应用亮度档位，点「保存并同步当前功能」写入客户端。');
     });
     element('removeDarkSettingsModal')?.addEventListener('click', (e) => {
       if (e.target === element('removeDarkSettingsModal')) {
@@ -3606,15 +3666,11 @@
     });
     document.querySelectorAll('.remove-dark-level-radio').forEach(radio => {
       radio.addEventListener('change', () => {
-        selectedRemoveDarkLevel = radio.value;
-        localStorage.setItem('frei_remove_dark_level', selectedRemoveDarkLevel);
-        Array.from(selectedEffectRules)
-          .filter(x => x === 'remove_dark' || x.startsWith('remove_dark:') || x === 'dark_light_objects')
-          .forEach(x => selectedEffectRules.delete(x));
-        selectedEffectRules.add(`remove_dark:${selectedRemoveDarkLevel}`);
-        const chkDark = element('chkOpt-remove_dark');
-        if (chkDark) chkDark.checked = true;
-        renderEffectPatchUi();
+        // 只记到弹窗临时变量，不碰 selectedEffectRules。
+        // 旧实现在 change 里直接加规则并强制勾选主开关 ——
+        // 用户只是打开弹窗看一眼、点了个档位、再用 ✕ 关掉，
+        // 去黑暗就已悄悄进入待应用集合，之后任何一次保存都会把它写进客户端。
+        pendingRemoveDarkLevel = radio.value;
       });
     });
 
@@ -4015,7 +4071,9 @@
       }
 
       // 1. 真实词库扫描返回
-      if (payload.scannedEntries && Array.isArray(payload.scannedEntries) && payload.scannedEntries.length > 0) {
+      // 不能用 length > 0 判定：扫描失败或客户端无可识别词缀时后端返回空数组，
+      // 那样 spinner 永不复位、按钮永久停在「正在读取客户端...」。
+      if (payload.scannedEntries && Array.isArray(payload.scannedEntries)) {
         CLIENT_STAT_DICTIONARY = payload.scannedEntries;
         isClientSynced = true;
         const spinner = element("scanSpinner");
@@ -4111,6 +4169,16 @@
           // 必须显式清空内存，否则旧配置继续留在 userConfig 里，
           // 用户下次点保存又把旧值写回去，表现为「恢复默认无效」。
           userConfig = new Map();
+        }
+
+        // 配置变了就必须按新配置重建视图。
+        // 否则快照还原 / 恢复纯净后，表格里仍是还原前的着色，
+        // 用户在这时点保存会把旧视图又写回客户端，等于把还原撤销掉。
+        if (colorModData.length > 0) {
+          rebuildView();
+          colorModCurrentPage = 1;
+          renderTable();
+          renderLiveCard();
         }
 
         // 启动时词缀列表保持为空，等待用户显式点击「提取客户端」
@@ -4368,8 +4436,15 @@
         // 现在改为按设置与后端数据实时计算。
         syncModuleHubStatus();
         if (state.settings) {
-          if (state.settings.mtxSelectedNames) {
-            selectedMtxNames = new Set(state.settings.mtxSelectedNames);
+          // 必须用「是否为 null/undefined」判断，不能用真值判断。
+          // 恢复纯净 / 还原无 MTX 快照时后端下发 null，真值判断会跳过赋值，
+          // 勾选残留成还原前那一批，用户再点应用就把刚还原的外观又打回去。
+          if (state.settings.mtxSelectedNames !== undefined) {
+            selectedMtxNames = new Set(state.settings.mtxSelectedNames || []);
+          }
+          if (state.settings.mtxSelectedArmourSet !== undefined) {
+            selectedArmourSet = state.settings.mtxSelectedArmourSet || null;
+            selectedArmourSetFolder = null;
           }
           if (state.settings.mtxSelectedArmourSet !== undefined) {
             selectedArmourSet = state.settings.mtxSelectedArmourSet;

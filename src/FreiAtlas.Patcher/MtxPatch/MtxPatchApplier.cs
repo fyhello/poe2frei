@@ -90,6 +90,34 @@ public sealed class MtxPatchApplier
                 // 辅助函数：优先读取原件备份，否则从客户端读取
                 byte[]? ReadBaseBytes(string virtualPath)
                 {
+                    // 共享文件（character.ot）：特效模块会往同一文件注入视距行。
+                    // 若拿本模块私有备份当基底，视距注入在基底里不存在，写回后就被抹掉。
+                    // 因此这里必须读客户端当前内容，只剥掉本模块自己的翻滚注入，
+                    // 保留对方的视距注入。
+                    if (SharedFileRestore.IsSharedFile(virtualPath) && session.FileExists(virtualPath))
+                    {
+                        var current = session.ReadFile(virtualPath);
+                        if (current is { Length: > 0 })
+                        {
+                            try
+                            {
+                                var enc = EffectTextCodec.Detect(current, virtualPath);
+                                var text = EffectTextCodec.Decode(current, enc);
+                                var stripped = SharedFileRestore.RemoveMatchingLines(
+                                    text, SharedFileRestore.DodgeRollLine);
+                                if (!string.Equals(stripped, text, StringComparison.Ordinal))
+                                {
+                                    return EffectTextCodec.Encode(stripped, enc);
+                                }
+                            }
+                            catch
+                            {
+                                // 剥离失败时退回当前内容：防护重复的逻辑在 InjectDodgeRollPack 里。
+                            }
+                        }
+                        return current;
+                    }
+
                     if (existingBackups.TryGetValue(virtualPath, out var backed))
                     {
                         return backed;
@@ -214,7 +242,7 @@ public sealed class MtxPatchApplier
                 // 模式 3: 205 款防具时装覆盖全职业 7 种属性底子 (ArmourSets)
                 if (!string.IsNullOrWhiteSpace(options.SelectedArmourSetName))
                 {
-                    var armourEntry = db.FindByName(options.SelectedArmourSetName);
+                    var armourEntry = db.FindByName(options.SelectedArmourSetName, options.SelectedArmourSetFolder);
                     if (armourEntry is not null && !string.IsNullOrWhiteSpace(armourEntry.ArmourSetFolder))
                     {
                         progress?.Invoke($"正在计算全局防具套装覆盖: {armourEntry.Name}...");

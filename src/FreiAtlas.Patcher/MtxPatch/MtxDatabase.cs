@@ -34,7 +34,7 @@ public sealed class MtxDatabase
     public static MtxDatabase Instance => LazyInstance.Value;
 
     private readonly List<MtxEntry> _allEntries = [];
-    private readonly Dictionary<string, MtxEntry> _byName = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, MtxEntry> _byKey = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// PoE 2 八大基础职业模型映射。
@@ -107,7 +107,7 @@ public sealed class MtxDatabase
         {
             LoadError = $"加载商城外观数据库失败：{ex.Message}";
             _allEntries.Clear();
-            _byName.Clear();
+            _byKey.Clear();
         }
     }
 
@@ -164,14 +164,34 @@ public sealed class MtxDatabase
                 }
 
                 _allEntries.Add(entry);
-                _byName[entry.Name] = entry;
+
+                // 用「名称 + 套装目录」做复合键。
+                // 205 款防具里有 2 组重名（Assassin Armour / Blood Guard Armour），
+                // 旧的 _byName[name] = entry 是后写覆盖，导致：
+                //   · 前端按名字取第一条（coremarakethassassin）
+                //   · 后端按名字取最后一条（ezomyte）
+                //   界面显示的和实际写进客户端的不是同一款，另有两款永远选不到。
+                _byKey[BuildKey(entry.Name, entry.ArmourSetFolder)] = entry;
             }
         }
     }
 
-    public MtxEntry? FindByName(string name)
+    private static string BuildKey(string name, string? folder)
+        => string.IsNullOrEmpty(folder) ? name : $"{name}\u0000{folder}";
+
+    /// <summary>
+    /// 按名称 + 套装目录精确定位条目。
+    ///
+    /// <paramref name="folder"/> 为空时退回「按名字取第一条」：调用方若不知道目录，
+    /// 至少行为与旧版一致，不会因为找不到而整条丢失。
+    /// </summary>
+    public MtxEntry? FindByName(string name, string? folder = null)
     {
-        return _byName.TryGetValue(name, out var entry) ? entry : null;
+        if (_byKey.TryGetValue(BuildKey(name, folder), out var exact)) return exact;
+
+        // 没给目录（或目录已变）：按名字取第一条，保证老配置仍可解析。
+        return _allEntries.FirstOrDefault(
+            e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
