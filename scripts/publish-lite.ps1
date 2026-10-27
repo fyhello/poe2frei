@@ -36,6 +36,21 @@ if (Test-Path -LiteralPath $zipPath) {
 New-Item -ItemType Directory -Path (Split-Path -Parent $stagePath) -Force | Out-Null
 New-Item -ItemType Directory -Path (Split-Path -Parent $zipPath) -Force | Out-Null
 
+# 两次 publish 都带 --no-restore，因此必须先针对 win-x64 还原一次。
+# 缺这步会报 NETSDK1047：资产文件没有 net10.0-windows/win-x64 目标 ——
+# 任何一次普通的 dotnet build（Debug/非 RID）都会覆盖 project.assets.json，
+# 让之前还原的 win-x64 目标消失。放在脚本里就不必每次手动补。
+Write-Host 'Restoring for win-x64...'
+& dotnet restore $settingsProjectPath -r win-x64
+if ($LASTEXITCODE -ne 0) {
+    throw "Settings restore (win-x64) failed with exit code $LASTEXITCODE."
+}
+
+& dotnet restore $launcherProjectPath -r win-x64
+if ($LASTEXITCODE -ne 0) {
+    throw "Launcher restore (win-x64) failed with exit code $LASTEXITCODE."
+}
+
 & dotnet publish $settingsProjectPath `
     -c Release `
     -r win-x64 `
