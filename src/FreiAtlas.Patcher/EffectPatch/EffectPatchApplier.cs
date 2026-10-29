@@ -545,6 +545,9 @@ public sealed class EffectPatchApplier
     {
         // 路径正则筛选：同一个文件可能被多条规则命中，按住路径聚合。
         var pathRules = new Dictionary<string, List<EffectPatchRule>>(StringComparer.OrdinalIgnoreCase);
+        // 每条规则实际命中多少文件：规则正则失效时这里会显示 0，
+        // 否则界面只会显示「成功」，无法区分「规则没生效」与「本来就不需要改」。
+        var ruleHits = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var (path, record) in session.Records)
         {
             if (!TargetExtensions.Any(e => path.EndsWith(e, StringComparison.OrdinalIgnoreCase))) continue;
@@ -552,6 +555,7 @@ public sealed class EffectPatchApplier
             foreach (var (rule, pathRegex) in compiled)
             {
                 if (!pathRegex!.IsMatch(path)) continue;
+                ruleHits[rule.Id] = ruleHits.TryGetValue(rule.Id, out var hitCount) ? hitCount + 1 : 1;
                 if (!pathRules.TryGetValue(path, out var list))
                 {
                     list = [];
@@ -563,8 +567,14 @@ public sealed class EffectPatchApplier
 
         if (pathRules.Count == 0)
         {
+            string zeroDetail = string.Join(", ", compiled.Select(c => $"{c.Rule.Id}=0"));
+            progress?.Invoke("特效规则未匹配任何文件：" + zeroDetail);
+            failures.Add("特效规则未匹配任何文件（路径正则可能已随客户端版本失效）：" + zeroDetail);
             return [];
         }
+
+        progress?.Invoke("规则命中统计：" + string.Join(", ",
+            compiled.Select(c => $"{c.Rule.Id}={ruleHits.GetValueOrDefault(c.Rule.Id)}")));
 
         progress?.Invoke($"路径匹配到 {pathRules.Count} 个文件，正在处理...");
 
@@ -731,120 +741,6 @@ public sealed class EffectPatchApplier
 
 }
 
-/// <summary>
-/// 客户端索引会话：一次打开，供路径枚举与逐文件读取共用。
-///
-/// 存在的理由：索引解析（ParsePaths）在 426 万条路径的客户端上约需 19 秒。
-/// 若按批次反复开关索引，几万个文件的补丁会因此多花几十分钟，
-/// 而这些时间全部消耗在重复解析同一份索引上。
-///
-/// 生命周期：由调用方 using 释放；内部按需缓存 bundle 实例，
-/// 同一 bundle 内的多个文件共享一次解压。
-/// </summary>
-internal sealed class ClientIndexSession : IDisposable
-{
-    private readonly LibBundledGGPK3.BundledGGPK? _ggpk;
-    private readonly LibBundle3.Index? _index;
-    private readonly LibBundle3.IBundleFactory? _factory;
-    private readonly Dictionary<LibBundle3.Records.BundleRecord, LibBundle3.Bundle> _openBundles = [];
-
-    private ClientIndexSession(
-        LibBundledGGPK3.BundledGGPK? ggpk,
-        LibBundle3.Index? index,
-        LibBundle3.IBundleFactory? factory)
-    {
-        _ggpk = ggpk;
-        _index = index;
-        _factory = factory;
-    }
-
-    /// <summary>全部已解析路径与其记录的对应关系，路径统一为正斜杠。</summary>
-    public IEnumerable<(string Path, LibBundle3.Records.FileRecord Record)> Records
-    {
-        get
-        {
-            var files = _ggpk?.Index.Files ?? _index?.Files;
-            if (files is null) yield break;
-
-            foreach (var record in files.Values)
-            {
-                var p = record.Path;
-                if (string.IsNullOrEmpty(p)) continue;
-                yield return (p.Replace('\\', '/'), record);
-            }
-        }
-    }
-
-    /// <summary>按路径读取文件内容；不存在时返回 null。</summary>
-    public byte[]? ReadFile(string path)
-    {
-        var clean = path.Replace('\\', '/').TrimStart('/');
-        var index = _ggpk?.Index ?? _index;
-        if (index is null) return null;
-
-        if (!index.TryGetFile(clean, out var record) || record is null) return null;
-
-        // GGPK 模式：Index 内部自带 factory，直接无参读取即可。
-        if (_factory is null) return record.Read().ToArray();
-
-        // Bundles2 模式：同一 bundle 复用实例。
-        // bundle 内部会缓存已解压的 chunk，反复 new 会把这些缓存全部丢掉。
-        if (!_openBundles.TryGetValue(record.BundleRecord, out var bundle))
-        {
-            bundle = _factory.GetBundle(record.BundleRecord);
-            _openBundles[record.BundleRecord] = bundle;
-        }
-
-        return record.Read(bundle).ToArray();
-    }
-
-    /// <summary>检查指定路径是否存在于索引中。</summary>
-    public bool FileExists(string path)
-    {
-        var clean = path.Replace('\\', '/').TrimStart('/');
-        var index = _ggpk?.Index ?? _index;
-        return index is not null && index.TryGetFile(clean, out var record) && record is not null;
-    }
-
-    /// <summary>全部已解析的虚拟路径集合。</summary>
-    public IEnumerable<string> AllFilePaths => Records.Select(r => r.Path);
-
-    /// <summary>打开客户端索引；客户端无效或文件缺失时返回 null。</summary>
-    public static ClientIndexSession? Open(GameModeInfo info)
-    {
-        if (info.Mode == GameMode.GGPK)
-        {
-            var ggpkPath = PatchEngine.GetGgpkPath(info);
-            if (!File.Exists(ggpkPath)) return null;
-
-            var ggpk = new LibBundledGGPK3.BundledGGPK(ggpkPath, parsePathsInIndex: false);
-            ggpk.Index.ParsePaths();
-            return new ClientIndexSession(ggpk, null, null);
-        }
-
-        var bundlesDir = PatchEngine.GetBundlesDirectory(info);
-        var indexPath = PatchEngine.GetBundlesIndexPath(info);
-        if (!File.Exists(indexPath)) return null;
-
-        var factory = new DriveBundleFactory(bundlesDir);
-        var index = new LibBundle3.Index(indexPath, parsePaths: false, factory);
-        index.ParsePaths();
-        return new ClientIndexSession(null, index, factory);
-    }
-
-    public void Dispose()
-    {
-        foreach (var bundle in _openBundles.Values)
-        {
-            bundle?.Dispose();
-        }
-        _openBundles.Clear();
-
-        _index?.Dispose();
-        ( _factory as IDisposable)?.Dispose();
-        _ggpk?.Dispose();
-    }
-}
 
 /// <summary>预览中的一个文件。</summary>
 public sealed record EffectApplyFile(

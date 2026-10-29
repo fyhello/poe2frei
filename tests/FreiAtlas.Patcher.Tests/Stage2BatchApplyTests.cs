@@ -102,7 +102,8 @@ public sealed class Stage2BatchApplyTests
         string body = mw[start..end];
 
         // 取消勾选某模块后，若不做整体回滚，该模块的旧改动会一直留在客户端。
-        Assert.Contains("RestoreAllDetailed", body);
+        // 恢复动作已抽到 RestoreClientPreservingSettingsAsync（释放索引句柄 + 保住配置）。
+        Assert.Contains("RestoreClientPreservingSettingsAsync", body);
         Assert.Contains("ClearTransientPatchStates", body);
         // 客户端本身干净时不应白花一次恢复
         Assert.Contains("needRestore = clientDirty", body);

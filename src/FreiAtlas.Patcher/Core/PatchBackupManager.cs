@@ -256,6 +256,10 @@ public sealed class PatchBackupManager
     {
         if (!info.IsValid) return (false, null);
 
+        // 本进程自己持有索引时，「能否独占打开」必然失败 —— 那不是外部占用。
+        // 跳过预检，真被外部占用时后续写入会以 IOException 暴露出来。
+        if (PatchEngine.ClientIndexHeld) return (false, null);
+
         string targetFile = info.Mode == GameMode.GGPK
             ? PatchEngine.GetGgpkPath(info)
             : PatchEngine.GetBundlesIndexPath(info);

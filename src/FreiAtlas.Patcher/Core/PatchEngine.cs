@@ -25,6 +25,77 @@ public sealed class PatchEngine
     // 批量应用期间的写盘叠加层。非 null 时 WriteGameFiles 只登记不落盘。
     private PatchSession? _session;
 
+    /// <summary>
+    /// 当前正在执行的模块名。由批量调度器设置，用于统计每个模块实际写入的文件数。
+    /// 没有它就无法区分「模块没干活」与「写了但游戏不认」。
+    /// </summary>
+    public string? CurrentModuleTag { get; set; }
+
+    /// <summary>
+    /// 本引擎当前是否持有客户端索引句柄。
+    ///
+    /// CheckResourceLock 用「能否独占打开」判断占用，会把本进程自己的只读句柄
+    /// 误判成「其他进程占用」。占用检查必须先问这个标记。
+    /// </summary>
+    public static bool ClientIndexHeld { get; private set; }
+
+    /// <summary>本次批量中各模块实际写入的文件数。</summary>
+    public Dictionary<string, int> ModuleWriteCounts { get; } = new(StringComparer.Ordinal);
+
+    private void AddWriteCount(int count)
+    {
+        if (count <= 0) return;
+        string tag = string.IsNullOrEmpty(CurrentModuleTag) ? "(未标注)" : CurrentModuleTag;
+        ModuleWriteCounts[tag] = ModuleWriteCounts.TryGetValue(tag, out var existing)
+            ? existing + count
+            : count;
+    }
+
+    // 批量期间的共享索引会话：一次打开，供多次读取复用。
+    // 物理写入前必须释放（Windows 下 GGPK 句柄独占文件），写入后按需重建。
+    private ClientIndexSession? _clientIndex;
+    private string? _clientIndexKey;
+
+    /// <summary>
+    /// 释放共享索引会话。
+    ///
+    /// Windows 下 GGPK 句柄会独占文件，写盘前不释放会导致 Replace 抛 IOException。
+    /// </summary>
+    public void ReleaseClientIndex()
+    {
+        lock (_fileLock)
+        {
+            _clientIndex?.Dispose();
+            _clientIndex = null;
+            _clientIndexKey = null;
+            ClientIndexHeld = false;
+        }
+    }
+
+    private ClientIndexSession? GetOrOpenClientIndex(GameModeInfo info)
+    {
+        // 索引文件被恢复/写入/外部改动后，缓存的会话必须失效重建，
+        // 否则后续模块会读到补丁前的旧内容，算出「无变化」而静默跳过写入。
+        string indexPath = GetClientIndexPath(info);
+        var indexFile = new FileInfo(indexPath);
+        string fileStamp = indexFile.Exists
+            ? $"{indexFile.Length}|{indexFile.LastWriteTimeUtc.Ticks}"
+            : "missing";
+
+        string key = $"{info.Mode}|{info.GameDirectory}|{fileStamp}";
+        if (_clientIndex is not null &&
+            string.Equals(_clientIndexKey, key, StringComparison.OrdinalIgnoreCase))
+        {
+            return _clientIndex;
+        }
+
+        _clientIndex?.Dispose();
+        _clientIndex = ClientIndexSession.Open(info);
+        _clientIndexKey = _clientIndex is null ? null : key;
+        ClientIndexHeld = _clientIndex is not null;
+        return _clientIndex;
+    }
+
     /// <summary>开始一次批量写入会话，期间所有写入先停留在内存。</summary>
     public PatchSession BeginSession()
     {
@@ -65,7 +136,10 @@ public sealed class PatchEngine
                 .Select(kv => (VirtualPath: kv.Key, Data: kv.Value))
                 .ToList();
 
-            return WriteGameFilesCore(info, files, allowedNewPaths: null);
+            return WriteGameFilesCore(
+                info,
+                files,
+                allowedNewPaths: session.AllowedNewPaths.Count > 0 ? session.AllowedNewPaths : null);
         }
     }
 
@@ -123,8 +197,10 @@ public sealed class PatchEngine
                     var ggpkPath = GetGgpkPath(info);
                     if (!File.Exists(ggpkPath)) return result;
 
-                    using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                    ggpk.Index.ParsePaths();
+                    // 共享索引：批量期间只打开一次，避免每次读取都重解析 426 万条路径。
+                    // 精确查找走 NameHash，不需要路径树，因此这里不 ParsePaths。
+                    var clientIndex = GetOrOpenClientIndex(info);
+                    if (clientIndex is null) return result;
 
                     foreach (var vPath in virtualPaths)
                     {
@@ -133,10 +209,8 @@ public sealed class PatchEngine
                         // TryGetFile 走 NameHash 哈希查找，且 NameHash 内部对路径做了
                         // ToLowerInvariant，因此天然忽略大小写，任何大小写变体都能命中。
                         // 这里不需要大小写兜底：查不到就是索引里确实没有这个文件。
-                        if (ggpk.Index.TryGetFile(cleanPath, out var file) && file != null)
-                        {
-                            result[cleanPath] = file.Read().ToArray();
-                        }
+                        var data = clientIndex.ReadFile(cleanPath);
+                        if (data is not null) result[cleanPath] = data;
                     }
                 }
                 else if (info.Mode == GameMode.Bundles2)
@@ -205,18 +279,18 @@ public sealed class PatchEngine
                     var ggpkPath = GetGgpkPath(info);
                     if (!File.Exists(ggpkPath)) return result;
 
-                    using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                    ggpk.Index.ParsePaths();
+                    var clientIndex = GetOrOpenClientIndex(info);
+                    if (clientIndex is null) return result;
 
-                    var matched = ggpk.Index.Files.Values
-                        .Where(f => !string.IsNullOrEmpty(f.Path) && predicate(f.Path))
-                        .ToList();
+                    // 按谓词枚举必须依赖路径树：整个批量期间只解析一次。
+                    clientIndex.EnsurePathsParsed();
 
-                    foreach (var f in matched)
+                    foreach (var (path, record) in clientIndex.Records)
                     {
+                        if (!predicate(path)) continue;
                         // 叠加层优先：磁盘上的旧内容不能覆盖会话中已改写的版本。
-                        if (session?.TryGet(f.Path!) is not null) continue;
-                        result[f.Path!] = f.Read().ToArray();
+                        if (session?.TryGet(path) is not null) continue;
+                        result[path] = record.Read().ToArray();
                     }
                 }
                 else if (info.Mode == GameMode.Bundles2)
@@ -382,12 +456,21 @@ public sealed class PatchEngine
         lock (_fileLock)
         {
             var session = _session;
+            var fileList = files as IList<(string VirtualPath, byte[] Data)> ?? files.ToList();
+
             if (session is null)
             {
-                return WriteGameFilesCore(info, files, allowedNewPaths);
+                bool written = WriteGameFilesCore(info, fileList, allowedNewPaths);
+                if (written) AddWriteCount(fileList.Count);
+                return written;
             }
 
-            foreach (var (vPath, data) in files)
+            // 会话合并写盘时必须保留各模块登记的新增路径许可，
+            // 否则光柱新增的 .ao 会被 FilterExisting 当作「索引里不存在」丢弃。
+            if (allowedNewPaths is not null) session.AllowNewPaths(allowedNewPaths);
+
+            int staged = 0;
+            foreach (var (vPath, data) in fileList)
             {
                 if (!session.Stage(vPath, data, mode))
                 {
@@ -395,8 +478,10 @@ public sealed class PatchEngine
                         "批量写入出现路径冲突：" + string.Join("；", session.Conflicts));
                     return false;
                 }
+                staged++;
             }
 
+            AddWriteCount(staged);
             return true;
         }
     }
@@ -409,6 +494,9 @@ public sealed class PatchEngine
         lock (_fileLock)
         {
             OodleNative.EnsureLoaded(info.GameDirectory);
+
+            // Windows 下 GGPK 句柄独占文件：写盘前必须先释放共享索引，否则 Replace 会 IOException。
+            ReleaseClientIndex();
 
             var fileList = files.ToList();
             if (fileList.Count == 0) return true;
@@ -616,7 +704,7 @@ public sealed class PatchEngine
             {
                 var ggpkPath = GetGgpkPath(info);
                 using var verify = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                verify.Index.ParsePaths();
+                // CompareAll 只按路径精确比对（TryGetFile），不需要路径树。
                 return CompareAll(verify.Index, expected);
             }
 

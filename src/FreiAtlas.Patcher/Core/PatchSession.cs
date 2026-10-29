@@ -33,6 +33,22 @@ public sealed class PatchSession
     private readonly Dictionary<string, WriteMode> _modes = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _conflicts = [];
 
+    // 会话期间允许新建的路径（例如光柱补丁新增的 .ao 文件）。
+    // 合并写盘时必须把这份许可一起带给 WriteGameFilesCore，否则会被 FilterExisting 过滤掉。
+    private readonly HashSet<string> _allowedNewPaths = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>会话期间允许新建的路径集合。</summary>
+    public IReadOnlySet<string> AllowedNewPaths => _allowedNewPaths;
+
+    /// <summary>登记允许新建的路径。</summary>
+    public void AllowNewPaths(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (!string.IsNullOrWhiteSpace(path)) _allowedNewPaths.Add(path);
+        }
+    }
+
     /// <summary>会话是否仍然有效。冲突或超限会被标记为无效，调用方必须放弃提交。</summary>
     public bool IsValid { get; private set; } = true;
 

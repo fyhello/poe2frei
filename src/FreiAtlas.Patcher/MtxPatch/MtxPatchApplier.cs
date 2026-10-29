@@ -54,6 +54,9 @@ public sealed class MtxPatchApplier
         MtxPatchOptions options,
         Action<string>? progress = null)
     {
+        // 商城是整批里最慢的模块：按「规划 / 备份读取 / 写盘」分段计时。
+        var mtxSw = System.Diagnostics.Stopwatch.StartNew();
+
         if (!info.IsValid)
         {
             return MtxApplyResult.Failure(info.ErrorMessage ?? "游戏客户端路径无效。");
@@ -264,6 +267,9 @@ public sealed class MtxPatchApplier
                     ApplyDodgeRollEffects(rollEntries, ReadBaseBytes, plannedFiles);
                 }
 
+                progress?.Invoke($"[耗时] 商城规划: {mtxSw.ElapsedMilliseconds} ms");
+                mtxSw.Restart();
+
                 // 保存本次新涉及文件的首次原件备份（在 session 关闭前完成读取）
                 newBackupTargets = plannedFiles.Keys
                     .Where(p => !existingBackups.ContainsKey(p))
@@ -272,19 +278,54 @@ public sealed class MtxPatchApplier
                 if (newBackupTargets.Count > 0)
                 {
                     progress?.Invoke($"正在为 {newBackupTargets.Count} 个游戏文件建立首次原件备份...");
-                    foreach (var path in newBackupTargets)
+
+                    // 这是商城模块的主要耗时点：上万次「按路径读文件 + 解压」。
+                    // GGPK 模式下 ReadFile 不共享可变状态，可安全并行；上限 4 线程，
+                    // 避免同时解压过多 chunk 造成内存峰值。任一线程异常则回退串行。
+                    var parallelOk = true;
+                    try
                     {
-                        if (session.FileExists(path))
-                        {
-                            var data = session.ReadFile(path);
-                            if (data is not null)
+                        var bag = new System.Collections.Concurrent.ConcurrentDictionary<string, byte[]>(
+                            StringComparer.OrdinalIgnoreCase);
+                        System.Threading.Tasks.Parallel.ForEach(
+                            newBackupTargets,
+                            new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 4 },
+                            path =>
                             {
-                                freshOriginals[path] = data;
+                                if (!session.FileExists(path)) return;
+                                var data = session.ReadFile(path);
+                                if (data is not null) bag[path] = data;
+                            });
+
+                        foreach (var kv in bag) freshOriginals[kv.Key] = kv.Value;
+                    }
+                    catch (Exception parallelEx)
+                    {
+                        // 并行读取失败不影响正确性：退回逐文件串行。
+                        parallelOk = false;
+                        freshOriginals.Clear();
+                        progress?.Invoke("并行读取失败，回退串行：" + parallelEx.Message);
+                    }
+
+                    if (!parallelOk)
+                    {
+                        foreach (var path in newBackupTargets)
+                        {
+                            if (session.FileExists(path))
+                            {
+                                var data = session.ReadFile(path);
+                                if (data is not null)
+                                {
+                                    freshOriginals[path] = data;
+                                }
                             }
                         }
                     }
                 }
             } // <--- 关键：此处 session 彻底释放并 Dispose，完全解除对 Content.ggpk 的文件占用！
+
+            progress?.Invoke($"[耗时] 商城备份读取: {mtxSw.ElapsedMilliseconds} ms");
+            mtxSw.Restart();
 
             // ----------------------------------------------------
             // 备份、差量还原与最终写入闭环（独立无句柄占用阶段）
@@ -308,13 +349,19 @@ public sealed class MtxPatchApplier
             }
 
             // 规范化路径并合并写入任务：规划修改的文件 + 恢复原件的文件
+            var buildSw = System.Diagnostics.Stopwatch.StartNew();
+            var restorePayload = BuildRestorePayload(info, restoredFiles, progress);
+            long restoreMs = buildSw.ElapsedMilliseconds;
             var filesToWrite = plannedFiles
                 .Select(kv => (VirtualPath: kv.Key.Replace('\\', '/').Trim().TrimStart('/'), Data: kv.Value))
-                .Concat(BuildRestorePayload(info, restoredFiles, progress))
+                .Concat(restorePayload)
                 .ToList();
+            progress?.Invoke($"[耗时] 商城构造写入列表: {buildSw.ElapsedMilliseconds} ms (计划 {plannedFiles.Count} 个, 恢复 {restoredFiles.Count} 个, 其中恢复读取 {restoreMs} ms)");
+            mtxSw.Restart();
 
             progress?.Invoke($"正在向游戏客户端写入 {filesToWrite.Count} 个文件 (含 {restoredFiles.Count} 个恢复原件)...");
             var writeSuccess = _engine.WriteGameFiles(info, filesToWrite);
+            progress?.Invoke($"[耗时] 商城会话暂存: {mtxSw.ElapsedMilliseconds} ms");
             if (!writeSuccess)
             {
                 var reason = PatchEngine.LastWriteException?.Message ?? "客户端索引替换未生效或校验不一致";

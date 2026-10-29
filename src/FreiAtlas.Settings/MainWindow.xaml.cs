@@ -1575,19 +1575,43 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// 恢复纯净客户端，同时保住用户当前配置。
+    ///
+    /// 两个必须处理的问题：
+    /// 1. 共享索引句柄会占用 Content.ggpk，恢复前必须释放，否则报「被其他进程占用」。
+    /// 2. 恢复会用备份里的旧设置覆盖 settings.json，把用户刚勾选的功能与调好的参数清空，
+    ///    因此恢复后必须把当前配置写回。
+    /// </summary>
+    private async Task<FreiAtlas.Patcher.Core.BackupRestoreResult> RestoreClientPreservingSettingsAsync(
+        Action<string>? progress)
+    {
+        if (_patcher is null || _settingsStore is null)
+        {
+            return new FreiAtlas.Patcher.Core.BackupRestoreResult(false, "补丁器未就绪。");
+        }
+
+        var keep = _settingsStore.ClientPatch;
+        _patcher.Engine.ReleaseClientIndex();
+
+        var result = await Task.Run(() => _patcher.RestoreAllDetailed(keep.CustomGameDirectory, progress));
+
+        // 恢复失败也要写回，避免界面勾选被清空。
+        _settingsStore.UpdateClientPatch(keep);
+        return result;
+    }
+
     private async Task HandleRestoreAllPatchesAsync()
     {
         if (_patcher is null || _settingsStore is null) return;
 
         SendPatcherSnapshot(message: "正在准备恢复纯净客户端，请稍候...");
         string? progressLog = null;
-        var result = await Task.Run(() => _patcher.RestoreAllDetailed(
-            _settingsStore.ClientPatch.CustomGameDirectory,
-            msg =>
-            {
-                progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherProgress(msg));
-            }));
+        var result = await RestoreClientPreservingSettingsAsync(msg =>
+        {
+            progressLog = msg;
+            Dispatcher.Invoke(() => SendPatcherProgress(msg));
+        });
 
         if (result.Success)
         {
@@ -1923,6 +1947,8 @@ public partial class MainWindow : Window
         }
         if (error is not null)
         {
+            // 红字在界面上一闪而过，必须同时落盘，否则事后无法定位。
+            AppendProgressLog("ERROR", error);
             _patcherError = error;
             _patcherMessage = null;
         }
@@ -2071,10 +2097,14 @@ public partial class MainWindow : Window
     /// </summary>
     private void SendPatcherProgress(string message)
     {
+        // 模块内部的进度（含「规则命中统计」）也要落盘，否则事后无法复盘。
+        AppendProgressLog("INFO", message);
+
         if (SettingsWebView.CoreWebView2 is null) return;
 
         _patcherMessage = message;
-        _patcherError = null;
+        // 不能在这里清空 _patcherError：模块刚报的错会被下一条进度消息抹掉，
+        // 结果就是界面红字一闪而过、批量汇总却显示「全部成功」。
 
         var json = JsonSerializer.Serialize(
             new
@@ -2157,6 +2187,10 @@ public partial class MainWindow : Window
         // 只保存设置：自动保存路径不写客户端。
         if (cmd.PersistOnly) return;
 
+        _patcher.Engine.ReleaseClientIndex();
+
+        LogBatchProgress($"[诊断] 商城(选择前): 名称={cmd.SelectedNames?.Count ?? -1}, 套装={(string.IsNullOrWhiteSpace(cmd.SelectedArmourSetName) ? "无" : cmd.SelectedArmourSetName)}, 传送门={(string.IsNullOrWhiteSpace(cmd.SelectedPortalName) ? "无" : cmd.SelectedPortalName)}, 宠物={(string.IsNullOrWhiteSpace(cmd.SelectedPetName) ? "无" : cmd.SelectedPetName)}, persistOnly={cmd.PersistOnly}");
+
         // 商城外观没有默认规则，必须手动选择条目。
         if ((cmd.SelectedNames is null || cmd.SelectedNames.Count == 0)
             && string.IsNullOrWhiteSpace(cmd.SelectedArmourSetName)
@@ -2166,6 +2200,8 @@ public partial class MainWindow : Window
             SendPatcherSnapshot(error: "商城外观没有默认规则，请先手动勾选要替换的外观条目。");
             return;
         }
+
+        LogBatchProgress($"[诊断] 商城: 名称={cmd.SelectedNames?.Count ?? -1}, 套装={(string.IsNullOrWhiteSpace(cmd.SelectedArmourSetName) ? "无" : cmd.SelectedArmourSetName)}, 传送门={(string.IsNullOrWhiteSpace(cmd.SelectedPortalName) ? "无" : cmd.SelectedPortalName)}, 宠物={(string.IsNullOrWhiteSpace(cmd.SelectedPetName) ? "无" : cmd.SelectedPetName)}");
 
         SendPatcherSnapshot(message: "正在准备应用外观商城特效替换，请稍候...");
         string? progressLog = null;
@@ -2194,6 +2230,8 @@ public partial class MainWindow : Window
                 out var m);
             return (r, m);
         });
+
+        LogBatchProgress($"[诊断] 商城: ApplyMtxPatch 返回={ok}, 消息={message}");
 
         if (ok)
         {
@@ -2297,12 +2335,20 @@ public partial class MainWindow : Window
             // 未配置自定义规则时使用默认规则：内置图标包全量。
             // 这样用户只勾选「图标替换」、不进配置页，也能直接生效。
             // 设置里仍然保存空列表，保持「空 = 默认规则」的语义。
+            // Apply 内部会做 CheckResourceLock；共享索引句柄会独占 Content.ggpk，
+            // 导致它把我们自己判成「其他进程占用」。这里必须先释放。
+            _patcher.Engine.ReleaseClientIndex();
+
+            LogBatchProgress($"[诊断] 图标: enabled={cmd.Enabled}, 传入路径={cmd.Paths?.Count ?? -1}, 内置可用={FreiAtlas.Patcher.IconPatch.IconPatchService.IsAvailable}");
+
             IReadOnlyList<string> configuredPaths = cmd.Paths ?? Array.Empty<string>();
             IReadOnlyList<string> paths = configuredPaths;
             if (cmd.Enabled && paths.Count == 0)
             {
                 paths = FreiAtlas.Patcher.IconPatch.IconPatchService.DefaultPaths;
             }
+
+            LogBatchProgress($"[诊断] 图标: 最终路径数={paths.Count}, 内置可用={FreiAtlas.Patcher.IconPatch.IconPatchService.IsAvailable}, 加载错误={FreiAtlas.Patcher.IconPatch.IconPatchService.LoadError ?? "无"}");
 
             // 更新设置前先取出上次选中的路径：取消勾选的图标需要写回官方原件，
             // 否则界面上勾选数变少，但客户端里仍是修改版。
@@ -2319,6 +2365,8 @@ public partial class MainWindow : Window
 
             // 关闭开关或清空选择时必须真正把官方图标写回客户端。
             // 只改内存开关会让界面显示「已关闭」而磁盘仍是替换后的版本。
+            LogBatchProgress($"[诊断] 图标: 分支判断 enabled={cmd.Enabled}, paths={paths.Count}, 已应用={_patcher.IsIconPatchApplied()}");
+
             if (!cmd.Enabled || paths.Count == 0)
             {
                 if (!_patcher.IsIconPatchApplied())
@@ -2360,11 +2408,13 @@ public partial class MainWindow : Window
             await RecordAutoSnapshotAsync("图标替换写入前");
             IconPatchService service = _patcher.IconPatchService;
             string message = string.Empty;
-            if (await Task.Run(() => service.Apply(gameInfo, paths, previousPaths, (string msg) =>
+            bool iconApplied = await Task.Run(() => service.Apply(gameInfo, paths, previousPaths, (string msg) =>
             {
                 progressLog = msg;
                 Dispatcher.Invoke(() => SendPatcherProgress(msg));
-            }, out message)))
+            }, out message));
+            LogBatchProgress($"[诊断] 图标: Apply 返回={iconApplied}, 消息={message}");
+            if (iconApplied)
             {
                 SendPatcherSnapshot(message);
             }
@@ -2864,8 +2914,40 @@ public partial class MainWindow : Window
         _ => module
     };
 
+    private static readonly object _progressLogLock = new();
+
+    /// <summary>
+    /// 把每一条进度与错误追加到 patch_progress.log。
+    ///
+    /// 界面上的红字一闪而过、且后续消息会把 _patcherError 清掉，
+    /// 导致汇总里看不到真实失败原因；只有落盘才能事后复盘完整执行链。
+    /// </summary>
+    private static void AppendProgressLog(string level, string message)
+    {
+        try
+        {
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FreiAtlas");
+            Directory.CreateDirectory(dir);
+            lock (_progressLogLock)
+            {
+                File.AppendAllText(
+                    Path.Combine(dir, "patch_progress.log"),
+                    $"[{DateTime.Now:HH:mm:ss.fff}] [{level}] {message}{Environment.NewLine}",
+                    System.Text.Encoding.UTF8);
+            }
+        }
+        catch
+        {
+            // 日志写入失败不影响补丁执行。
+        }
+    }
+
     private void LogBatchProgress(string message)
-        => Dispatcher.Invoke(() => SendPatcherProgress(message));
+    {
+        AppendProgressLog("INFO", message);
+        Dispatcher.Invoke(() => SendPatcherProgress(message));
+    }
 
     /// <summary>保存大类门控开关。自动保存路径，不写客户端。</summary>
     private void HandleSetBatchCategory(SetBatchCategoryWebCommand cmd)
@@ -2941,6 +3023,21 @@ public partial class MainWindow : Window
             return;
         }
 
+        // 分段计时：每个阶段结束时打印一行，汇总里再按耗时排序输出。
+        var batchTimer = System.Diagnostics.Stopwatch.StartNew();
+        var stageTimer = System.Diagnostics.Stopwatch.StartNew();
+        var timings = new List<(string Name, long Ms)>();
+
+        _patcher.Engine.ModuleWriteCounts.Clear();
+
+        void MarkStage(string name, long? overrideMs = null)
+        {
+            long ms = overrideMs ?? stageTimer.ElapsedMilliseconds;
+            stageTimer.Restart();
+            timings.Add((name, ms));
+            LogBatchProgress($"⏱ {name}: {ms:N0} ms");
+        }
+
         var info = _patcher.GetGameInfo(_settingsStore.ClientPatch.CustomGameDirectory);
         if (!info.IsValid)
         {
@@ -2955,6 +3052,8 @@ public partial class MainWindow : Window
             SendPatcherSnapshot(error: selfCheckError);
             return;
         }
+
+        MarkStage("客户端检测与校验");
 
         // ── 1. 物价前置：数据过期直接中止整批 ──
         if (modules.Contains("price"))
@@ -2976,6 +3075,8 @@ public partial class MainWindow : Window
             }
         }
 
+        MarkStage("物价数据检查");
+
         // ── 2. 基线决策 ──
         var baseline = _patcher.BackupManager.CheckBaseline(info, out var officialVersion, out var currentVersion);
         var detectedPrefixes = _patcher.BackupManager.DetectPatchPrefixes(info);
@@ -2984,6 +3085,8 @@ public partial class MainWindow : Window
         // 前缀匹配永远返回空。改用索引指纹判断，两种模式都可靠；指纹不可用时才回退到前缀。
         bool? patchedByFingerprint = _patcher.BackupManager.IsClientPatched(info);
         bool clientDirty = patchedByFingerprint ?? detectedPrefixes.Count > 0;
+
+        MarkStage("基线检查");
 
         bool baselineReady;
         bool needRestore;
@@ -3039,13 +3142,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        MarkStage("基线准备");
+
         // ── 3. 恢复基线（仅客户端已带补丁时）──
         if (needRestore)
         {
             LogBatchProgress("正在恢复纯净基线...");
-            var restore = await Task.Run(() => _patcher.RestoreAllDetailed(
-                _settingsStore.ClientPatch.CustomGameDirectory,
-                LogBatchProgress));
+            var restore = await RestoreClientPreservingSettingsAsync(LogBatchProgress);
 
             if (!restore.Success)
             {
@@ -3058,8 +3161,11 @@ public partial class MainWindow : Window
             _patcher.ClearTransientPatchStates();
         }
 
+        MarkStage("恢复纯净底包");
+
         // ── 4. 整批只记一次快照 ──
         await RecordAutoSnapshotAsync("批量应用补丁");
+        MarkStage("自动快照");
 
         // ── 5. 按固定顺序应用 ──
         //
@@ -3071,12 +3177,18 @@ public partial class MainWindow : Window
         // 特效与外观不在会话内：泥人切档会回滚整个索引，外观是整份 .ao 替换，
         // 两者都不适合与其它模块叠加。
         var selectedOrder = BatchModuleOrder.Where(modules.Contains).ToList();
-        var textModules = new HashSet<string>(StringComparer.Ordinal)
+        // 会话内模块：共用一次索引落盘。
+        // 图标 / 光柱 / 商城会写入大量二进制资源，合并后能省下 2~3 次整索引重写；
+        // 读缓存已按索引文件时间戳失效，不会再出现「读到旧快照而静默跳过」。
+        // 特效（effectpatch）必须排除 —— 泥人档位会注入 3.2 万张贴图，
+        // 塞进 512MB 上限的内存会话会造成内存雪崩，只能独立写。
+        var sessionModules = new HashSet<string>(StringComparer.Ordinal)
         {
-            "translation", "fontmod", "price", "colormod", "chests", "rumours"
+            "translation", "fontmod", "price", "colormod", "chests", "rumours",
+            "mapbeam", "iconpatch", "mtxpatch"
         };
-        int firstText = selectedOrder.FindIndex(m => textModules.Contains(m));
-        int lastText = selectedOrder.FindLastIndex(m => textModules.Contains(m));
+        int firstSession = selectedOrder.FindIndex(m => sessionModules.Contains(m));
+        int lastSession = selectedOrder.FindLastIndex(m => sessionModules.Contains(m));
 
         // 汇总里标注每个模块本次用的是默认规则还是自定义规则，出问题便于判断来源。
         // 必须在循环前算好：各模块处理器在应用过程中会改写设置。
@@ -3113,13 +3225,20 @@ public partial class MainWindow : Window
                 _patcherError = null;
                 LogBatchProgress($"正在应用：{BatchModuleDisplayName(module)} ...");
 
-                if (index == firstText)
+                if (index == firstSession)
                 {
                     _patcher.Engine.BeginSession();
                     sessionOpen = true;
                 }
 
+                var moduleTimer = System.Diagnostics.Stopwatch.StartNew();
+                _patcher.Engine.CurrentModuleTag = BatchModuleDisplayName(module);
                 await DispatchBatchModuleAsync(module, cmd);
+                int moduleWrites = _patcher.Engine.ModuleWriteCounts.TryGetValue(
+                    BatchModuleDisplayName(module), out var wc) ? wc : 0;
+                LogBatchProgress($"[汇总] {BatchModuleDisplayName(module)}: 写入 {moduleWrites} 个文件, 错误={(string.IsNullOrEmpty(_patcherError) ? "无" : _patcherError)}");
+                _patcher.Engine.CurrentModuleTag = null;
+                MarkStage(BatchModuleDisplayName(module), moduleTimer.ElapsedMilliseconds);
 
                 if (string.IsNullOrEmpty(_patcherError))
                 {
@@ -3130,17 +3249,18 @@ public partial class MainWindow : Window
                     failed.Add($"{BatchModuleDisplayName(module)}：{_patcherError}");
                 }
 
-                if (index != lastText) continue;
+                if (index != lastSession) continue;
 
                 if (failed.Count == 0)
                 {
-                    LogBatchProgress("正在把文本类改动一次性写入客户端 ...");
+                    LogBatchProgress("正在把会话内改动一次性写入客户端 ...");
                     bool committed = _patcher.Engine.CommitSession(info);
                     sessionOpen = false;
+                    MarkStage("会话统一写入");
 
                     if (!committed)
                     {
-                        failed.Add($"文本类统一写入失败：{PatchEngine.LastWriteException?.Message ?? "未知原因"}");
+                        failed.Add($"会话统一写入失败：{PatchEngine.LastWriteException?.Message ?? "未知原因"}");
                     }
                 }
                 else
@@ -3148,7 +3268,7 @@ public partial class MainWindow : Window
                     _patcher.Engine.AbortSession();
                     sessionOpen = false;
                     sessionAborted = true;
-                    LogBatchProgress("文本类改动已放弃写入（前面有模块失败）。");
+                    LogBatchProgress("会话内改动已放弃写入（前面有模块失败）。");
                 }
             }
         }
@@ -3163,9 +3283,47 @@ public partial class MainWindow : Window
             ? $"批量应用完成：{succeeded.Count} 项全部成功（{string.Join("、", succeeded)}）。"
             : $"批量应用结束：成功 {succeeded.Count} 项，失败 {failed.Count} 项。\n失败明细：{string.Join("；", failed)}";
 
+        // 分段耗时：降序输出，并写文件便于事后分析。
+        long totalMs = batchTimer.ElapsedMilliseconds;
+        var timingText = new System.Text.StringBuilder();
+        timingText.AppendLine($"总耗时：{totalMs:N0} ms（{totalMs / 1000.0:F1} 秒）");
+        foreach (var (name, ms) in timings.OrderByDescending(t => t.Ms))
+        {
+            double pct = totalMs > 0 ? ms * 100.0 / totalMs : 0;
+            timingText.AppendLine($"  {name,-16} {ms,8:N0} ms  ({pct,5:F1}%)");
+        }
+
+        summary += "\n\n阶段耗时（降序）：\n" + timingText.ToString().TrimEnd();
+
+        try
+        {
+            string timingDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FreiAtlas");
+            Directory.CreateDirectory(timingDir);
+            File.AppendAllText(
+                Path.Combine(timingDir, "patch_timing.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {summary}\n{new string('-', 60)}\n",
+                System.Text.Encoding.UTF8);
+        }
+        catch (Exception timingEx)
+        {
+            // 计时日志写失败不影响补丁结果，但要在进度区留痕。
+            LogBatchProgress("计时日志写入失败：" + timingEx.Message);
+        }
+
+        if (_patcher.Engine.ModuleWriteCounts.Count > 0)
+        {
+            var countText = new System.Text.StringBuilder("\n\n写入文件数：");
+            foreach (var kv in _patcher.Engine.ModuleWriteCounts.OrderByDescending(k => k.Value))
+            {
+                countText.Append($"\n  {kv.Key,-16} {kv.Value,6} 个");
+            }
+            summary += countText.ToString();
+        }
+
         if (sessionAborted)
         {
-            summary += "\n注意：文本类模块共用一次写入，任一失败会整组回滚 —— 汉化、字体、物价、染色、宝箱、传言本次均未写入客户端。";
+            summary += "\n注意：会话内模块共用一次写入，任一失败会整组回滚 —— 汉化、字体、物价、染色、宝箱、传言、光柱、图标、商城外观本次均未写入客户端。";
         }
 
         if (failed.Count == 0) SendPatcherSnapshot(message: summary);
@@ -3209,8 +3367,10 @@ public partial class MainWindow : Window
                 await HandleApplyMapBeamPatchAsync(cmd.MapBeam);
                 break;
 
+            // 批量勾选本身就是「启用」意图：强制 Enabled=true，
+            // 否则会被各模块自己的总开关（默认关闭）拦下，表现为「显示成功但没写入」。
             case "iconpatch" when cmd.Icon is not null:
-                await HandleApplyIconPatchAsync(cmd.Icon);
+                await HandleApplyIconPatchAsync(cmd.Icon with { Enabled = true });
                 break;
 
             case "mtxpatch" when cmd.Mtx is not null:
