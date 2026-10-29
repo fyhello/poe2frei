@@ -27,6 +27,12 @@
       <Link>Web\icons.sheet.webp</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- 内置字体随程序分发；字体补丁首次使用时会按需安装到当前用户字体目录。 -->
+    <Content Include="..\..\fonts\**">
+      <Link>fonts\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <Content Include="..\..\THIRD-PARTY-NOTICES.md">
       <Link>THIRD-PARTY-NOTICES.md</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

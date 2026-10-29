@@ -13,6 +13,9 @@ public sealed class EndgameMapRumourItem
     public int RowIndex { get; set; }
     public int WorldAreaIndex { get; set; }
     public string MapName { get; set; } = string.Empty;
+
+    /// <summary>区域的英文内部名（如 Castaway），规则匹配用；MapName 是本地化显示名。</summary>
+    public string AreaKey { get; set; } = string.Empty;
     public string OriginalRumourText { get; set; } = string.Empty;
     public string RumourText { get; set; } = string.Empty;
     public string Memo { get; set; } = string.Empty;
@@ -47,6 +50,38 @@ public sealed class RumourPatchService
     private sealed record DatLayout(int RowCount, int RowSize, int StringBase);
 
     public const int RumourTextOffset = 227;
+
+    /// <summary>
+    /// 区域 id → 规则名。
+    ///
+    /// 这是传言的主匹配路径：区域 id（WorldAreas 的内部名，如 Castaway）
+    /// 不受汉化影响，而关键词匹配只在拿不到区域 id 时兜底。
+    /// 20 条传言行对应 20 个唯一区域 id，全部在此表覆盖。
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> AreaRuleMap =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Castaway"] = "漂流者之所",
+            ["Untainted Paradise"] = "纯净乐园",
+            ["Moment of Zen"] = "无名先知",
+            ["The Fractured Lake"] = "破裂迷湖/千裂泽",
+            ["The Jade Isles"] = "终局首领 · 疯狂酋长",
+            ["Barren Atoll"] = "机制收益 · 宝箱与复活",
+            ["Sprawling Jungle"] = "终局首领 · 梅德维德",
+            ["Mournful Cliffside"] = "终局首领 · 沃拉娜",
+            ["Secluded Temple"] = "终局首领 · 乌崔德",
+            ["Obscure Island"] = "终局首领 · 欧罗什",
+            ["Stagnant Basin"] = "致命机制 · 无复活",
+            ["Exhumed Ruins"] = "探索增益 · 开视野",
+            ["Sloughed Gully"] = "致命机制 · 无复活",
+            ["Moor of Fallen Skies"] = "天陨荒原",
+            ["Craggy Peninsula"] = "优质地形 · 好图",
+            ["Grazed Prairie"] = "机制收益 · 温暖复活",
+            ["Bleached Shoals"] = "贫瘠差图",
+            ["Lush Isle"] = "机制收益 · 野性精灵",
+            ["Frigid Bluffs"] = "机制收益 · 双Boss与复活",
+            ["Scorched Cay"] = "机制收益 · 亚硫酸"
+        };
     private static readonly Regex FormatPrefixRe = new(@"^\[[^\]]*\]", RegexOptions.Compiled);
 
     /// <summary>
@@ -54,6 +89,26 @@ public sealed class RumourPatchService
     /// </summary>
     public static readonly IReadOnlyList<RumourRule> BuiltinRules =
     [
+        new()
+        {
+            Name = "终局首领 · 疯狂酋长",
+            Category = "终局首领",
+            Color = "#ef4444",
+            PrefixSimplified = "[<unique>{疯狂酋长}]",
+            PrefixTraditional = "[<unique>{瘋狂酋長}]",
+            Keywords = ["疯狂的酋长", "瘋狂的酋長", "疯狂酋长", "瘋狂酋長", "Crazed Chieftain"],
+            AreaKeys = ["The Jade Isles"]
+        },
+        new()
+        {
+            Name = "机制收益 · 亚硫酸",
+            Category = "机制收益",
+            Color = "#38b469",
+            PrefixSimplified = "[<rgb(74,230,58)>{亚硫酸}]",
+            PrefixTraditional = "[<rgb(74,230,58)>{亞硫酸}]",
+            Keywords = ["亚硫酸", "亞硫酸", "Sulphite"],
+            AreaKeys = ["Scorched Cay"]
+        },
         new()
         {
             Name = "纯净乐园",
@@ -286,7 +341,8 @@ public sealed class RumourPatchService
     /// <summary>
     /// 匹配传言规则
     /// </summary>
-    public static (RumourRule? Rule, string RecommendedText) MatchRule(string rawText, string mapName, bool isSimplified)
+    public static (RumourRule? Rule, string RecommendedText) MatchRule(
+        string rawText, string mapName, bool isSimplified, string? areaKey = null)
     {
         if (string.IsNullOrWhiteSpace(rawText))
         {
@@ -295,7 +351,20 @@ public sealed class RumourPatchService
 
         string cleanText = StripPrefix(rawText);
 
-        // 1. 优先通过地图名称 / 元数据关联规则
+        // 1. 优先通过区域 id 精确匹配。区域 id 是 WorldAreas 的内部名，
+        //    不受汉化影响；命中后直接给出该规则的完整前缀。
+        string lookupKey = string.IsNullOrEmpty(areaKey) ? mapName : areaKey;
+        if (!string.IsNullOrEmpty(lookupKey)
+            && AreaRuleMap.TryGetValue(lookupKey, out var mappedName))
+        {
+            var mappedRule = BuiltinRules.FirstOrDefault(r => string.Equals(r.Name, mappedName, StringComparison.Ordinal));
+            if (mappedRule is not null)
+            {
+                return (mappedRule, mappedRule.GetPrefix(isSimplified) + cleanText);
+            }
+        }
+
+        // 2. 通过规则自带的 AreaKeys 做包含匹配（兼容区域名带后缀的情况）
         if (!string.IsNullOrEmpty(mapName))
         {
             foreach (var rule in BuiltinRules)
@@ -308,7 +377,7 @@ public sealed class RumourPatchService
             }
         }
 
-        // 2. 通过关键词语义特征匹配
+        // 3. 通过关键词语义特征匹配
         foreach (var rule in BuiltinRules)
         {
             foreach (var kw in rule.Keywords)
@@ -372,7 +441,7 @@ public sealed class RumourPatchService
         byte[]? waData = !string.IsNullOrEmpty(info.WorldAreasPath) ? _engine.ReadGameFile(info, info.WorldAreasPath) : null;
         var waNames = waData != null ? LoadWorldAreaNames(waData) : new Dictionary<int, string>();
 
-        return ParseFromBytes(egData, waNames, info.IsSimplifiedChinese);
+        return ParseFromBytes(egData, waNames, info.IsSimplifiedChinese, LoadEnglishWorldAreaNames(info));
     }
 
     /// <summary>
@@ -398,7 +467,7 @@ public sealed class RumourPatchService
         var waNames = waData != null ? LoadWorldAreaNames(waData) : new Dictionary<int, string>();
 
         // 1. 先从客户端当前数据表中解析出带有绝对行号（RowIndex）的基础列表
-        var baseItems = ParseFromBytes(rawBytes, waNames, info.IsSimplifiedChinese);
+        var baseItems = ParseFromBytes(rawBytes, waNames, info.IsSimplifiedChinese, LoadEnglishWorldAreaNames(info));
 
         // 2. 将用户修改或默认规则对齐合并到带有确定 RowIndex 的基础条目上
         if (customItems != null && customItems.Count > 0)
@@ -406,8 +475,14 @@ public sealed class RumourPatchService
             foreach (var custom in customItems)
             {
                 EndgameMapRumourItem? target = null;
-                // 优先按 RowIndex 精准匹配
-                if (custom.RowIndex >= 0 && custom.RowIndex < baseItems.Count)
+                // 优先按 WorldAreaIndex 匹配（跨语言稳定，与默认规则同一套键）
+                if (custom.WorldAreaIndex > 0)
+                {
+                    target = baseItems.FirstOrDefault(b => b.WorldAreaIndex == custom.WorldAreaIndex);
+                }
+
+                // 旧配置没有 WorldAreaIndex 时按 RowIndex 兜底
+                if (target == null && custom.RowIndex > 0 && custom.RowIndex < baseItems.Count)
                 {
                     target = baseItems[custom.RowIndex];
                 }
@@ -516,7 +591,9 @@ public sealed class RumourPatchService
         return DatBinaryUtils.RewriteStringPointersAppend(egData, datLayout.StringBase, replacements);
     }
 
-    public static List<EndgameMapRumourItem> ParseFromBytes(byte[] egData, Dictionary<int, string> waNames, bool isSimplified)
+    public static List<EndgameMapRumourItem> ParseFromBytes(
+        byte[] egData, Dictionary<int, string> waNames, bool isSimplified,
+        Dictionary<int, string>? englishAreaNames = null)
     {
         var datLayout = DetectLayout(egData);
         var list = new List<EndgameMapRumourItem>(datLayout.RowCount);
@@ -526,14 +603,18 @@ public sealed class RumourPatchService
             int worldAreaIdx = ReadWorldAreaIndex(egData, datLayout, i);
             string text = ReadRumourText(egData, datLayout, i);
             string mapName = waNames.TryGetValue(worldAreaIdx, out string? name) ? name : $"WorldArea#{worldAreaIdx}";
+            string areaKey = englishAreaNames is not null && englishAreaNames.TryGetValue(worldAreaIdx, out var enName)
+                ? enName
+                : mapName;
 
-            var (rule, recommended) = MatchRule(text, mapName, isSimplified);
+            var (rule, recommended) = MatchRule(text, mapName, isSimplified, areaKey);
 
             list.Add(new EndgameMapRumourItem
             {
                 RowIndex = i,
                 WorldAreaIndex = worldAreaIdx,
                 MapName = mapName,
+                AreaKey = areaKey,
                 OriginalRumourText = text,
                 RumourText = string.IsNullOrEmpty(text) ? string.Empty : recommended,
                 Memo = recommended,
@@ -576,6 +657,22 @@ public sealed class RumourPatchService
     {
         int pos = 4 + rowIndex * layout.RowSize;
         return pos + 4 > layout.StringBase ? -1 : BitConverter.ToInt32(data, pos);
+    }
+
+    /// <summary>
+    /// 读取英文 worldareas 作为规则匹配键。
+    ///
+    /// 本地化 worldareas 里的名字是译文（如「翠玉群島」），而规则表用的是
+    /// 英文内部名（<c>The Jade Isles</c>）。单独读一份英文表，规则就不会绑死在某语言上。
+    /// </summary>
+    private Dictionary<int, string>? LoadEnglishWorldAreaNames(GameModeInfo info)
+    {
+        foreach (var path in new[] { "data/balance/worldareas.datc64", "data/worldareas.datc64" })
+        {
+            var bytes = _engine.ReadGameFile(info, path);
+            if (bytes is { Length: > 0 }) return LoadWorldAreaNames(bytes);
+        }
+        return null;
     }
 
     private static Dictionary<int, string> LoadWorldAreaNames(byte[] waData)

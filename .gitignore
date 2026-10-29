@@ -47,3 +47,7 @@
 *.tar.gz
 *.GlobalUsings.g.cs
 *.csproj.FileListAbsolute.txt
+
+# 内置字体二进制不入库（授权与体积原因），仅保留清单
+fonts/*.ttf
+fonts/*.otf

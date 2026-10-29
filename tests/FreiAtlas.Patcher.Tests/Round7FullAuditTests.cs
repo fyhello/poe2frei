@@ -149,17 +149,16 @@ public sealed class Round7FullAuditTests
     // ── P1 交互闭环 ──
 
     [Fact]
-    public void 商城外观有统一保存分支()
+    public void 商城外观纳入批量应用()
     {
         string js = Read("src", "FreiAtlas.Settings", "Web", "patcher.js");
 
-        int start = js.IndexOf("function saveAndApplyCurrentModule", StringComparison.Ordinal);
-        Assert.True(start >= 0);
-        int end = js.IndexOf("function ", start + 50, StringComparison.Ordinal);
-        string body = js[start..end];
+        // 批量 payload 必须包含外观，否则勾选了也不会被打进去。
+        Assert.Contains("payload.mtx = buildMtxPayload()", js);
 
-        Assert.Contains("case \"mtxpatch\"", body);
-        Assert.Contains("applyMtxPatchAction()", body);
+        // 后端分发必须覆盖 mtxpatch。
+        string mw = Read("src", "FreiAtlas.Settings", "MainWindow.xaml.cs");
+        Assert.Contains("case \"mtxpatch\" when cmd.Mtx is not null:", mw);
     }
 
     [Fact]
@@ -211,8 +210,8 @@ public sealed class Round7FullAuditTests
         string js = Read("src", "FreiAtlas.Settings", "Web", "patcher.js");
 
         // 不能再 filter 掉未启用项
-        Assert.DoesNotContain("rules: colorModData.filter(r => r.enabled)", js);
-        Assert.Contains("rules: colorModData.map(r => ({", js);
+        Assert.DoesNotContain("colorModData.filter(r => r.enabled)", js);
+        Assert.Contains("colorModData.map(r => ({", js);
         Assert.Contains("enabled: !!r.enabled", js);
     }
 

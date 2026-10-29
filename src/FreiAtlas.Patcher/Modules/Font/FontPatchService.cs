@@ -29,6 +29,15 @@ public sealed class FontPatchService
     private static IReadOnlyList<FontItem>? _cachedInstalledFonts;
     private static readonly object _fontsLock = new();
 
+    /// <summary>安装新字体后必须调用，否则列表里仍是安装前的枚举结果。</summary>
+    public static void InvalidateInstalledFontsCache()
+    {
+        lock (_fontsLock)
+        {
+            _cachedInstalledFonts = null;
+        }
+    }
+
     public static IReadOnlyList<FontItem> GetInstalledFonts()
     {
         if (_cachedInstalledFonts != null)
@@ -63,6 +72,14 @@ public sealed class FontPatchService
                     .OrderBy(f => f.DisplayName, StringComparer.CurrentCultureIgnoreCase);
 
                 list.AddRange(query);
+
+                // 内置字体即使尚未安装也要出现在列表里，否则用户看不到这个选项。
+                var bundled = FontInstaller.Bundled;
+                if (bundled is not null &&
+                    !list.Any(f => bundled.Aliases.Contains(f.TypefaceName, StringComparer.OrdinalIgnoreCase)))
+                {
+                    list.Insert(0, new FontItem($"{bundled.DisplayName}（内置）", bundled.Family));
+                }
 
                 if (!list.Any(f => string.Equals(f.TypefaceName, "Fontin", StringComparison.OrdinalIgnoreCase)))
                 {

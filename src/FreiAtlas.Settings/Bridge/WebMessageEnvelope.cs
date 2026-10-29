@@ -48,22 +48,26 @@ public sealed record ApplyFontPatchWebCommand(
     int TitleSizeDelta = 0,
     int TinyBadgeSizeDelta = 0,
     string PresetId = "default",
-    IReadOnlyList<FreiAtlas.Core.Settings.FontCustomPreset>? CustomPresets = null) : WebCommand;
+    IReadOnlyList<FreiAtlas.Core.Settings.FontCustomPreset>? CustomPresets = null,
+    bool PersistOnly = false) : WebCommand;
 
 
 public sealed record ApplyRumourPatchWebCommand(
     bool Enabled,
-    IReadOnlyList<FreiAtlas.Core.Settings.RumourItemOption>? Items = null) : WebCommand;
+    IReadOnlyList<FreiAtlas.Core.Settings.RumourItemOption>? Items = null,
+    bool PersistOnly = false) : WebCommand;
 
 public sealed record ApplyChestPatchWebCommand(
     bool Enabled,
-    IReadOnlyList<FreiAtlas.Core.Settings.NamePatchOption>? Items = null) : WebCommand;
+    IReadOnlyList<FreiAtlas.Core.Settings.NamePatchOption>? Items = null,
+    bool PersistOnly = false) : WebCommand;
 
 
 public sealed record ApplyColorModPatchWebCommand(
     bool Enabled,
     string Style,
-    IReadOnlyList<FreiAtlas.Core.Settings.ColorModRuleItem>? Rules = null) : WebCommand;
+    IReadOnlyList<FreiAtlas.Core.Settings.ColorModRuleItem>? Rules = null,
+    bool PersistOnly = false) : WebCommand;
 
 /// <summary>读取客户端索引，返回当前客户端实际可用的图标清单。</summary>
 public sealed record ScanIconPatchWebCommand : WebCommand;
@@ -71,11 +75,13 @@ public sealed record ScanIconPatchWebCommand : WebCommand;
 /// <summary>写入图标。Paths 必须来自扫描结果，后端会再次校验存在性。</summary>
 public sealed record ApplyIconPatchWebCommand(
     bool Enabled,
-    IReadOnlyList<string>? Paths = null) : WebCommand;
+    IReadOnlyList<string>? Paths = null,
+    bool PersistOnly = false) : WebCommand;
 
 public sealed record ApplyMapBeamPatchWebCommand(
     bool Enabled,
-    IReadOnlyList<FreiAtlas.Core.Settings.MapBeamTargetOption>? Targets = null) : WebCommand;
+    IReadOnlyList<FreiAtlas.Core.Settings.MapBeamTargetOption>? Targets = null,
+    bool PersistOnly = false) : WebCommand;
 
 public sealed record ApplyCurrentPricesPatchWebCommand(
     string Mode,
@@ -83,7 +89,8 @@ public sealed record ApplyCurrentPricesPatchWebCommand(
     decimal MinExalted = 1m,
     string UnitMode = "auto",
     bool StripExisting = true,
-    IReadOnlyList<string>? Categories = null) : WebCommand;
+    IReadOnlyList<string>? Categories = null,
+    bool PersistOnly = false) : WebCommand;
 
 public sealed record PreviewCurrentPricesPatchWebCommand(
     string Mode,
@@ -127,7 +134,8 @@ public sealed record ApplyAllEffectsWebCommand(
     int MudManTier = -1,
     // 头顶血条也纳入统一保存：勾选框只改前端状态，点保存时随其他特效一起下发。
     // null 表示本次不涉及血条（保持客户端现状）。
-    bool? HealthBarEnabled = null) : WebCommand;
+    bool? HealthBarEnabled = null,
+    bool PersistOnly = false) : WebCommand;
 
 /// <summary>还原泥人改动的全部文件。</summary>
 public sealed record RestoreMudManWebCommand : WebCommand;
@@ -148,7 +156,35 @@ public sealed record ApplyMtxPatchWebCommand(
     string? SelectedPortalName,
     string? SelectedPetName,
     string SelectedClassCode,
-    string? SelectedArmourSetFolder = null) : WebCommand;
+    string? SelectedArmourSetFolder = null,
+    bool PersistOnly = false) : WebCommand;
 
 /// <summary>还原所有商城外观 (MTX) 特效文件。</summary>
 public sealed record RestoreMtxPatchWebCommand : WebCommand;
+
+/// <summary>设置某个大类的批量门控开关（translation / text / effect / mtx）。</summary>
+public sealed record SetBatchCategoryWebCommand(string Category, bool Enabled) : WebCommand;
+
+/// <summary>设置某个模块的批量启用开关。</summary>
+public sealed record SetModuleEnabledWebCommand(string Module, bool Enabled) : WebCommand;
+
+/// <summary>清空全部自定义规则，恢复内置默认规则。</summary>
+public sealed record RestoreDefaultRulesWebCommand : WebCommand;
+
+/// <summary>
+/// 批量应用：按固定顺序打勾选的模块。
+///
+/// Modules 为本次要应用的模块 id 列表；各模块的参数沿用其单模块命令的结构，
+/// 前端直接把同样的 payload 嵌套进来，后端不需要重复定义一份参数。
+/// </summary>
+public sealed record ApplyBatchWebCommand(
+    IReadOnlyList<string> Modules,
+    ApplyFontPatchWebCommand? Font = null,
+    ApplyColorModPatchWebCommand? ColorMod = null,
+    ApplyChestPatchWebCommand? Chests = null,
+    ApplyRumourPatchWebCommand? Rumours = null,
+    ApplyCurrentPricesPatchWebCommand? Price = null,
+    ApplyMapBeamPatchWebCommand? MapBeam = null,
+    ApplyIconPatchWebCommand? Icon = null,
+    ApplyAllEffectsWebCommand? Effects = null,
+    ApplyMtxPatchWebCommand? Mtx = null) : WebCommand;

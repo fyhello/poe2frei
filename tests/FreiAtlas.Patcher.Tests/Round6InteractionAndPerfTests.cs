@@ -105,16 +105,20 @@ public sealed class Round6InteractionAndPerfTests
         Assert.Contains("_patcher.RestoreHealthBar(", body);
     }
 
-    // ── 痛点 3：特效卡片不得有第二个保存按钮 ──
+    // ── 痛点 3：补丁写入只有一个入口 ──
 
     [Fact]
-    public void 特效卡片内不再有重复保存按钮()
+    public void 写入入口只剩总览页的批量按钮()
     {
         string html = Read("src", "FreiAtlas.Settings", "Web", "index.html");
 
         Assert.DoesNotContain("id=\"btnApplyEffectRules\"", html);
-        // 顶栏统一入口必须保留
-        Assert.Contains("id=\"btnApplyCurrentWorkbench\"", html);
+
+        // 工作台不再保留「保存并同步当前功能」：参数改动自动落库，
+        // 写客户端只走总览页的批量按钮，避免两条写入路径。
+        Assert.DoesNotContain("id=\"btnApplyCurrentWorkbench\"", html);
+        Assert.Contains("id=\"btnApplyBatch\"", html);
+
         // 还原按钮是独立语义，应保留
         Assert.Contains("id=\"btnRestoreEffectRules\"", html);
     }

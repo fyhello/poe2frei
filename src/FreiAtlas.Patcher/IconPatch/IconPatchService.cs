@@ -505,6 +505,18 @@ public sealed class IconPatchService
     /// </remarks>
     public static bool HasBackup() => PatchFileBackup.CountOriginals(BackupGroup) > 0;
 
+    /// <summary>
+    /// 内置图标包的全部虚拟路径。
+    ///
+    /// 这是「未自定义规则」时的默认规则：用户只勾选图标替换、不进配置页，
+    /// 就直接按这份全量清单应用。应用时 Apply 会逐条校验路径是否存在，
+    /// 缺失的自动跳过并汇总，不会写入无效条目。
+    /// </summary>
+    public static IReadOnlyList<string> DefaultPaths =>
+        IconPatchAssets.IsAvailable
+            ? IconPatchAssets.Entries.Select(e => e.Path).Where(p => !string.IsNullOrWhiteSpace(p)).ToList()
+            : [];
+
     /// <summary>已备份的图标数量。</summary>
     public static int BackupCount() => PatchFileBackup.CountOriginals(BackupGroup);
 

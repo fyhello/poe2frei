@@ -290,11 +290,12 @@
   // 读取点：colormod(1123) / mapbeam(1141) / chests(1154) / rumours(1166) / iconpatch(413)。
   // fontmod 与 price 的应用动作无条件执行，没有「关闭即还原」语义，
   // 其卡片开关已移除，不再登记。
+  // 所有模块默认不勾选：只默认「规则」，不默认「勾选」。
   const moduleMasters = {
-    colormod: true,
-    mapbeam: true,
-    chests: true,
-    rumours: true,
+    colormod: false,
+    mapbeam: false,
+    chests: false,
+    rumours: false,
     iconpatch: false
   };
 
@@ -405,23 +406,39 @@
     }
   }
 
-  function applyIconPatch() {
+  function buildIconPayload() {
+    const fromList = iconPatchEntries.filter(e => e.enabled).map(e => e.path);
+    const saved = Array.isArray(state?.settings?.iconPatchSelectedPaths)
+      ? state.settings.iconPatchSelectedPaths.filter(p => typeof p === "string" && p)
+      : [];
+
+    // 未读取客户端时界面列表为空，此时以已保存的规则为准，
+    // 否则「勾选了图标替换却提示未选择任何图标」——配置与客户端数据耦合的老问题。
+    return {
+      enabled: !!moduleMasters.iconpatch,
+      paths: fromList.length > 0 ? fromList : saved
+    };
+  }
+
+  function applyIconPatch(persistOnly = false) {
     // 总开关关闭时不允许写入。
     // 此前这里无条件把 moduleMasters.iconpatch 置 true 并硬编码 enabled:true，
     // 导致用户关掉总开关后点「应用当前工作台」照样写入客户端 —— 开关形同虚设。
-    if (!moduleMasters.iconpatch) {
+    if (!moduleMasters.iconpatch && !persistOnly) {
       showToast("图标替换总开关已关闭。如需应用，请先打开开关；若目标是还原，请点击「恢复原版图标」。");
       return;
     }
 
-    const selected = iconPatchEntries.filter(e => e.enabled).map(e => e.path);
-    if (selected.length === 0) {
-      showToast("请先勾选要替换的图标");
-      return;
+    const payload = buildIconPayload();
+    if (!persistOnly) {
+      if (payload.paths.length === 0) {
+        showToast("请先勾选要替换的图标");
+        return;
+      }
+      showToast(`正在写入 ${payload.paths.length} 个图标到游戏客户端，请稍候...`);
     }
 
-    showToast(`正在写入 ${selected.length} 个图标到游戏客户端，请稍候...`);
-    post("applyIconPatch", { enabled: true, paths: selected });
+    post("applyIconPatch", { ...payload, persistOnly });
   }
 
   /**
@@ -455,12 +472,6 @@
 
     const selectEl = element("wbModuleSelect");
     if (selectEl) selectEl.value = moduleId;
-
-    const btnSave = element("btnApplyCurrentWorkbench");
-    if (btnSave) {
-      btnSave.textContent = "💾 保存并同步当前功能";
-      btnSave.title = `仅保存并同步【${MODULE_TITLES[moduleId] || "当前功能"}】配置到游戏`;
-    }
 
     if (moduleId === "mtxpatch") {
       fetchMtxDatabase();
@@ -1165,12 +1176,22 @@
   }
 
   // ── 单模块独立保存与同步（严格隔离，仅保存当前功能） ──
-  function applyColorMod() {
-    lastSnapshot = JSON.parse(JSON.stringify(colorModData));
-    // 先把当前编辑提交到预设配置，确保写入客户端的内容与界面一致
-    commitView();
-    showToast("正在将【词缀多色彩染色】配置写入 PoE2 游戏客户端，请稍候...");
-    post('applyColorModPatch', {
+  function buildColorModPayload() {
+    const rules = colorModData.map(r => ({
+      id: r.id,
+      // 只存规则，不存客户端文本。词缀显示名会随汉化/版本变化，
+      // 存下来既不能用于匹配，又会在换语言后误导用户。
+      text: "",
+      group: r.group || '通用',
+      color: r.color || '#ffffff',
+      style: r.style === 'NumberOnly' ? 'NumberOnly' : 'Whole',
+      tag: r.tag || '',
+      isDanger: !!r.isDanger,
+      enabled: !!r.enabled
+    }));
+    const saved = Array.isArray(state?.settings?.colorModRules) ? state.settings.colorModRules : [];
+
+    return {
       enabled: moduleMasters.colormod,
       style: element('patcherColorModStyle')?.value || 'Whole',
       // 必须提交全部条目，包括 enabled: false 的。
@@ -1178,21 +1199,23 @@
       // 后端按「customColorMap 里没有 = 该词缀已禁用」来剥离上次注入的颜色。
       // 旧实现只传启用项，后端永远收不到禁用项，剥离分支不可达 ——
       // 用户取消勾选某条词缀再保存，客户端里那行颜色根本不会被清掉。
-      rules: colorModData.map(r => ({
-        id: r.id,
-        group: r.group || '通用',
-        color: r.color || '#ffffff',
-        style: r.style === 'NumberOnly' ? 'NumberOnly' : 'Whole',
-        tag: r.tag || '',
-        isDanger: !!r.isDanger,
-        enabled: !!r.enabled
-      }))
-    });
+      //
+      // 未读取客户端时 colorModData 为空，此时以已保存的规则为准；
+      // 回放旧规则时同样把 text 抹掉，避免历史版本存下的文本又被写回去。
+      rules: rules.length > 0 ? rules : saved.map(r => ({ ...r, text: "" }))
+    };
   }
 
-  function applyMapBeam() {
-    showToast("正在将【神图冲天光柱】配置写入 PoE2 游戏客户端，请稍候...");
-    post('applyMapBeamPatch', {
+  function applyColorMod(persistOnly = false) {
+    lastSnapshot = JSON.parse(JSON.stringify(colorModData));
+    // 先把当前编辑提交到预设配置，确保写入客户端的内容与界面一致
+    commitView();
+    if (!persistOnly) showToast("正在将【词缀多色彩染色】配置写入 PoE2 游戏客户端，请稍候...");
+    post('applyColorModPatch', { ...buildColorModPayload(), persistOnly });
+  }
+
+  function buildMapBeamPayload() {
+    return {
       enabled: moduleMasters.mapbeam,
       targets: MAP_BEAM_DATA.map(x => ({
         mapName: x.name,
@@ -1200,46 +1223,71 @@
         color: x.color,
         enabled: x.enabled
       }))
-    });
+    };
   }
 
-  function applyChests() {
+  function applyMapBeam(persistOnly = false) {
+    if (!persistOnly) showToast("正在将【神图冲天光柱】配置写入 PoE2 游戏客户端，请稍候...");
+    post('applyMapBeamPatch', { ...buildMapBeamPayload(), persistOnly });
+  }
+
+  function buildChestPayload() {
+    const items = CHESTS_DATA.map(x => ({
+      originalName: x.originalName,
+      modifiedName: x.modifiedName,
+      enabled: x.enabled,
+      // 自定义规则与默认规则使用同一个匹配键（IdField 族名）。
+      familyName: x.familyName || ""
+    }));
+    const saved = Array.isArray(state?.settings?.chestItems) ? state.settings.chestItems : [];
+
+    // 同图标：未扫描客户端时以已保存的标注规则为准。
+    return {
+      enabled: moduleMasters.chests,
+      items: items.length > 0 ? items : saved
+    };
+  }
+
+  function applyChests(persistOnly = false) {
     // 列表为空说明还没扫描过客户端。此时保存会把 items: [] 发给后端，
     // 而后端会无条件覆盖 ChestItems，导致上次保存的配置被清空。
     if (CHESTS_DATA.length === 0) {
-      showToast("请先点击「读取客户端宝箱」再保存；直接保存会清空已有配置。");
+      if (!persistOnly) showToast("请先点击「读取客户端宝箱」再保存；直接保存会清空已有配置。");
       return;
     }
-    showToast("正在将【宝箱掉落透视标注】配置写入 PoE2 游戏客户端，请稍候...");
-    post('applyChestPatch', {
-      enabled: moduleMasters.chests,
-      items: CHESTS_DATA.map(x => ({
-        originalName: x.originalName,
-        modifiedName: x.modifiedName,
-        enabled: x.enabled
-      }))
-    });
+    if (!persistOnly) showToast("正在将【宝箱掉落透视标注】配置写入 PoE2 游戏客户端，请稍候...");
+    post('applyChestPatch', { ...buildChestPayload(), persistOnly });
   }
 
-  function applyRumours() {
+  function buildRumourPayload() {
+    const items = RUMOURS_DATA.map(x => ({
+      rowIndex: x.rowIndex,
+      // 自定义规则与默认规则使用同一个匹配键（区域索引）。
+      worldAreaIndex: Number.isInteger(x.worldAreaIndex) ? x.worldAreaIndex : -1,
+      mapName: x.mapName || "",
+      category: x.category || "常规",
+      color: x.color || "#ffffff",
+      originalText: x.originalText || "",
+      modifiedText: x.modifiedText || "",
+      enabled: !!x.enabled
+    }));
+    const saved = Array.isArray(state?.settings?.rumourItems) ? state.settings.rumourItems : [];
+
+    // 同图标：未扫描客户端时以已保存的标注规则为准。
+    return {
+      enabled: moduleMasters.rumours,
+      items: items.length > 0 ? items : saved
+    };
+  }
+
+  function applyRumours(persistOnly = false) {
     // 同上：未扫描时保存会清空已保存的 RumourItems。
     if (RUMOURS_DATA.length === 0) {
-      showToast("请先点击「读取客户端传言」再保存；直接保存会清空已有配置。");
+      if (!persistOnly) showToast("请先点击「读取客户端传言」再保存；直接保存会清空已有配置。");
       return;
     }
-    showToast("正在将【异界地图传言标注】配置写入 PoE2 游戏客户端，请稍候...");
-    post('applyRumourPatch', {
-      enabled: moduleMasters.rumours,
-      items: RUMOURS_DATA.map(x => ({
-        rowIndex: x.rowIndex,
-        mapName: x.mapName || "",
-        category: x.category || "常规",
-        color: x.color || "#ffffff",
-        originalText: x.originalText || "",
-        modifiedText: x.modifiedText || "",
-        enabled: !!x.enabled
-      }))
-    });
+    if (!persistOnly) showToast("正在将【异界地图传言标注】配置写入 PoE2 游戏客户端，请稍候...");
+    post('applyRumourPatch', { ...buildRumourPayload(), persistOnly });
   }
 
   let pendingPricePreviewToken = null;
@@ -1302,17 +1350,20 @@
     showToast("物价参数已变更，请重新点击【读取客户端并预览】");
   }
 
-  function applyPrice() {
+  function applyPrice(persistOnly = false) {
+    if (persistOnly) {
+      // 自动保存只落库参数，不生成预览、不写客户端。
+      const options = buildPricePayload();
+      if (!options) return;
+      post('applyCurrentPricesPatch', { ...options, persistOnly: true });
+      return;
+    }
+
     if (pendingPricePreviewToken) {
       const token = pendingPricePreviewToken;
       hidePricePreview();
       showToast("正在将已确认物价写入客户端...");
       post('confirmCurrentPricesPatch', { token });
-      const btnSave = element("btnApplyCurrentWorkbench");
-      if (btnSave) {
-        btnSave.textContent = "💾 保存并同步当前功能";
-        btnSave.style.background = "";
-      }
       return;
     }
 
@@ -1456,13 +1507,6 @@
       ? `注意：${warnings.join('；')}`
       : '';
 
-    // 顶部保存按钮直接高亮联动，提示用户可在顶部一键写入
-    const btnSave = element("btnApplyCurrentWorkbench");
-    if (btnSave && currentActiveModule === "price") {
-      btnSave.textContent = "🚀 确认并写入客户端";
-      btnSave.title = "预览已完成，点击立即将已确认物价写入客户端游戏文件";
-      btnSave.style.background = "#059669";
-    }
 
     const searchInput = element('pricePreviewSearch');
     if (searchInput) searchInput.value = "";
@@ -1502,6 +1546,15 @@
       setSelectValue("fontSizeTinySelect", "0");
       setSelectValue("fontSizeDeltaSelect", "0");
       if (element("chkFontBold")) element("chkFontBold").checked = false;
+
+      // 恢复默认必须连字体一起复位，否则「恢复默认」只改字号、字体仍是上次选的。
+      // 内置字体在下拉里的标签带「内置」，找不到时保持原选择不动。
+      const fontSel = element("fontSelectDropdown");
+      if (fontSel) {
+        const builtin = Array.from(fontSel.options).find(o => (o.text || "").includes("内置"));
+        if (builtin) fontSel.value = builtin.value;
+      }
+
       showToast("已恢复为【🌟 成熟推荐预设 (官方标准兜底)】");
     } else if (customFontPresets[newId]) {
       const p = customFontPresets[newId];
@@ -1533,7 +1586,7 @@
     customFontPresets[presetId] = {
       id: presetId,
       name: trimmed,
-      fontFamily: element("fontSelectDropdown")?.value || "Microsoft YaHei",
+      fontFamily: element("fontSelectDropdown")?.value || "",
       globalSizeDelta: parseInt(element("fontSizeDeltaSelect")?.value, 10) || 0,
       dropItemSizeDelta: parseInt(element("fontSizeDropItemSelect")?.value, 10) || 0,
       generalTextSizeDelta: parseInt(element("fontSizeGeneralSelect")?.value, 10) || 0,
@@ -1571,7 +1624,7 @@
     const titleDelta = parseInt(element("fontSizeTitleSelect")?.value, 10) || 0;
     const tinyDelta = parseInt(element("fontSizeTinySelect")?.value, 10) || 0;
 
-    const font = dropdown?.value || "Microsoft YaHei";
+    const font = dropdown?.value || dropdown?.options?.[0]?.value || "";
     const delta = deltaSelect ? parseInt(deltaSelect.value, 10) || 0 : 0;
     const isBold = chkBold ? !!chkBold.checked : false;
 
@@ -1621,70 +1674,55 @@
     }
   }
 
-  function applyFontMod() {
-    showToast("正在将【成熟游戏排版与细分规则】写入 PoE2 游戏客户端，请稍候...");
+  function buildFontPayload() {
     const fontDropdown = element("fontSelectDropdown");
-    const fontName = fontDropdown?.value || "Microsoft YaHei UI";
     const deltaSelect = element("fontSizeDeltaSelect");
-    const delta = deltaSelect ? parseInt(deltaSelect.value, 10) || 0 : 0;
     const chkBold = element("chkFontBold");
-    const isBold = chkBold ? !!chkBold.checked : false;
 
-    const dropItem = parseInt(element("fontSizeDropItemSelect")?.value, 10) || 0;
-    const general = parseInt(element("fontSizeGeneralSelect")?.value, 10) || 0;
-    const title = parseInt(element("fontSizeTitleSelect")?.value, 10) || 0;
-    const tiny = parseInt(element("fontSizeTinySelect")?.value, 10) || 0;
-
-    post('applyFontPatch', {
-      fontFamily: fontName,
-      fontSizeDelta: delta,
-      isBold: isBold,
-      dropItemSizeDelta: dropItem,
-      generalTextSizeDelta: general,
-      titleSizeDelta: title,
-      tinyBadgeSizeDelta: tiny,
+    return {
+      fontFamily: fontDropdown?.value || "Microsoft YaHei UI",
+      fontSizeDelta: deltaSelect ? parseInt(deltaSelect.value, 10) || 0 : 0,
+      isBold: chkBold ? !!chkBold.checked : false,
+      dropItemSizeDelta: parseInt(element("fontSizeDropItemSelect")?.value, 10) || 0,
+      generalTextSizeDelta: parseInt(element("fontSizeGeneralSelect")?.value, 10) || 0,
+      titleSizeDelta: parseInt(element("fontSizeTitleSelect")?.value, 10) || 0,
+      tinyBadgeSizeDelta: parseInt(element("fontSizeTinySelect")?.value, 10) || 0,
       presetId: currentFontPresetId,
       customPresets: Object.values(customFontPresets),
       applyPresetScales: true
-    });
+    };
+  }
+
+  function applyFontMod(persistOnly = false) {
+    if (!persistOnly) showToast("正在将【成熟游戏排版与细分规则】写入 PoE2 游戏客户端，请稍候...");
+    post('applyFontPatch', { ...buildFontPayload(), persistOnly });
   }
 
   // 严格仅限于当前激活功能保存与同步
-  function saveAndApplyCurrentModule() {
-    switch (currentActiveModule) {
-      case "colormod":
-        applyColorMod();
-        break;
-      case "mapbeam":
-        applyMapBeam();
-        break;
-      case "chests":
-        applyChests();
-        break;
-      case "rumours":
-        applyRumours();
-        break;
-      case "fontmod":
-        applyFontMod();
-        break;
-      case "price":
-        applyPrice();
-        break;
-      case "iconpatch":
-        applyIconPatch();
-        break;
-      case "effectpatch":
-        applyAllEffectSettings();
-        break;
-      case "mtxpatch":
-        // 商城外观此前没有分支：用户在 MTX 工作台点「保存并同步当前功能」
-        // 只会命中 default 的 console.warn，界面毫无反应。
-        applyMtxPatchAction();
-        break;
-      default:
-        console.warn("未知当前功能模块:", currentActiveModule);
-        break;
-    }
+  // 工作台不再有「保存」按钮：参数改动即时落库（persistOnly），
+  // 真正的写客户端只发生在总览页的「保存配置并应用补丁」。
+  let autoSaveTimer = null;
+
+  function scheduleAutoSave() {
+    if (!state) return;
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(flushAutoSave, 400);
+  }
+
+  function flushAutoSave() {
+    const persist = {
+      colormod: () => applyColorMod(true),
+      mapbeam: () => applyMapBeam(true),
+      chests: () => applyChests(true),
+      rumours: () => applyRumours(true),
+      fontmod: () => applyFontMod(true),
+      price: () => applyPrice(true),
+      iconpatch: () => applyIconPatch(true),
+      effectpatch: () => applyAllEffectSettings(true),
+      mtxpatch: () => applyMtxPatchAction(true)
+    }[currentActiveModule];
+
+    if (persist) persist();
   }
 
   // ── 特效与性能优化 (EffectPatch) 状态与操作 ──
@@ -2107,7 +2145,24 @@
     }
   }
 
-  function applyMtxPatchAction() {
+  function buildMtxPayload() {
+    const selClass = element("selMtxCharacterClass");
+    return {
+      selectedNames: Array.from(selectedMtxNames),
+      selectedArmourSetName: selectedArmourSet,
+      selectedArmourSetFolder: selectedArmourSetFolder,
+      selectedPortalName: selectedPortal,
+      selectedPetName: selectedPet,
+      selectedClassCode: selClass ? selClass.value : "all"
+    };
+  }
+
+  function applyMtxPatchAction(persistOnly = false) {
+    if (persistOnly) {
+      post("applyMtxPatch", { ...buildMtxPayload(), persistOnly: true });
+      return;
+    }
+
     const selClass = element("selMtxCharacterClass");
     const clsCode = selClass ? selClass.value : "all";
 
@@ -2119,14 +2174,7 @@
     showToast("正在应用外观商城特效替换...");
     showToast("正在应用 PoE 2 外观商城特效替换，写入期间请勿关闭窗口...");
 
-    post("applyMtxPatch", {
-      selectedNames: Array.from(selectedMtxNames),
-      selectedArmourSetName: selectedArmourSet,
-      selectedArmourSetFolder: selectedArmourSetFolder,
-      selectedPortalName: selectedPortal,
-      selectedPetName: selectedPet,
-      selectedClassCode: clsCode
-    });
+    post("applyMtxPatch", { ...buildMtxPayload(), selectedClassCode: clsCode });
   }
 
   function restoreMtxPatchAction() {
@@ -2490,7 +2538,26 @@
     });
   }
 
-  function applyAllEffectSettings() {
+  /** 特效模块的 payload。批量应用、自动保存与单模块应用共用同一份构造逻辑。 */
+  function buildEffectPayload() {
+    const { rules, ratio } = getSelectedEffectRulesWithRatio();
+    const masterChecked = element("chkOpt-spell_block_master")?.checked ?? (selectedBlockedSpells.size > 0);
+    const mudManChecked = element("chkOpt-mudman")?.checked ?? (selectedMudManTier >= 0);
+    const healthBarChecked = element("chkOpt-healthbar")?.checked;
+
+    return {
+      ruleIds: rules,
+      spellIds: masterChecked ? Array.from(selectedBlockedSpells) : [],
+      includeAudio: element("chkSpellIncludeAudio")?.checked ?? true,
+      viewDistanceRatio: ratio,
+      mudManTier: mudManChecked ? (selectedMudManTier >= 0 ? selectedMudManTier : 4) : -1,
+      healthBarEnabled: healthBarDesired === null
+        ? (typeof healthBarChecked === "boolean" ? healthBarChecked : null)
+        : healthBarDesired
+    };
+  }
+
+  function applyAllEffectSettings(persistOnly = false) {
     const { rules, ratio } = getSelectedEffectRulesWithRatio();
     const masterChecked = element("chkOpt-spell_block_master")?.checked ?? (selectedBlockedSpells.size > 0);
     const spells = masterChecked ? Array.from(selectedBlockedSpells) : [];
@@ -2499,14 +2566,14 @@
     const mudManTier = mudManChecked ? (selectedMudManTier >= 0 ? selectedMudManTier : 4) : -1;
 
     // 这是泥人唯一真实的应用入口，互斥与可用性校验必须放在这里。
-    if (mudManTier >= 3 && mudManState && !mudManState.available) {
+    if (!persistOnly && mudManTier >= 3 && mudManState && !mudManState.available) {
       showToast("贴图表不可用，无法应用含贴图压缩的档位");
       return;
     }
 
     // 泥人与商城外观改的是同一批角色模型 .ao：泥人清空特效块，外观整文件替换。
     // 两者互相覆盖，必须先告知用户，不能静默让一方失效。
-    if (mudManTier >= 0 && mtxState && mtxState.applied) {
+    if (!persistOnly && mudManTier >= 0 && mtxState && mtxState.applied) {
       if (!confirm("检测到商城外观补丁已应用。\n\n泥人与商城外观会互相覆盖（两者都改角色模型 .ao 文件）：\n· 现在应用泥人，商城外观会失效\n· 之后重新应用外观，泥人又会被覆盖\n\n确定继续吗？")) return;
     }
 
@@ -2517,16 +2584,9 @@
       ? (typeof healthBarChecked === "boolean" ? healthBarChecked : null)
       : healthBarDesired;
 
-    showToast("正在保存并应用特效设置...");
+    if (!persistOnly) showToast("正在保存并应用特效设置...");
 
-    post("applyAllEffects", {
-      ruleIds: rules,
-      spellIds: spells,
-      includeAudio: includeAudio,
-      viewDistanceRatio: ratio,
-      mudManTier: mudManTier,
-      healthBarEnabled: healthBarEnabled
-    });
+    post("applyAllEffects", { ...buildEffectPayload(), persistOnly });
   }
 
   // 模态框联想与更新
@@ -2682,14 +2742,17 @@
         const size = s.sizeBytes !== undefined ? s.sizeBytes : s.SizeBytes;
         const created = s.createdAt || s.CreatedAt;
         const stale = Boolean(s.isStale);
+        // 版本不匹配才禁止恢复；stale 只表示「快照之后客户端被改过」，
+        // 那是打完补丁的正常状态，不能据此禁用回滚。
+        const versionMismatch = Boolean(s.versionMismatch);
         const version = s.gameVersion || "";
         html += `
-          <div class="snapshot-card official${stale ? " stale" : ""}">
+          <div class="snapshot-card official${versionMismatch ? " stale" : ""}">
             <div class="snapshot-info-col">
               <div class="snapshot-title-row">
                 <span class="snapshot-name">${escapeHtml(name)}</span>
                 <span class="snapshot-tag official">官方出厂底包</span>
-                ${stale ? '<span class="snapshot-tag stale">⚠ 版本不匹配</span>' : ""}
+                ${versionMismatch ? '<span class="snapshot-tag stale">⚠ 版本不匹配</span>' : (stale ? '<span class="snapshot-tag stale">↺ 快照后已变更</span>' : "")}
                 <span style="font-size: 11px; color: var(--muted);">${formatSize(size)}</span>
               </div>
               <div class="snapshot-desc-row">
@@ -2698,15 +2761,15 @@
                 <span>📌 锁定状态: 禁止删除/覆盖</span>
               </div>
               <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                ${stale
+                ${versionMismatch
                   ? "该底包来自旧版本客户端，恢复会让客户端与资源不匹配而无法启动。下次启动会自动重建。"
                   : desc}
               </div>
             </div>
             <div class="snapshot-actions">
               <button class="btn-restore-snap" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}"
-                      ${stale ? "disabled" : ""}
-                      title="${stale ? "版本不匹配，已禁用恢复" : "将客户端恢复为此版本，所有补丁重置为关闭状态"}">
+                      ${versionMismatch ? "disabled" : ""}
+                      title="${versionMismatch ? "版本不匹配，已禁用恢复" : "将客户端恢复为此版本，所有补丁重置为关闭状态"}">
                 ↺ 恢复出厂纯净
               </button>
             </div>
@@ -2738,21 +2801,24 @@
           ? modules.map(m => `<span class="snapshot-module-pill">${m}</span>`).join("")
           : `<span class="snapshot-module-pill">纯净状态</span>`;
         const stale = Boolean(s.isStale);
+        // 版本不匹配才禁止恢复；stale 只表示「快照之后客户端被改过」，
+        // 那是打完补丁的正常状态，不能据此禁用回滚。
+        const versionMismatch = Boolean(s.versionMismatch);
         const version = s.gameVersion || "";
 
         html += `
-          <div class="snapshot-card${stale ? " stale" : ""}">
+          <div class="snapshot-card${versionMismatch ? " stale" : ""}">
             <div class="snapshot-info-col">
               <div class="snapshot-title-row">
                 <span class="snapshot-name">${escapeHtml(name)}</span>
                 <span class="snapshot-tag manual">手动备份</span>
-                ${stale ? '<span class="snapshot-tag stale">⚠ 版本不匹配</span>' : ""}
+                ${versionMismatch ? '<span class="snapshot-tag stale">⚠ 版本不匹配</span>' : (stale ? '<span class="snapshot-tag stale">↺ 快照后已变更</span>' : "")}
                 <span style="font-size: 11px; color: var(--muted);">${formatSize(size)}</span>
               </div>
               <div class="snapshot-desc-row">
                 <span>🕒 创建时间: ${formatDate(created)}</span>
                 ${version ? `<span>🎮 ${version}</span>` : ""}
-                <span>${stale ? "旧版本快照，48 小时后自动清理" : desc}</span>
+                <span>${versionMismatch ? "旧版本快照，48 小时后自动清理" : desc}</span>
               </div>
               <div class="snapshot-modules-row">
                 ${modulesHtml}
@@ -2760,8 +2826,8 @@
             </div>
             <div class="snapshot-actions">
               <button class="btn-restore-snap" data-busy-guard="1" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}"
-                      ${stale ? "disabled" : ""}
-                      title="${stale ? "版本不匹配，已禁用恢复" : "恢复此版本"}">
+                      ${versionMismatch ? "disabled" : ""}
+                      title="${versionMismatch ? "版本不匹配，已禁用恢复" : "恢复此版本"}">
                 ↺ 恢复此版本
               </button>
               <button class="btn-delete-snap" data-busy-guard="1" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}">
@@ -2796,21 +2862,24 @@
           ? modules.map(m => `<span class="snapshot-module-pill">${m}</span>`).join("")
           : `<span class="snapshot-module-pill">默认/纯净</span>`;
         const stale = Boolean(s.isStale);
+        // 版本不匹配才禁止恢复；stale 只表示「快照之后客户端被改过」，
+        // 那是打完补丁的正常状态，不能据此禁用回滚。
+        const versionMismatch = Boolean(s.versionMismatch);
         const version = s.gameVersion || "";
 
         html += `
-          <div class="snapshot-card${stale ? " stale" : ""}">
+          <div class="snapshot-card${versionMismatch ? " stale" : ""}">
             <div class="snapshot-info-col">
               <div class="snapshot-title-row">
                 <span class="snapshot-name">${escapeHtml(name)}</span>
                 <span class="snapshot-tag auto">自动快照</span>
-                ${stale ? '<span class="snapshot-tag stale">⚠ 版本不匹配</span>' : ""}
+                ${versionMismatch ? '<span class="snapshot-tag stale">⚠ 版本不匹配</span>' : (stale ? '<span class="snapshot-tag stale">↺ 快照后已变更</span>' : "")}
                 <span style="font-size: 11px; color: var(--muted);">${formatSize(size)}</span>
               </div>
               <div class="snapshot-desc-row">
                 <span>🕒 记录时间: ${formatDate(created)}</span>
                 ${version ? `<span>🎮 ${version}</span>` : ""}
-                <span>${stale ? "旧版本快照，48 小时后自动清理" : desc}</span>
+                <span>${versionMismatch ? "旧版本快照，48 小时后自动清理" : desc}</span>
               </div>
               <div class="snapshot-modules-row">
                 ${modulesHtml}
@@ -2818,8 +2887,8 @@
             </div>
             <div class="snapshot-actions">
               <button class="btn-restore-snap" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}"
-                      ${stale ? "disabled" : ""}
-                      title="${stale ? "版本不匹配，已禁用恢复" : "恢复此版本"}">
+                      ${versionMismatch ? "disabled" : ""}
+                      title="${versionMismatch ? "版本不匹配，已禁用恢复" : "恢复此版本"}">
                 ↺ 恢复此版本
               </button>
               <button class="btn-delete-snap" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}">
@@ -2962,7 +3031,7 @@
   const PATCH_ACTION_BUTTON_IDS = [
     'btnApplyTranslationPatch',
     'btnRestorePatches',
-    'btnApplyCurrentWorkbench',
+    'btnApplyBatch',
     'btnRestoreSnapshot',
     'btnConfirmCreateSnapshot',
     'btnTriggerCreateSnapInCenter',
@@ -3057,6 +3126,150 @@
     }
   }
 
+  // ── 批量勾选 ─────────────────────────────────────────────────────────
+  //
+  // 大类与小功能是「与」关系：只有大类勾选、且该小功能也勾选，才会被应用。
+  // 两者都独立持久化到后端设置，用户不必每次重新勾选。
+
+  const BATCH_CATEGORIES = {
+    translation: ['translation'],
+    text: ['colormod', 'price', 'fontmod', 'chests', 'rumours', 'iconpatch'],
+    effect: ['effectpatch', 'mapbeam'],
+    mtx: ['mtxpatch']
+  };
+
+  const MODULE_SETTING_KEY = {
+    translation: 'translationEnabled',
+    colormod: 'colorModEnabled',
+    price: 'pricePatchEnabled',
+    fontmod: 'fontPatchEnabled',
+    chests: 'chestEnhanced',
+    rumours: 'rumourEnhanced',
+    iconpatch: 'iconPatchEnabled',
+    effectpatch: 'effectPatchEnabled',
+    mapbeam: 'mapBeamEnabled',
+    mtxpatch: 'mtxPatchEnabled'
+  };
+
+  const CATEGORY_SETTING_KEY = {
+    translation: 'batchCategoryTranslation',
+    text: 'batchCategoryText',
+    effect: 'batchCategoryEffect',
+    mtx: 'batchCategoryMtx'
+  };
+
+  /** 当前实际会被应用的模块：大类已勾选 ∩ 小功能已勾选。 */
+  function collectSelectedModules() {
+    const out = [];
+    Object.entries(BATCH_CATEGORIES).forEach(([category, modules]) => {
+      const catEl = document.querySelector(`.batch-category-toggle[data-category="${category}"]`);
+      if (!catEl || !catEl.checked) return;
+      modules.forEach(mod => {
+        const el = document.querySelector(`.batch-module-toggle[data-module="${mod}"]`);
+        if (el && el.checked) out.push(mod);
+      });
+    });
+    return out;
+  }
+
+  function updateBatchHint() {
+    const hint = element("batchApplyHint");
+    if (!hint) return;
+    const selected = collectSelectedModules();
+    if (selected.length === 0) {
+      hint.innerText = "已选 0 项";
+      hint.style.color = "var(--text-muted, #94a3b8)";
+      return;
+    }
+    hint.innerText = `已选 ${selected.length} 项：${selected.map(m => MODULE_TITLES[m] || m).join("、")}`;
+    hint.style.color = "#34d399";
+  }
+
+  /** 按后端下发的设置回显勾选状态。 */
+  function renderBatchSelection() {
+    const settings = state?.settings || {};
+
+    Object.entries(MODULE_SETTING_KEY).forEach(([mod, key]) => {
+      const el = document.querySelector(`.batch-module-toggle[data-module="${mod}"]`);
+      if (el) el.checked = !!settings[key];
+      if (mod in moduleMasters) moduleMasters[mod] = !!settings[key];
+    });
+
+    Object.entries(CATEGORY_SETTING_KEY).forEach(([category, key]) => {
+      const el = document.querySelector(`.batch-category-toggle[data-category="${category}"]`);
+      if (el) el.checked = !!settings[key];
+    });
+
+    updateBatchHint();
+  }
+
+  function bindBatchSelection() {
+    document.querySelectorAll(".batch-category-toggle").forEach(el => {
+      el.addEventListener("change", () => {
+        post("setBatchCategory", { category: el.dataset.category, enabled: el.checked });
+        updateBatchHint();
+      });
+    });
+
+    document.querySelectorAll(".batch-module-toggle").forEach(el => {
+      el.addEventListener("change", () => {
+        const mod = el.dataset.module;
+        post("setModuleEnabled", { module: mod, enabled: el.checked });
+        if (mod in moduleMasters) moduleMasters[mod] = el.checked;
+        updateBatchHint();
+      });
+    });
+
+    document.querySelectorAll(".batch-module-config").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        openWorkbench(btn.dataset.workbench);
+      });
+    });
+
+    element("btnApplyBatch")?.addEventListener("click", applyBatch);
+  }
+
+  /** 组装批量命令：每个模块的参数复用其单模块 payload，后端按同样结构解析。 */
+  function buildBatchPayload(modules) {
+    const payload = { modules };
+
+    if (modules.includes("fontmod")) payload.font = buildFontPayload();
+    if (modules.includes("price")) payload.price = buildPricePayload();
+    if (modules.includes("colormod")) payload.colorMod = buildColorModPayload();
+    if (modules.includes("chests")) payload.chests = buildChestPayload();
+    if (modules.includes("rumours")) payload.rumours = buildRumourPayload();
+    if (modules.includes("mapbeam")) payload.mapBeam = buildMapBeamPayload();
+    if (modules.includes("iconpatch")) payload.icon = buildIconPayload();
+    if (modules.includes("effectpatch")) payload.effects = buildEffectPayload();
+    if (modules.includes("mtxpatch")) payload.mtx = buildMtxPayload();
+
+    return payload;
+  }
+
+  function applyBatch() {
+    const modules = collectSelectedModules();
+    if (modules.length === 0) {
+      showToast("请先勾选要应用的功能（大类与小功能都要勾选）。", true);
+      return;
+    }
+
+    // 先把工作台里的编辑提交到内存，保证写进客户端的内容与界面一致。
+    try { commitView(); } catch (e) { /* 不在染色页时无副作用 */ }
+
+    const payload = buildBatchPayload(modules);
+
+    // 物价没有可用数据时后端会中止整批，这里先给出更快的反馈。
+    if (modules.includes("price") && !payload.price) return;
+
+    // 图标 / 宝箱 / 传言 / 染色在「未配置」时由后端套用内置默认规则，
+    // 这里不能再拦截 —— 一拦，「勾选即用」永远走不到后端。
+    // 只有商城外观没有默认规则，由后端在空选择时给出明确提示。
+
+    showToast(`正在应用 ${modules.length} 项功能，请稍候（写入期间请勿关闭窗口）...`);
+    post("applyBatch", payload);
+  }
+
   /** 1. 卡片点击进入工作台 */
   function bindHubCards() {
     document.querySelectorAll(".hub-card").forEach(card => {
@@ -3141,10 +3354,18 @@
     });
   }
 
-  /** 6. 保存与同步（仅保存同步当前明细模块） */
-  function bindSaveAndSync() {
-    const saveBtn = element('btnApplyCurrentWorkbench');
-    saveBtn?.addEventListener('click', saveAndApplyCurrentModule);
+  /**
+   * 6. 自动保存
+   *
+   * 工作台不再有「保存」按钮：任何参数改动都防抖落库（persistOnly），
+   * 真正的写客户端只发生在总览页的「保存配置并应用补丁」。
+   * 用事件委托统一处理，避免为几十个控件逐个绑定。
+   */
+  function bindAutoSave() {
+    const workbench = element('patcherWorkbenchView');
+    if (!workbench) return;
+    workbench.addEventListener('change', scheduleAutoSave);
+    workbench.addEventListener('input', scheduleAutoSave);
   }
 
   /** 7. 预设与真实词库扫描 */
@@ -4024,10 +4245,11 @@
       // 各段互不依赖，任一段出问题不影响其余功能区的绑定。
       bindHubCards();
       bindModuleMasters();
+    bindBatchSelection();
       bindWorkbenchNavigation();
       bindGameDirInput();
       bindSnapshotControls();
-      bindSaveAndSync();
+      bindAutoSave();
       bindPresetAndScan();
       bindColorModFilters();
       bindFontControls();
@@ -4039,8 +4261,24 @@
 
     receive(payload) {
       if (!payload) return;
+
+      // 进度消息：只更新提示条，绝不覆盖 state。
+      //
+      // state 是完整快照（gameDir / 徽章 / 快照列表 / settings / mudMan 等）。
+      // 用最小 payload 覆盖它会让 renderStatus 读到 undefined，
+      // 表现为游戏目录输入框被清空、模式徽章与备份状态显示错误。
+      if (payload.progressOnly) {
+        const box = element('patcherFeedback');
+        if (box && payload.message) {
+          box.textContent = payload.message;
+          box.className = 'patcher-feedback info';
+        }
+        return;
+      }
+
       state = payload;
       renderStatus();
+      renderBatchSelection();
       if (payload.pricePreview) {
         renderPricePreview(payload.pricePreview);
       }
@@ -4061,6 +4299,25 @@
             + (iconPatchSkipped > 0 ? ` (${iconPatchSkipped} 个不适用)` : "");
           statusText.style.color = "#34d399";
         }
+        renderIconPatchTabs();
+        renderIconPatchList();
+      }
+
+      // 未读取客户端时，用已保存的规则回填图标列表。
+      // 否则配置页一片空白，勾选了模块也提交不出路径。
+      if (iconPatchEntries.length === 0
+          && Array.isArray(state.settings?.iconPatchSelectedPaths)
+          && state.settings.iconPatchSelectedPaths.length > 0) {
+        iconPatchEntries = state.settings.iconPatchSelectedPaths
+          .filter(p => typeof p === "string" && p)
+          .map(p => ({
+            path: p,
+            fileName: p.split("/").pop(),
+            category: "已保存规则",
+            originalSize: 0,
+            replacementSize: 0,
+            enabled: true
+          }));
         renderIconPatchTabs();
         renderIconPatchList();
       }
@@ -4244,7 +4501,7 @@
             countHint.innerText = `共 ${payload.installedFonts.length} 款系统已安装字体`;
           }
           if (dropdown) {
-            const savedFont = state.settings?.fontFamily || "Microsoft YaHei";
+            const savedFont = state.settings?.fontFamily || "";
             if (dropdown.options.length <= 1) {
               dropdown.innerHTML = "";
               payload.installedFonts.forEach(f => {
@@ -4264,6 +4521,9 @@
                 dropdown.appendChild(opt);
               }
               dropdown.value = savedFont;
+            } else if (dropdown.options.length > 0) {
+              // 未保存过字体时默认选中第一项（内置字体由后端排在最前）。
+              dropdown.selectedIndex = 0;
             }
           }
         }
@@ -4361,21 +4621,31 @@
           const savedRumoursMap = new Map();
           if (Array.isArray(state.settings.rumourItems)) {
             state.settings.rumourItems.forEach(r => {
-              if (r.rowIndex !== undefined && r.rowIndex !== null) {
-                savedRumoursMap.set(Number(r.rowIndex), r);
+              // 优先用区域索引（跨语言稳定）；索引无效时退回原文匹配。
+              // 不能拿 rowIndex=0 当键 —— 0 是有效行号，历史脏数据会让所有行命中同一条。
+              const wa = Number(r.worldAreaIndex);
+              const ri = Number(r.rowIndex);
+              if (Number.isFinite(wa) && wa > 0) {
+                savedRumoursMap.set("wa:" + wa, r);
               } else if (r.originalText) {
-                savedRumoursMap.set(r.originalText, r);
+                savedRumoursMap.set("txt:" + r.originalText, r);
+              } else if (Number.isFinite(ri) && ri > 0) {
+                savedRumoursMap.set("row:" + ri, r);
               }
             });
           }
 
           RUMOURS_DATA = sourceRumours.map(item => {
             const rowIdx = item.rowIndex !== undefined ? item.rowIndex : (item.RowIndex !== undefined ? item.RowIndex : 0);
+            const waIdx = item.worldAreaIndex !== undefined ? item.worldAreaIndex : (item.WorldAreaIndex !== undefined ? item.WorldAreaIndex : -1);
             const orig = item.originalRumourText || item.OriginalRumourText || item.originalText || item.OriginalText || "";
-            const saved = savedRumoursMap.get(rowIdx) || savedRumoursMap.get(orig);
+            const saved = (Number(waIdx) > 0 ? savedRumoursMap.get("wa:" + waIdx) : undefined)
+                       || (orig ? savedRumoursMap.get("txt:" + orig) : undefined)
+                       || (Number(rowIdx) > 0 ? savedRumoursMap.get("row:" + rowIdx) : undefined);
 
             return {
               rowIndex: rowIdx,
+              worldAreaIndex: Number.isFinite(Number(waIdx)) ? Number(waIdx) : -1,
               mapName: item.mapName || item.MapName || "",
               category: item.category || item.Category || "常规",
               color: saved?.color || item.color || item.Color || "#ffffff",
@@ -4471,4 +4741,20 @@
       renderMtxUi();
     }
   };
+
+  // 恢复默认规则：清空全部自定义规则，之后应用补丁时自动使用内置默认规则。
+  document.addEventListener("click", (event) => {
+    const btn = event.target.closest("#btnRestoreDefaultRules");
+    if (!btn) return;
+
+    const ok = window.confirm(
+      "确定恢复默认规则吗？\n\n" +
+      "这会清空词缀染色、宝箱标注、传言标注、图标替换、特效优化、神图光柱的自定义规则。\n" +
+      "之后应用补丁将使用内置默认规则。"
+    );
+    if (!ok) return;
+
+    post("restoreDefaultRules", {});
+    showToast("已恢复默认规则，下次应用将使用内置规则。");
+  });
 })();

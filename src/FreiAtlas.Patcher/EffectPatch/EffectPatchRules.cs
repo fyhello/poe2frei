@@ -30,6 +30,18 @@ public static class EffectPatchRules
     public const string EnvFogProtectedPattern =
         @".*environmentsettings/(?!.*(p3_3_boss_blizzard|uber|azmeri|Azmeri|Acronym|tormented_?spirits|azmeriwisps|wisp_doodads|vodoo_king_boss|paleelite|kurgals_gasp|Kulemak|lost_towers|misery_shield_charge|SpecialCorpses|SpiritTortoise|twilight_sunrise|glow_variant|lightbringer|endgame_world_map|doodads|League_Ritual|VodooKing_Arena|treasure_bound_soul|toxic_runes|ghostflamelanterns|largeallflamelanterndrop|atlantis_deepwater|pointer|lantern)).*\.env$";
 
+    /// <summary>
+    /// 未自定义时的默认规则：排除高危（一键全清、移除音效）与当前版本不可用的条目。
+    ///
+    /// 注意这是「默认规则」不是「默认勾选」——特效模块默认是关闭的，
+    /// 用户勾选该模块时才按这份清单应用。
+    ///
+    /// 用表达式体而不是静态字段：本属性声明在 <see cref="All"/> 之前，
+    /// 静态字段会在 All 尚未初始化时求值得到空集。
+    /// </summary>
+    public static IReadOnlyList<string> DefaultRuleIds =>
+        All.Where(r => !r.IsDangerous && !r.IsUnsupported).Select(r => r.Id).ToList();
+
     public static IReadOnlyList<EffectPatchRule> All { get; } =
     [
         // ── 怪物死亡特效移除 ──

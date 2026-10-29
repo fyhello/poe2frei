@@ -282,266 +282,122 @@
 
           <!-- 方案 B: 视图 1 - 仪表盘总览 (Hub) -->
           <div id="patcherHubView">
-            <!-- 8 大功能控制卡片网格 (2 列规整排版) -->
-            <div class="hub-grid">
-              <!-- 卡片 0: 官方纯净简中汉化 (完全独立模块) -->
-              <div class="hub-card" id="hcard-translation" data-accent="translation">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">🇨🇳</div>
-                    <div class="hub-card-names">
-                      <strong style="color: #fca5a5;">官方纯净简体中文</strong>
-                      <span>Translation · 词缀与核心数据表</span>
-                    </div>
-                  </div>
-                  <button id="btnApplyTranslationPatch" class="primary-button" style="height: 28px; padding: 0 12px; font-size: 11px; font-weight: bold; background: #dc2626; border-color: #ef4444;" title="独立注入官方简体中文，不与字体、物价联动">⚡ 一键注入汉化</button>
-                </div>
-                <div class="hub-card-desc">
-                  全量改写 CSD 词缀描述，并注入官方基础物品与暗金译名。完全独立，不与字体/物价强行捆绑。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #fca5a5; border-color: rgba(239,68,68,0.3);">官方词库直出</span>
-                  <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3);">核心数据表全覆盖</span>
-                  <span class="hub-badge" style="color: #60a5fa;">底模无损重写</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-translation" class="hub-status-txt">● 纯净官方词库已就绪</span>
-                  <span style="font-size: 11px; color: #94a3b8;">打完后刷新客户端即可按需配字体/物价</span>
-                </div>
-              </div>
+            <div class="batch-hint">
+              大类与小功能是「与」关系：只有<b>大类已勾选</b>且<b>该小功能也勾选</b>，才会被打进客户端。
+              勾选状态与各功能参数会自动保存，下次打开无需重选。
+            </div>
 
-              <!-- 卡片 0.5: 游戏特效与性能优化 (小地图/视距/尸体/技能屏蔽) -->
-              <div class="hub-card" id="hcard-effectpatch" data-module="effectpatch" data-accent="effectpatch">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">⚡</div>
-                    <div class="hub-card-names">
-                      <strong style="color: #38bdf8;">游戏特效与性能优化</strong>
-                      <span>Effect · 小地图 / 视距 / 尸体 / 技能屏蔽</span>
-                    </div>
-                  </div>
-                  <button id="btnQuickApplyEffectPatch" class="primary-button" style="height: 28px; padding: 0 12px; font-size: 11px; font-weight: bold; background: #0284c7; border-color: #38bdf8;" title="同步并应用当前选中的特效补丁">⚡ 应用特效优化</button>
-                </div>
-                <div class="hub-card-desc">
-                  精简游戏渲染负载，提供小地图全开、3倍视距、怪物尸体秒消与指定技能特效屏蔽。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3);">小地图全开</span>
-                  <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3);">视距拉远 3 倍</span>
-                  <span class="hub-badge" style="color: #c084fc; border-color: rgba(192,132,252,0.3);">怪物死亡秒消</span>
-                  <span class="hub-badge" style="color: #eab308; border-color: rgba(234,179,8,0.3);">电球特效屏蔽</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-effectpatch" class="hub-status-txt">● 0 项已启用</span>
-                  <span class="hub-enter-link">配置细则 ➔</span>
-                </div>
+            <div class="batch-category" data-category="translation">
+              <div class="batch-category-head">
+                <label class="batch-category-label">
+                  <input type="checkbox" class="batch-category-toggle" data-category="translation">
+                  <span class="batch-category-icon">🇨🇳</span>
+                  <span class="batch-category-name">汉化类</span>
+                </label>
               </div>
+              <div class="batch-module-list">
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="translation">
+                <span class="batch-module-name">官方简中汉化</span>
+                <span class="batch-module-desc">全量改写 CSD 词缀描述，注入官方基础物品与暗金译名</span>
+              </div>
+              </div>
+            </div>
 
-              <!-- 卡片 0.6: 商城外观与特效替换 (MTX) -->
-              <div class="hub-card" id="hcard-mtxpatch" data-module="mtxpatch" data-accent="mtxpatch">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">👑</div>
-                    <div class="hub-card-names">
-                      <strong style="color: #fbbf24;">PoE 2 商城外观特效替换</strong>
-                      <span>MTX · 843 款防具 / 技能 / 门 / 宠 / 翅膀</span>
-                    </div>
-                  </div>
-                  <button id="btnQuickApplyMtxPatch" class="primary-button" style="height: 28px; padding: 0 12px; font-size: 11px; font-weight: bold; background: #d97706; border-color: #f59e0b;" title="立即应用当前勾选的外观特效">👑 应用外观</button>
-                </div>
-                <div class="hub-card-desc">
-                  PoE 2 专属外观商城库，支持 205 款全职业全身时装、79 款技能特效、245 款传送门、154 款沙虫变宠物与 146 款背饰翻滚常驻。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #fbbf24; border-color: rgba(245,158,11,0.3);">205 款全身时装</span>
-                  <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3);">79 款技能特效</span>
-                  <span class="hub-badge" style="color: #a855f7; border-color: rgba(168,85,247,0.3);">245 款传送门</span>
-                  <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3);">沙虫变宠物</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-mtxpatch" class="hub-status-txt">● 未应用</span>
-                  <span class="hub-enter-link">浏览与选装 ➔</span>
-                </div>
+            <div class="batch-category" data-category="text">
+              <div class="batch-category-head">
+                <label class="batch-category-label">
+                  <input type="checkbox" class="batch-category-toggle" data-category="text">
+                  <span class="batch-category-icon">🎨</span>
+                  <span class="batch-category-name">文本显示类</span>
+                </label>
               </div>
+              <div class="batch-module-list">
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="colormod">
+                <span class="batch-module-name">词缀多色彩染色</span>
+                <span class="batch-module-desc">装备与地图词缀按类别着色，高危词缀警示加粗</span>
+                <button class="batch-module-config" data-workbench="colormod">配置 ➔</button>
+              </div>
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="price">
+                <span class="batch-module-name">原生价格深度注入</span>
+                <span class="batch-module-desc">在物品名称上挂接实时参考物价</span>
+                <button class="batch-module-config" data-workbench="price">配置 ➔</button>
+              </div>
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="fontmod">
+                <span class="batch-module-name">游戏字体与排版</span>
+                <span class="batch-module-desc">替换界面字体，按类别微调字号</span>
+                <button class="batch-module-config" data-workbench="fontmod">配置 ➔</button>
+              </div>
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="chests">
+                <span class="batch-module-name">宝箱掉落标注</span>
+                <span class="batch-module-desc">保险箱掉落类型透视与致命词缀警示</span>
+                <button class="batch-module-config" data-workbench="chests">配置 ➔</button>
+              </div>
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="rumours">
+                <span class="batch-module-name">异界地图传言标注</span>
+                <span class="batch-module-desc">地图传言文本着色与分类识别</span>
+                <button class="batch-module-config" data-workbench="rumours">配置 ➔</button>
+              </div>
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="iconpatch">
+                <span class="batch-module-name">图标替换</span>
+                <span class="batch-module-desc">替换客户端图标贴图</span>
+                <button class="batch-module-config" data-workbench="iconpatch">配置 ➔</button>
+              </div>
+              </div>
+            </div>
 
-              <!-- 卡片 1: 词缀染色 -->
-              <div class="hub-card" id="hcard-colormod" data-module="colormod">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">🎨</div>
-                    <div class="hub-card-names">
-                      <strong>词缀多色彩染色</strong>
-                      <span>ColorMod · 文本属性着色</span>
-                    </div>
-                  </div>
-                  <input type="checkbox" checked id="masterToggle-colormod" style="cursor: pointer;" title="总开关">
-                </div>
-                <div class="hub-card-desc">
-                  装备词缀整句或纯数值按类别染色，高危致命词缀警示加粗。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #f87171; border-color: rgba(239,68,68,0.3);">无法回复生命</span>
-                  <span class="hub-badge" style="color: #38b469; border-color: rgba(56,180,105,0.3);">瞬时偷取</span>
-                  <span class="hub-badge" style="color: #60a5fa;">法术暴击</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-colormod" class="hub-status-txt">● 14 条规则生效中</span>
-                  <span class="hub-enter-link">配置细则 ➔</span>
-                </div>
+            <div class="batch-category" data-category="effect">
+              <div class="batch-category-head">
+                <label class="batch-category-label">
+                  <input type="checkbox" class="batch-category-toggle" data-category="effect">
+                  <span class="batch-category-icon">⚡</span>
+                  <span class="batch-category-name">特效类</span>
+                </label>
               </div>
+              <div class="batch-module-list">
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="effectpatch">
+                <span class="batch-module-name">特效与性能优化</span>
+                <span class="batch-module-desc">小地图全开、视距、尸体消散、去黑暗、技能屏蔽、泥人、头顶血条</span>
+                <button class="batch-module-config" data-workbench="effectpatch">配置 ➔</button>
+              </div>
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="mapbeam">
+                <span class="batch-module-name">神图冲天光柱</span>
+                <span class="batch-module-desc">高价值地图掉落时生成醒目彩色光柱</span>
+                <button class="batch-module-config" data-workbench="mapbeam">配置 ➔</button>
+              </div>
+              </div>
+            </div>
 
-              <!-- 卡片 2: 神图冲天光柱 -->
-              <div class="hub-card" id="hcard-mapbeam" data-module="mapbeam">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">🌟</div>
-                    <div class="hub-card-names">
-                      <strong>神图冲天光柱</strong>
-                      <span>MapBeam · 瓦尔粒子光束</span>
-                    </div>
-                  </div>
-                  <input type="checkbox" checked id="masterToggle-mapbeam" style="cursor: pointer;" title="总开关">
-                </div>
-                <div class="hub-card-desc">
-                  高价值异界神图掉落时，生成 3D 瓦尔垂直冲天呼吸光柱。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #c9a84c;">法鲁丁金柱</span>
-                  <span class="hub-badge" style="color: #4c9a5f;">青玉群岛</span>
-                  <span class="hub-badge" style="color: #e0b33c;">纯净乐园</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-mapbeam" class="hub-status-txt">● 5 种神图光柱激活</span>
-                  <span class="hub-enter-link">配置细则 ➔</span>
-                </div>
+            <div class="batch-category" data-category="mtx">
+              <div class="batch-category-head">
+                <label class="batch-category-label">
+                  <input type="checkbox" class="batch-category-toggle" data-category="mtx">
+                  <span class="batch-category-icon">👑</span>
+                  <span class="batch-category-name">商城外观类</span>
+                </label>
               </div>
+              <div class="batch-module-list">
+              <div class="batch-module-row">
+                <input type="checkbox" class="batch-module-toggle" data-module="mtxpatch">
+                <span class="batch-module-name">商城外观特效替换</span>
+                <span class="batch-module-desc">时装、技能特效、传送门、宠物、翻滚翅膀</span>
+                <button class="batch-module-config" data-workbench="mtxpatch">配置 ➔</button>
+              </div>
+              </div>
+            </div>
 
-              <!-- 卡片 4.5: 图标替换 -->
-              <div class="hub-card" id="hcard-iconpatch" data-module="iconpatch">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">🖼️</div>
-                    <div class="hub-card-names">
-                      <strong>图标替换</strong>
-                      <span>IconPatch · 通货与宝石图标</span>
-                    </div>
-                  </div>
-                  <input type="checkbox" id="masterToggle-iconpatch" style="cursor: pointer;" title="总开关">
-                </div>
-                <div class="hub-card-desc">
-                  替换通货、血脉宝石、终局地图与维金图标的显示样式。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #eab308;">通货 544</span>
-                  <span class="hub-badge" style="color: #a855f7;">血脉宝石 88</span>
-                  <span class="hub-badge" style="color: #3b82f6;">终局地图 16</span>
-                  <span class="hub-badge" style="color: #14b8a6;">维金 136</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-iconpatch" class="hub-status-txt">● 未读取客户端</span>
-                  <span class="hub-enter-link">配置细则 ➔</span>
-                </div>
-              </div>
-
-              <!-- 卡片 5: 宝箱透视与防暴毙 -->
-              <div class="hub-card" id="hcard-chests" data-module="chests">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">📦</div>
-                    <div class="hub-card-names">
-                      <strong>宝箱透视与防暴毙</strong>
-                      <span>Chests · 保险箱与致命陷阱</span>
-                    </div>
-                  </div>
-                  <input type="checkbox" checked id="masterToggle-chests" style="cursor: pointer;" title="总开关">
-                </div>
-                <div class="hub-card-desc">
-                  奥术师/制图师高价值箱透视，开箱死尸爆炸整行红字警示。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #3b82f6;">奥术师</span>
-                  <span class="hub-badge" style="color: #eab308;">制图师</span>
-                  <span class="hub-badge" style="color: #f87171; font-weight: bold;">⚠️ 死尸爆炸告警</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-chests" class="hub-status-txt">● 陷阱防护开启</span>
-                  <span class="hub-enter-link">配置细则 ➔</span>
-                </div>
-              </div>
-
-              <!-- 卡片 6: 异界传言奖励透视 -->
-              <div class="hub-card" id="hcard-rumours" data-module="rumours">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">🔮</div>
-                    <div class="hub-card-names">
-                      <strong>异界传言奖励透视</strong>
-                      <span>Rumours · 传言石收益解析</span>
-                    </div>
-                  </div>
-                  <input type="checkbox" checked id="masterToggle-rumours" style="cursor: pointer;" title="总开关">
-                </div>
-                <div class="hub-card-desc">
-                  精魂上限、终局天赋点等关键传言产出直接透视，拒绝盲目刷图。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #38b469;">+30 精魂上限</span>
-                  <span class="hub-badge" style="color: #d4a754;">+2 终局天赋点</span>
-                  <span class="hub-badge" style="color: #c084fc;">双倍暗金</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-rumours" class="hub-status-txt">● 4 项传言明细解析</span>
-                  <span class="hub-enter-link">配置细则 ➔</span>
-                </div>
-              </div>
-
-              <!-- 卡片 7: 游戏字体与排版增强 -->
-              <div class="hub-card" id="hcard-fontmod" data-module="fontmod">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">🔤</div>
-                    <div class="hub-card-names">
-                      <strong>游戏字体与排版</strong>
-                      <span>FontMod · 字体替换与缩放</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="hub-card-desc">
-                  思源黑体/霞鹜文楷/得意黑一键切换，本地 TTF 导入与字号缩放。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #cbd5e1;">微软雅黑 (原版默认)</span>
-                  <span class="hub-badge" style="color: #34d399;">缩放 100%</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-fontmod" class="hub-status-txt">● 原生系统渲染中</span>
-                  <span class="hub-enter-link">配置细则 ➔</span>
-                </div>
-              </div>
-
-              <!-- 卡片 8: 原生价格全分类深度注入 -->
-              <div class="hub-card" id="hcard-price" data-module="price">
-                <div class="hub-card-head">
-                  <div class="hub-card-title-group">
-                    <div class="hub-card-icon">💰</div>
-                    <div class="hub-card-names">
-                      <strong>原生价格深度注入</strong>
-                      <span>Price · 原生掉落物价挂接</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="hub-card-desc">
-                  全品类掉落标签注入赛季物价，低价隐藏后缀减少视觉杂乱。
-                </div>
-                <div class="hub-badges-row">
-                  <span class="hub-badge" style="color: #d4a754;">[★ 280D] 金星</span>
-                  <span class="hub-badge" style="color: #94a3b8;">门槛 &lt;5E 隐藏</span>
-                </div>
-                <div class="hub-card-foot">
-                  <span id="hubStatus-price" class="hub-status-txt">● 实时物价挂接中</span>
-                  <span class="hub-enter-link">配置细则 ➔</span>
-                </div>
-              </div>
+            <div class="batch-apply-bar">
+              <span id="batchApplyHint" class="batch-apply-hint">已选 0 项</span>
+              <button id="btnRestoreDefaultRules" class="btn-compact" title="清空全部自定义规则，恢复为内置默认规则">↺ 恢复默认规则</button>
+      <button id="btnApplyBatch" class="primary-button batch-apply-btn">💾 保存配置并应用补丁</button>
             </div>
           </div>
 
@@ -567,7 +423,7 @@
                   <option value="fontmod">🔤 游戏字体与排版 (FontMod)</option>
                   <option value="price">💰 原生价格注入 (Price)</option>
                 </select>
-                <button id="btnApplyCurrentWorkbench" class="primary-button" style="height: 26px; padding: 0 10px; font-size: 11px;" title="仅保存并同步当前功能配置到游戏">💾 保存并同步当前功能</button>
+  
               </div>
             </div>
 
@@ -999,35 +855,6 @@
                 </div>
 
                 <!-- 右侧 Tooltip 仿真 -->
-                <div class="preview-sticky-wrap">
-                  <div class="fx-between">
-                    <span style="font-weight: 600; color: var(--text); font-size: 11.5px;">游戏内装备 Tooltip 实时变色</span>
-                    <select id="cardTypeSelect" class="preset-select" style="height: 22px; font-size: 10px;">
-                      <option value="map">异界地图预览</option>
-                      <option value="gear">传奇防具预览</option>
-                      <option value="tablet">远征石板预览</option>
-                    </select>
-                  </div>
-
-                  <div class="poe-item-card">
-                    <div class="poe-item-header">
-                      <div class="poe-item-title" id="cardTitle">阿兹莫里山区 (Azmerian Ranges)</div>
-                      <div class="poe-item-subtitle" id="cardSubtitle">阶级: 15 异界地图</div>
-                    </div>
-                    <div id="cardBaseProps" class="poe-props-row">
-                      <span>物品稀有度: <strong style="color: var(--gold-primary);">稀有 (Rare)</strong></span>
-                      <span>物品数量: <strong>+68%</strong></span>
-                    </div>
-                    <div class="poe-divider"></div>
-                    <div id="cardAffixesBox" style="display: grid; gap: 4px; padding: 4px 0;"></div>
-                    <div class="poe-divider"></div>
-                    <div style="font-size: 9.5px; color: #5a6672; text-align: center;">在制图仪中使用以开启传送门</div>
-                  </div>
-
-                  <div class="loot-ground-label" style="text-align: center; margin-top: 4px;">
-                    地面掉落 Label 实时效果: <span id="lootLabelAffix">阿兹莫里山区 [T15]</span>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -1129,22 +956,6 @@
                   </div>
                 </div>
 
-                <div class="preview-sticky-wrap">
-                  <span style="font-weight: 600; color: var(--text);">保险箱游戏内实机 Tooltip 模拟</span>
-                  <div class="poe-item-card" style="border-color: #3b82f6;">
-                    <div class="poe-item-header" style="background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent); border-color: #1d4ed8;">
-                      <div style="color: #60a5fa; font-weight: bold; font-size: 12px;">奥术师的保险箱 (Arcanist's Strongbox)</div>
-                      <div style="color: #93c5fd; font-size: 10px;">魔法 保险箱</div>
-                    </div>
-                    <div style="padding: 8px 0; display: grid; gap: 5px;">
-                      <div style="color: #38b469;">额外包含 (4-6) 件通货物品</div>
-                      <div style="color: #f87171; font-weight: bold; background: rgba(239,68,68,0.15); padding: 2px 4px; border-radius: 3px;">
-                        ⚠️ 开箱时引爆附近的死尸
-                      </div>
-                      <div style="color: var(--gold-primary);">包含额外 3 件品质通货</div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -1190,26 +1001,6 @@
                   </div>
                 </div>
 
-                <div class="preview-sticky-wrap">
-                  <span style="font-weight: 600; color: var(--text);">异界地图传言 Tooltip 仿真视窗</span>
-                  <div class="poe-item-card" style="border-color: #a855f7;">
-                    <div class="poe-item-header" style="background: linear-gradient(90deg, transparent, rgba(168,85,247,0.3), transparent); border-color: #7e22ce;">
-                      <div id="simRumourMapTitle" style="color: #c084fc; font-weight: bold; font-size: 12px;">漂流者之所 (Castaway)</div>
-                      <div style="color: #e9d5ff; font-size: 10px;">阶级 15 异界地图</div>
-                    </div>
-                    <div style="padding: 10px 0; display: grid; gap: 6px;">
-                      <div style="font-size: 10px; color: var(--text-muted);">区域附带传言词缀：</div>
-                      <div id="simRumourPreviewText" style="color: #eab308; font-weight: bold; font-size: 12px; line-height: 1.4; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 4px; border: 1px dashed rgba(234,179,8,0.3);">
-                        [★ 顛沛領域] 閃光的未必是金……
-                      </div>
-                      <div id="simRumourCategoryTag" style="font-size: 10px; color: #a855f7;">
-                        🏷️ 识别分类：特殊神图
-                      </div>
-                    </div>
-                    <div class="poe-divider"></div>
-                    <div style="font-size: 9.5px; color: #5a6672; text-align: center;">游戏内悬浮或按 Alt 查看传言详情</div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -1295,6 +1086,8 @@
                         <div style="color: var(--text-muted); font-size: 9.5px;">地面高亮标签、物品堆叠数量角标、悬浮标题</div>
                       </div>
                       <select id="fontSizeDropItemSelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
+                        <option value="-4">极微 (-4 号字)</option>
+                        <option value="-3">微缩 (-3 号字)</option>
                         <option value="-2">微缩 (-2 号字)</option>
                         <option value="-1">微缩 (-1 号字)</option>
                         <option value="0" selected>成熟标准 (±0)</option>
@@ -1302,6 +1095,8 @@
                         <option value="2">清晰 (+2 号字 推荐)</option>
                         <option value="3">中大 (+3 号字)</option>
                         <option value="4">超大 (+4 号字)</option>
+                        <option value="5">特大 (+5 号字)</option>
+                        <option value="6">巨大 (+6 号字)</option>
                       </select>
                     </div>
 
@@ -1312,12 +1107,17 @@
                         <div style="color: var(--text-muted); font-size: 9.5px;">天赋树说明、技能石词缀、NPC 任务对话正文</div>
                       </div>
                       <select id="fontSizeGeneralSelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
+                        <option value="-4">极微 (-4 号字)</option>
+                        <option value="-3">微缩 (-3 号字)</option>
                         <option value="-2">缩小 (-2 号字)</option>
                         <option value="-1">微缩 (-1 号字)</option>
                         <option value="0" selected>成熟标准 (±0)</option>
                         <option value="1">适度 (+1 号字)</option>
                         <option value="2">大号 (+2 号字)</option>
-                        <option value="3">极大 (+3 号字)</option>
+                        <option value="3">中大 (+3 号字)</option>
+                        <option value="4">超大 (+4 号字)</option>
+                        <option value="5">特大 (+5 号字)</option>
+                        <option value="6">巨大 (+6 号字)</option>
                       </select>
                     </div>
 
@@ -1333,6 +1133,7 @@
                         <option value="0" selected>成熟标准 (±0 推荐)</option>
                         <option value="2">微大 (+2 号字)</option>
                         <option value="4">宽大 (+4 号字)</option>
+                        <option value="6">超大 (+6 号字)</option>
                       </select>
                     </div>
 
@@ -1343,11 +1144,17 @@
                         <div style="color: var(--text-muted); font-size: 9.5px;">查价标签 [★ 15C]、倒计时、紧凑堆叠微小字</div>
                       </div>
                       <select id="fontSizeTinySelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
+                        <option value="-4">极微 (-4 号字)</option>
+                        <option value="-3">极微 (-3 号字)</option>
                         <option value="-2">极微 (-2 号字)</option>
                         <option value="-1">精巧 (-1 号字)</option>
                         <option value="0" selected>成熟标准 (±0)</option>
                         <option value="1">清晰 (+1 号字 推荐)</option>
                         <option value="2">醒目 (+2 号字)</option>
+                        <option value="3">清晰 (+3 号字)</option>
+                        <option value="4">醒目 (+4 号字)</option>
+                        <option value="5">特大 (+5 号字)</option>
+                        <option value="6">巨大 (+6 号字)</option>
                       </select>
                     </div>
                   </div>
@@ -1360,12 +1167,17 @@
                         <div style="color: var(--text-muted); font-size: 10px;">在当前预设与细分设定的基础上，整盘平移缩放</div>
                       </div>
                       <select id="fontSizeDeltaSelect" class="preset-select" style="min-width: 130px; height: 28px; font-size: 11px;">
+                        <option value="-4">整平最小 (-4 档)</option>
+                        <option value="-3">整平极小 (-3 档)</option>
                         <option value="-2">整平缩小 (-2 档)</option>
                         <option value="-1">整平微缩 (-1 档)</option>
                         <option value="0" selected>标准原准档 (±0)</option>
                         <option value="1">整平微增 (+1 档)</option>
                         <option value="2">整平放大 (+2 档)</option>
                         <option value="3">整平大号 (+3 档)</option>
+                        <option value="4">整平超大 (+4 档)</option>
+                        <option value="5">整平特大 (+5 档)</option>
+                        <option value="6">整平最大 (+6 档)</option>
                       </select>
                     </div>
 
@@ -1383,36 +1195,6 @@
                 </div>
 
                 <!-- 仿真多内容即时视窗 -->
-                <div class="preview-sticky-wrap">
-                  <span style="font-weight: 600; color: var(--text);">实机多内容渲染即时呈现</span>
-                  
-                  <!-- 1. 地面掉落标签仿真 -->
-                  <div style="background: rgba(0,0,0,0.4); border: 1px solid #c9a84c; border-radius: 4px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <div id="simDropItemPreview" style="color: #f3e5ab; font-weight: bold; font-size: 13px;">
-                      ✦ 崇高石 [★ 15C]
-                    </div>
-                    <span id="simTinyBadgePreview" style="font-size: 10px; background: rgba(234,179,8,0.2); color: #eab308; padding: 1px 5px; border-radius: 3px; border: 1px solid rgba(234,179,8,0.4);">
-                      掉落物标签
-                    </span>
-                  </div>
-
-                  <!-- 2. 装备卡片与标题仿真 -->
-                  <div id="fontPreviewCard" class="poe-item-card">
-                    <div class="poe-item-header">
-                      <div id="simTitlePreview" style="color: var(--gold-primary); font-weight: bold; font-size: 13px;">法师之血 重革腰带</div>
-                      <div style="color: #9f8c67; font-size: 10px;">传奇 重革腰带 · 堆叠 1/1</div>
-                    </div>
-                    <div id="simGeneralPreview" style="padding: 8px 0; display: grid; gap: 4px; font-size: 11.5px;">
-                      <div style="color: #60a5fa;">+(30-40) 力量与敏捷</div>
-                      <div style="color: #38b469;">左侧 4 个魔法药剂槽位持续获得充能</div>
-                      <div style="color: var(--gold-primary); font-weight: bold;">魔法药剂的效果永远不会结束</div>
-                    </div>
-                  </div>
-
-                  <div style="font-size: 10px; color: var(--text-muted); line-height: 1.4; background: var(--patcher-inner-bg); padding: 8px; border-radius: 4px; border: 1px solid var(--border-color);">
-                    💡 <strong>调谐提示</strong>：成熟推荐预设已根据中文字体深度优化，调节上方各分类可独立实时改变视窗中对应元素的大小。
-                  </div>
-                </div>
               </div>
             </div>
 

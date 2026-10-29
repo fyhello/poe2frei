@@ -22,6 +22,53 @@ public sealed class PatchEngine
 
     private static readonly object _fileLock = new();
 
+    // 批量应用期间的写盘叠加层。非 null 时 WriteGameFiles 只登记不落盘。
+    private PatchSession? _session;
+
+    /// <summary>开始一次批量写入会话，期间所有写入先停留在内存。</summary>
+    public PatchSession BeginSession()
+    {
+        lock (_fileLock)
+        {
+            _session = new PatchSession();
+            return _session;
+        }
+    }
+
+    /// <summary>放弃会话：已登记的内容全部丢弃，客户端不受影响。</summary>
+    public void AbortSession()
+    {
+        lock (_fileLock)
+        {
+            _session = null;
+        }
+    }
+
+    /// <summary>
+    /// 提交会话：把登记的内容一次性写入客户端。
+    ///
+    /// 会话无效（路径冲突或超出内存上限）时直接失败且不写盘，
+    /// 由调用方读取 <see cref="PatchSession.Conflicts"/> 说明原因。
+    /// </summary>
+    public bool CommitSession(GameModeInfo info)
+    {
+        lock (_fileLock)
+        {
+            var session = _session;
+            _session = null;
+
+            if (session is null) return true;
+            if (!session.IsValid) return false;
+            if (session.Pending.Count == 0) return true;
+
+            var files = session.Pending
+                .Select(kv => (VirtualPath: kv.Key, Data: kv.Value))
+                .ToList();
+
+            return WriteGameFilesCore(info, files, allowedNewPaths: null);
+        }
+    }
+
     /// <summary>
     /// 客户端 GGPK 文件路径（仅 GGPK 模式有意义）。
     ///
@@ -57,6 +104,20 @@ public sealed class PatchEngine
             LastReadException = null;
             try
             {
+                // 会话期间优先返回尚未落盘的改动：后一个模块必须看到前一个模块的输出。
+                var session = _session;
+                var remaining = new List<string>();
+                foreach (var vPath in virtualPaths)
+                {
+                    var clean = vPath.Replace('\\', '/').TrimStart('/');
+                    var staged = session?.TryGet(clean);
+                    if (staged is not null) result[clean] = staged;
+                    else remaining.Add(clean);
+                }
+
+                // 全部命中叠加层时不必再打开索引（GGPK 下一次打开要解析 110 MB 索引）。
+                if (remaining.Count == 0) return result;
+                virtualPaths = remaining;
                 if (info.Mode == GameMode.GGPK)
                 {
                     var ggpkPath = GetGgpkPath(info);
@@ -127,6 +188,18 @@ public sealed class PatchEngine
             LastReadException = null;
             try
             {
+                // 会话期间必须把尚未落盘的改动一并返回。
+                // 这个方法按谓词通配枚举，调用方无法从返回值判断内容是否过期；
+                // 一旦漏掉叠加层就是静默读到旧文件，比报错更难排查。
+                var session = _session;
+                if (session is not null)
+                {
+                    foreach (var (path, data) in session.Pending)
+                    {
+                        if (predicate(path)) result[path] = data;
+                    }
+                }
+
                 if (info.Mode == GameMode.GGPK)
                 {
                     var ggpkPath = GetGgpkPath(info);
@@ -141,6 +214,8 @@ public sealed class PatchEngine
 
                     foreach (var f in matched)
                     {
+                        // 叠加层优先：磁盘上的旧内容不能覆盖会话中已改写的版本。
+                        if (session?.TryGet(f.Path!) is not null) continue;
                         result[f.Path!] = f.Read().ToArray();
                     }
                 }
@@ -162,6 +237,7 @@ public sealed class PatchEngine
 
                         foreach (var f in matched)
                         {
+                            if (session?.TryGet(f.Path!) is not null) continue;
                             result[f.Path!] = f.Read().ToArray();
                         }
                     }
@@ -178,6 +254,46 @@ public sealed class PatchEngine
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 写盘前自检：读几个客户端必然存在的文件，确认当前索引能正常解析。
+    ///
+    /// 索引与 bundle 一旦对不上，后续每个模块都会以「读取失败」告终，用户只能看到
+    /// 一串互相牵连的报错。这里提前读一次，把问题拦在写盘之前。
+    ///
+    /// 返回 null 表示通过，否则返回可直接展示给用户的失败原因。
+    /// </summary>
+    public string? VerifyClientReadable(GameModeInfo info)
+    {
+        // 三个样本分别覆盖界面 XML、数据表、角色模型，对应字体、物价、特效三条链路。
+        string[] samples =
+        [
+            "metadata/ui/uisettings.xml",
+            "data/balance/baseitemtypes.datc64",
+            "metadata/characters/character.ot"
+        ];
+
+        try
+        {
+            var batch = ReadGameFiles(info, samples);
+            foreach (var path in samples)
+            {
+                if (!batch.TryGetValue(path, out var data) || data is null || data.Length == 0)
+                {
+                    return $"客户端自检失败：读不到 {path}。\n\n" +
+                           "这说明当前索引与客户端资源已经对不上，继续写入只会产生更多错误。\n" +
+                           "请先用 Steam / 官方平台【验证游戏文件完整性】，再回来应用补丁。";
+                }
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"客户端自检失败：{ex.Message}\n\n" +
+                   "请先用 Steam / 官方平台【验证游戏文件完整性】，再回来应用补丁。";
+        }
     }
 
     public byte[]? ReadGameFile(GameModeInfo info, string virtualPath)
@@ -251,7 +367,41 @@ public sealed class PatchEngine
     /// 引用该副本。新路径在当前客户端中并不存在，必须显式放行，否则副本
     /// 会被静默丢弃，wrapper 变成悬空引用（引用不存在的资源，模型不显示）。
     /// </param>
+    /// <summary>
+    /// 写入文件。
+    ///
+    /// 批量会话进行中时只登记到叠加层，不落盘 —— 由 CommitSession 统一写一次。
+    /// 会话之外的行为与之前完全一致。
+    /// </summary>
     public bool WriteGameFiles(
+        GameModeInfo info,
+        IEnumerable<(string VirtualPath, byte[] Data)> files,
+        IReadOnlySet<string>? allowedNewPaths = null,
+        PatchSession.WriteMode mode = PatchSession.WriteMode.Transform)
+    {
+        lock (_fileLock)
+        {
+            var session = _session;
+            if (session is null)
+            {
+                return WriteGameFilesCore(info, files, allowedNewPaths);
+            }
+
+            foreach (var (vPath, data) in files)
+            {
+                if (!session.Stage(vPath, data, mode))
+                {
+                    LastWriteException = new InvalidOperationException(
+                        "批量写入出现路径冲突：" + string.Join("；", session.Conflicts));
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    private bool WriteGameFilesCore(
         GameModeInfo info,
         IEnumerable<(string VirtualPath, byte[] Data)> files,
         IReadOnlySet<string>? allowedNewPaths = null)

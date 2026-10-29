@@ -26,6 +26,11 @@ public class SnapshotTests : IDisposable
         Directory.CreateDirectory(bundlesDir);
         File.WriteAllBytes(Path.Combine(bundlesDir, "_.index.bin"), Encoding.UTF8.GetBytes("MOCK_INDEX_BIN_DATA"));
 
+        // 快照会记录游戏版本；还原时版本为空一律拒绝，所以测试环境也要有版本日志。
+        var logsDir = Path.Combine(_gameDir, "logs");
+        Directory.CreateDirectory(logsDir);
+        File.WriteAllText(Path.Combine(logsDir, "LatestClient.txt"), "poe2_production/tags/0.5.6");
+
         _gameInfo = new GameModeInfo
         {
             GameDirectory = _gameDir,

@@ -366,12 +366,14 @@ public sealed class PatcherFacade
         string? patchActionName = null,
         string? settingsJson = null,
         List<string>? activeModules = null,
-        Action<string>? logger = null)
+        Action<string>? logger = null,
+        bool allowDirtyBaseline = false)
     {
         try
         {
-            // 确保官方底包已优先固化
-            _backupManager.EnsureBackup(info, logger);
+            // 确保官方底包已优先固化。
+            // allowDirtyBaseline 由调用方在用户明确同意「以当前状态建立基线」后传入。
+            _backupManager.EnsureBackup(info, logger, allowDirtyBaseline);
             // 记录当前自动快照
             string timeStr = DateTime.Now.ToString("MM-dd HH:mm");
             string actionText = string.IsNullOrWhiteSpace(patchActionName) ? "应用补丁" : patchActionName.Trim();

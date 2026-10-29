@@ -19,7 +19,9 @@ public sealed record MapBeamTargetOption(
 public sealed record NamePatchOption(
     string OriginalName,
     string ModifiedName,
-    bool Enabled);
+    bool Enabled,
+    // 规则匹配键：同族多稀有度共用一条规则，不受汉化影响。
+    string FamilyName = "");
 
 public sealed record RumourItemOption(
     string OriginalText,
@@ -28,12 +30,14 @@ public sealed record RumourItemOption(
     int RowIndex = 0,
     string MapName = "",
     string Category = "常规",
-    string Color = "#ffffff");
+    string Color = "#ffffff",
+    // 规则匹配键：区域索引，跨语言稳定。
+    int WorldAreaIndex = -1);
 
 public sealed record FontCustomPreset(
     string Id,
     string Name,
-    string FontFamily = "Microsoft YaHei",
+    string FontFamily = "",
     int GlobalSizeDelta = 0,
     int DropItemSizeDelta = 0,
     int GeneralTextSizeDelta = 0,
@@ -63,7 +67,7 @@ public sealed record MinimapColorSettings(
 
 public sealed record ClientPatchSettings(
     string? CustomGameDirectory = null,
-    string FontFamily = "Microsoft YaHei",
+    string FontFamily = "",
     int FontSizeDelta = 0,
     bool FontBold = false,
     string FontPresetId = "default",
@@ -74,14 +78,14 @@ public sealed record ClientPatchSettings(
     IReadOnlyList<FontCustomPreset>? FontCustomPresets = null,
     bool RumourEnhanced = true,
     bool ChestEnhanced = true,
-    bool ColorModEnabled = true,
+    bool ColorModEnabled = false,
     string ColorModStyle = "Whole",
     bool PricePatchEnabled = false,
     string PricePatchSeparator = " ",
     decimal? PricePatchMinExalted = null,
     bool? PricePatchStripExisting = null,
     IReadOnlyList<string>? PricePatchCategories = null,
-    bool MapBeamEnabled = true,
+    bool MapBeamEnabled = false,
     IReadOnlyList<ColorModRuleItem>? ColorModRules = null,
     IReadOnlyList<MapBeamTargetOption>? MapBeamTargets = null,
     IReadOnlyList<NamePatchOption>? ChestItems = null,
@@ -98,13 +102,28 @@ public sealed record ClientPatchSettings(
     string? MtxSelectedArmourSet = null,
     string? MtxSelectedPortal = null,
     string? MtxSelectedPet = null,
-    string MtxSelectedClass = "all")
+    string MtxSelectedClass = "all",
+
+    // ── 批量补丁的大类门控 ──
+    //
+    // 大类与小功能是 AND 关系：只有大类勾选、且该小功能也勾选，才会被应用。
+    // 两者都独立持久化，用户不必每次重新勾选。
+    bool BatchCategoryTranslation = false,
+    bool BatchCategoryText = false,
+    bool BatchCategoryEffect = false,
+    bool BatchCategoryMtx = false,
+
+    // ── 此前没有启用标志的模块 ──
+    bool TranslationEnabled = false,
+    bool FontPatchEnabled = false,
+    bool EffectPatchEnabled = false,
+    bool MtxPatchEnabled = false)
 {
     public MinimapColorSettings MinimapColor { get; init; } = MinimapColorSettings.Default;
 
     public static ClientPatchSettings Default => new(
         CustomGameDirectory: null,
-        FontFamily: "Microsoft YaHei",
+        FontFamily: "",
         FontSizeDelta: 0,
         FontBold: false,
         FontPresetId: "default",

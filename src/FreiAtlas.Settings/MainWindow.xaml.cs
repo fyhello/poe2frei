@@ -56,6 +56,12 @@ public partial class MainWindow : Window
     private PendingPricePatch? _pendingPricePatch;
 
     /// <summary>
+    /// 批量应用进行中。为真时 RecordAutoSnapshot 直接返回：
+    /// 一次批量只应留下 1 份快照，而不是每个模块各记一份 115 MB。
+    /// </summary>
+    private bool _batchMode;
+
+    /// <summary>
     /// 补丁写入互斥闸。
     ///
     /// 多个补丁服务会改写同一批数据表（baseitemtypes、endgamemaps、uisettings 等），
@@ -279,6 +285,10 @@ public partial class MainWindow : Window
                 SendPatcherSnapshot(error: "另一个补丁正在写入客户端，请等待其完成后再操作。");
                 return;
             }
+
+            // 进度消息已改为轻量通道，不再携带 patchBusy。
+            // busy 必须在拿到闸门后显式推一次，否则写入期间前端按钮不会被禁用。
+            SendPatchBusyState();
         }
 
         try
@@ -406,6 +416,21 @@ public partial class MainWindow : Window
                 case ApplyTranslationPatchWebCommand:
                     await HandleApplyTranslationPatchAsync();
                     break;
+
+                case ApplyBatchWebCommand applyBatch:
+                    await HandleApplyBatchAsync(applyBatch);
+                    break;
+
+                case SetBatchCategoryWebCommand setCategory:
+                    HandleSetBatchCategory(setCategory);
+                    break;
+
+                case SetModuleEnabledWebCommand setModule:
+                    HandleSetModuleEnabled(setModule);
+                    break;
+                case RestoreDefaultRulesWebCommand:
+                    HandleRestoreDefaultRules();
+                    break;
                 case RestoreMudManWebCommand:
                     await HandleRestoreMudManAsync();
                     break;
@@ -495,7 +520,21 @@ public partial class MainWindow : Window
     /// 清单覆盖全部补丁模块的「应用」与「还原」入口，以及快照的增删还原 ——
     /// 快照操作会改写 _.index.bin，同样属于写入。
     /// </summary>
-    private static bool IsWriteCommand(WebCommand command) => command is
+    private static bool IsWriteCommand(WebCommand command) => command switch
+    {
+        // 「只保存设置」的自动保存不写客户端，不应占用写入闸门。
+        // 否则批量写入期间用户改任意参数，自动保存都会被拒绝并弹「另一个补丁正在写入」，
+        // 既误导用户，也可能打断正在进行的批量任务。
+        ApplyFontPatchWebCommand { PersistOnly: true } => false,
+        ApplyRumourPatchWebCommand { PersistOnly: true } => false,
+        ApplyChestPatchWebCommand { PersistOnly: true } => false,
+        ApplyColorModPatchWebCommand { PersistOnly: true } => false,
+        ApplyIconPatchWebCommand { PersistOnly: true } => false,
+        ApplyMapBeamPatchWebCommand { PersistOnly: true } => false,
+        ApplyCurrentPricesPatchWebCommand { PersistOnly: true } => false,
+        ApplyAllEffectsWebCommand { PersistOnly: true } => false,
+        ApplyMtxPatchWebCommand { PersistOnly: true } => false,
+
         ApplyFontPatchWebCommand
         or ApplyRumourPatchWebCommand
         or ApplyChestPatchWebCommand
@@ -515,9 +554,13 @@ public partial class MainWindow : Window
         or RestoreHealthBarWebCommand
         or ApplyMtxPatchWebCommand
         or RestoreMtxPatchWebCommand
+        or ApplyBatchWebCommand
         or CreatePatcherSnapshotWebCommand
         or RestorePatcherSnapshotWebCommand
-        or DeletePatcherSnapshotWebCommand;
+        or DeletePatcherSnapshotWebCommand => true,
+
+        _ => false
+    };
 
     private async Task ResetPageAsync(string page)
     {
@@ -868,7 +911,7 @@ public partial class MainWindow : Window
                 msg =>
                 {
                     log = msg;
-                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    Dispatcher.Invoke(() => SendPatcherProgress(msg));
                 }));
             SendPatcherSnapshot(
                 message: $"词库同步完成！已成功提取 {list.Count} 条真实词缀。",
@@ -889,9 +932,34 @@ public partial class MainWindow : Window
             return;
         }
 
+        // 空值表示「使用内置字体」。内置字体不在系统里时先安装，装不上就中止，
+        // 不能把补丁打上去却因字体缺失回落到其它字体。
+        string resolvedFontFamily = cmd.FontFamily;
+        if (string.IsNullOrWhiteSpace(resolvedFontFamily))
+        {
+            resolvedFontFamily = FontInstaller.Bundled?.Family ?? string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(resolvedFontFamily))
+        {
+            SendPatcherSnapshot(error: "未选择字体，且未找到内置字体配置。");
+            return;
+        }
+
+        if (FontInstaller.IsBundledFamily(resolvedFontFamily))
+        {
+            if (!FontInstaller.EnsureInstalled(out string installMessage))
+            {
+                SendPatcherSnapshot(error: installMessage);
+                return;
+            }
+
+            resolvedFontFamily = FontInstaller.Bundled!.Family;
+        }
+
         _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
         {
-            FontFamily = cmd.FontFamily,
+            FontFamily = resolvedFontFamily,
             FontSizeDelta = cmd.FontSizeDelta,
             FontBold = cmd.IsBold,
             FontPresetId = cmd.PresetId,
@@ -902,11 +970,14 @@ public partial class MainWindow : Window
             FontCustomPresets = cmd.CustomPresets ?? _settingsStore.ClientPatch.FontCustomPresets
         });
 
+        // 只保存设置：自动保存路径不写客户端。
+        if (cmd.PersistOnly) return;
+
         SendPatcherSnapshot(message: "正在准备应用字体补丁，请稍候...");
         string? progressLog = null;
-        RecordAutoSnapshot("字体补丁写入");
+        await RecordAutoSnapshotAsync("字体补丁写入");
         bool success = await Task.Run(() => _patcher.ApplyFont(
-            cmd.FontFamily,
+            resolvedFontFamily,
             cmd.FontSizeDelta,
             _settingsStore.ClientPatch.CustomGameDirectory,
             cmd.ApplyPresetScales,
@@ -918,7 +989,7 @@ public partial class MainWindow : Window
             msg =>
             {
                 progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }));
 
         if (success)
@@ -940,27 +1011,44 @@ public partial class MainWindow : Window
             return;
         }
 
+        // 空列表表示「使用默认规则」：后端按区域 id 套用 20 条内置传言规则。
+        // 自动保存路径仍要跳过，否则配置页没读到客户端时会把自定义规则清掉。
+        bool useDefaultRules = cmd.Items is null || cmd.Items.Count == 0;
+
+        if (useDefaultRules && cmd.PersistOnly)
+        {
+            SendPatcherSnapshot(error: "尚未读取客户端传言，已跳过本次提交以保留已有配置。");
+            return;
+        }
+
         _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
         {
             RumourEnhanced = cmd.Enabled,
-            RumourItems = cmd.Items
+            RumourItems = useDefaultRules ? null : cmd.Items
         });
+
+        // 只保存设置：自动保存路径不写客户端。
+        if (cmd.PersistOnly) return;
 
         if (cmd.Enabled)
         {
             SendPatcherSnapshot(message: "正在准备应用传言增强补丁，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot("传言强化写入");
-            var customItems = cmd.Items?.Select(r => new EndgameMapRumourItem
-            {
-                RowIndex = r.RowIndex,
-                MapName = r.MapName,
-                OriginalRumourText = r.OriginalText,
-                RumourText = r.ModifiedText,
-                Category = r.Category,
-                Color = r.Color,
-                Enabled = r.Enabled
-            }).ToList();
+            await RecordAutoSnapshotAsync("传言强化写入");
+            // 无自定义规则时传 null：ApplyPatch 会用 ParseFromBytes 按区域 id 算出的默认 Memo。
+            var customItems = useDefaultRules
+                ? null
+                : cmd.Items!.Select(r => new EndgameMapRumourItem
+                {
+                    RowIndex = r.RowIndex,
+                    WorldAreaIndex = r.WorldAreaIndex,
+                    MapName = r.MapName,
+                    OriginalRumourText = r.OriginalText,
+                    RumourText = r.ModifiedText,
+                    Category = r.Category,
+                    Color = r.Color,
+                    Enabled = r.Enabled
+                }).ToList();
 
             bool success = await Task.Run(() => _patcher.ApplyRumours(
                 _settingsStore.ClientPatch.CustomGameDirectory,
@@ -968,7 +1056,7 @@ public partial class MainWindow : Window
                 progress: msg =>
                 {
                     progressLog = msg;
-                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    Dispatcher.Invoke(() => SendPatcherProgress(msg));
                 }));
 
             if (success)
@@ -986,6 +1074,29 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// 清空全部自定义规则，恢复内置默认规则。
+    ///
+    /// 默认规则在「设置为空」时自动生效，所以这里只清空规则列表，
+    /// 不把默认值写回配置 —— 这样以后默认规则更新能自动跟进。
+    /// </summary>
+    private void HandleRestoreDefaultRules()
+    {
+        if (_settingsStore is null) return;
+
+        _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
+        {
+            ColorModRules = null,
+            ChestItems = null,
+            RumourItems = null,
+            IconPatchSelectedPaths = null,
+            EffectPatchRuleIds = null,
+            MapBeamTargets = null
+        });
+
+        SendPatcherSnapshot(message: "已恢复默认规则：词缀染色、宝箱标注、传言标注、图标替换、特效优化、神图光柱的自定义规则已清空，下次应用将使用内置默认规则。");
+    }
+
     private async Task HandleApplyChestPatchAsync(ApplyChestPatchWebCommand cmd)
     {
         if (_patcher is null || _settingsStore is null) return;
@@ -995,28 +1106,51 @@ public partial class MainWindow : Window
             return;
         }
 
+        // 空列表表示「使用默认规则」（按 IdField 族名套用 36 条内置规则）；
+        // 自动保存路径仍要跳过，否则配置页没读到客户端时会把自定义规则清掉。
+        bool useDefaultRules = cmd.Items is null || cmd.Items.Count == 0;
+
+        if (useDefaultRules && cmd.PersistOnly)
+        {
+            SendPatcherSnapshot(error: "尚未读取客户端宝箱，已跳过本次提交以保留已有配置。");
+            return;
+        }
+
         _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
         {
             ChestEnhanced = cmd.Enabled,
-            ChestItems = cmd.Items
+            ChestItems = useDefaultRules ? null : cmd.Items
         });
+
+        // 只保存设置：自动保存路径不写客户端。
+        if (cmd.PersistOnly) return;
 
         if (cmd.Enabled)
         {
             SendPatcherSnapshot(message: "正在准备应用保险箱掉落标注补丁，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot("宝箱标注写入");
-            Dictionary<string, string>? customMappings = cmd.Items?
-                .Where(c => c.Enabled && !string.IsNullOrWhiteSpace(c.OriginalName))
-                .ToDictionary(c => c.OriginalName, c => c.ModifiedName);
+            await RecordAutoSnapshotAsync("宝箱标注写入");
+            // 无自定义规则时传 null：ApplyNamePatch 会按 IdField 族名套用 36 条内置默认规则。
+            // 与默认规则同一套键：IdField 族名。同族多个变体只保留一条，
+            // 避免 ToDictionary 因重复 key 抛异常。
+            Dictionary<string, string>? customMappings = useDefaultRules
+                ? null
+                : cmd.Items!
+                    .Where(c => c.Enabled)
+                    .GroupBy(c => string.IsNullOrWhiteSpace(c.FamilyName) ? c.OriginalName : c.FamilyName,
+                             StringComparer.OrdinalIgnoreCase)
+                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                    .ToDictionary(g => g.Key, g => g.First().ModifiedName, StringComparer.OrdinalIgnoreCase);
 
             // 显式选择集合：未勾选的条目必须被真正禁用。
             // 只传 customMappings 不够 —— 未勾选的条目在字典里查不到，
             // 会落到「有默认 Memo 就启用」的分支，导致取消勾选无效。
-            HashSet<string> selectedChestNames = new(
-                cmd.Items?.Where(c => c.Enabled && !string.IsNullOrWhiteSpace(c.OriginalName))
-                    .Select(c => c.OriginalName) ?? Enumerable.Empty<string>(),
-                StringComparer.OrdinalIgnoreCase);
+            HashSet<string>? selectedChestNames = useDefaultRules
+                ? null
+                : new HashSet<string>(
+                    cmd.Items!.Where(c => c.Enabled)
+                        .Select(c => string.IsNullOrWhiteSpace(c.FamilyName) ? c.OriginalName : c.FamilyName),
+                    StringComparer.OrdinalIgnoreCase);
 
             bool success = await Task.Run(() => _patcher.ApplyNamePatch(
                 NamePatchKind.Chests,
@@ -1025,7 +1159,7 @@ public partial class MainWindow : Window
                 progress: msg =>
                 {
                     progressLog = msg;
-                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    Dispatcher.Invoke(() => SendPatcherProgress(msg));
                 },
                 selectedNames: selectedChestNames));
             if (success)
@@ -1054,19 +1188,34 @@ public partial class MainWindow : Window
 
         var styleEnum = Enum.TryParse<ColorModStyle>(cmd.Style, ignoreCase: true, out var s) ? s : ColorModStyle.Whole;
 
+        bool useDefaultRules = cmd.Rules is null || cmd.Rules.Count == 0;
+
+        // 自动保存路径下，空规则只代表「配置页还没读到客户端」，不能据此清空已有配置。
+        // 真正的「使用默认规则」只发生在用户显式点击应用时。
+        if (useDefaultRules && cmd.PersistOnly)
+        {
+            SendPatcherSnapshot(error: "尚未读取客户端词缀数据，已跳过本次提交以保留已有配置。");
+            return;
+        }
+
         _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
         {
             ColorModEnabled = cmd.Enabled,
             ColorModStyle = cmd.Style,
-            ColorModRules = cmd.Rules
+            ColorModRules = useDefaultRules ? null : cmd.Rules
         });
+
+        // 只保存设置：自动保存路径不写客户端。
+        if (cmd.PersistOnly) return;
 
         if (cmd.Enabled)
         {
             SendPatcherSnapshot(message: "正在准备应用装备与地图词缀多色彩染色补丁，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot("词缀变色写入");
-            var entries = cmd.Rules?.Select(ColorModEntry.FromRuleItem).ToList();
+            await RecordAutoSnapshotAsync("词缀变色写入");
+            // 无自定义规则时传 null，由 PatcherFacade 自行 ExtractEntries 并用
+            // DefaultColorMap 的 482 条默认规则；传空列表则会绕过这条默认路径。
+            var entries = useDefaultRules ? null : cmd.Rules!.Select(ColorModEntry.FromRuleItem).ToList();
 
             bool success = await Task.Run(() => _patcher.ApplyColorMods(
                 styleEnum,
@@ -1075,7 +1224,7 @@ public partial class MainWindow : Window
                 progress: msg =>
                 {
                     progressLog = msg;
-                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    Dispatcher.Invoke(() => SendPatcherProgress(msg));
                 }));
 
             if (success)
@@ -1108,12 +1257,22 @@ public partial class MainWindow : Window
             MapBeamTargets = cmd.Targets
         });
 
+        // 只保存设置：自动保存路径不写客户端。
+        if (cmd.PersistOnly) return;
+
         if (cmd.Enabled)
         {
             SendPatcherSnapshot(message: "正在准备生成异界神图醒目光柱，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot("神图光柱写入");
+            await RecordAutoSnapshotAsync("神图光柱写入");
             var targets = cmd.Targets?.Select(t => new MapBeamTarget(t.MapName, t.DisplayName, t.Color, t.Enabled)).ToList();
+
+            // 未配置自定义规则时使用默认规则：7 张内置地图。
+            // 应用时找不到模型的地图会被跳过并汇总，不会因为客户端缺图而整体失败。
+            if (targets is null || targets.Count == 0)
+            {
+                targets = FreiAtlas.Patcher.Modules.MapBeam.MapBeamPatchService.DefaultTargets.ToList();
+            }
 
             bool success = await Task.Run(() => _patcher.ApplyMapBeams(
                 targets: targets,
@@ -1121,7 +1280,7 @@ public partial class MainWindow : Window
                 progress: msg =>
                 {
                     progressLog = msg;
-                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    Dispatcher.Invoke(() => SendPatcherProgress(msg));
                 }));
 
             if (success)
@@ -1161,6 +1320,9 @@ public partial class MainWindow : Window
             PricePatchCategories = cmd.Categories
         });
 
+        // 只保存设置：自动保存路径不写客户端。
+        if (cmd.PersistOnly) return;
+
         // 直接注入会绕过预览计划，作废旧预览，避免之后误确认旧结果。
         _pendingPricePatch = null;
 
@@ -1171,7 +1333,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        RecordAutoSnapshot("物价补丁写入");
+        await RecordAutoSnapshotAsync("物价补丁写入");
 
         SendPatcherSnapshot(message: $"已生成 {priceRows.Count} 条换算物价，正在读取客户端并注入地面掉落名称...");
 
@@ -1184,7 +1346,7 @@ public partial class MainWindow : Window
             msg =>
             {
                 progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             },
             keepExistingPrice: !stripExisting));
 
@@ -1260,7 +1422,7 @@ public partial class MainWindow : Window
             msg =>
             {
                 progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             },
             keepExistingPrice: !stripExisting));
 
@@ -1341,7 +1503,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        RecordAutoSnapshot("物价补丁写入");
+        await RecordAutoSnapshotAsync("物价补丁写入");
 
         string? progressLog = null;
         var result = await Task.Run(() => _patcher.ApplyPricePatch(
@@ -1352,7 +1514,7 @@ public partial class MainWindow : Window
             msg =>
             {
                 progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             },
             keepExistingPrice: pending.KeepExistingPrice));
 
@@ -1389,7 +1551,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        RecordAutoSnapshot("物价清洗");
+        await RecordAutoSnapshotAsync("物价清洗");
 
         SendPatcherSnapshot(message: "正在清洗数据表中的物价后缀...");
         string? progressLog = null;
@@ -1399,7 +1561,7 @@ public partial class MainWindow : Window
             msg =>
             {
                 progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }));
 
         if (res.Success)
@@ -1424,7 +1586,7 @@ public partial class MainWindow : Window
             msg =>
             {
                 progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }));
 
         if (result.Success)
@@ -1462,9 +1624,16 @@ public partial class MainWindow : Window
             ClientPatchSettings.Default with { CustomGameDirectory = currentDir });
     }
 
-    private BackupRestoreResult? RecordAutoSnapshot(string? patchActionName = null)
+    /// <summary>
+    /// 打补丁前记录自动快照。索引上百 MB，复制必须放在后台线程，
+    /// 否则整个 GUI 会在补丁开始前卡住十几秒（窗口无法拖动/放大）。
+    /// </summary>
+    private async Task<BackupRestoreResult?> RecordAutoSnapshotAsync(string? patchActionName = null)
     {
         if (_patcher is null || _settingsStore is null) return null;
+
+        // 批量应用在开始前统一记过一次快照，这里不再重复。
+        if (_batchMode) return null;
         var info = _patcher.GetGameInfo(_settingsStore.ClientPatch.CustomGameDirectory);
         if (!info.IsValid) return null;
 
@@ -1478,7 +1647,8 @@ public partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(patch.FontFamily)) activeModules.Add("自定义字体");
 
         string settingsJson = JsonSerializer.Serialize(patch, JsonOptions);
-        return _patcher.AutoSnapshotBeforePatch(info, patchActionName, settingsJson, activeModules);
+        return await Task.Run(() =>
+            _patcher.AutoSnapshotBeforePatch(info, patchActionName, settingsJson, activeModules));
     }
 
     private async Task HandleCreatePatcherSnapshotAsync(CreatePatcherSnapshotWebCommand cmd)
@@ -1541,7 +1711,7 @@ public partial class MainWindow : Window
             msg =>
             {
                 progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }));
 
         if (result.Success)
@@ -1773,6 +1943,7 @@ public partial class MainWindow : Window
         // 还原到新客户端上 —— 那会让客户端直接起不来（实测 12,481 个文件读不出）。
         // PatchSnapshotInfo 本来就记录了 IndexFingerprint 与 GameVersion，此前忘了投影。
         string snapshotCurrentFingerprint = _patcher.BackupManager.GetCurrentFingerprint(gameInfo);
+        string snapshotCurrentVersion = PatchBackupManager.ReadGameVersion(gameInfo);
         var snapshots = _patcher.GetSnapshots(gameInfo)
             .Select(s => new
             {
@@ -1784,8 +1955,13 @@ public partial class MainWindow : Window
                 sizeBytes = s.SizeBytes,
                 enabledModules = s.EnabledModules,
                 gameVersion = s.GameVersion,
-                // 指纹缺失或读不到当前指纹时判为 false（未知不等于失效），
-                // 避免把全部快照一律标成不可用。
+                // 版本不匹配 = 禁止恢复的唯一依据。
+                // 版本号缺失同样按不匹配处理：无法证明兼容就不允许写入。
+                versionMismatch = string.IsNullOrEmpty(s.GameVersion)
+                                  || string.IsNullOrEmpty(snapshotCurrentVersion)
+                                  || !string.Equals(s.GameVersion, snapshotCurrentVersion, StringComparison.OrdinalIgnoreCase),
+                // 指纹不一致只表示「快照之后客户端被改过」，是打完补丁的正常状态，
+                // 仅用于提示，不参与禁用判断 —— 否则任何补丁之后就再也回滚不了。
                 isStale = !string.IsNullOrEmpty(s.IndexFingerprint)
                           && !string.IsNullOrEmpty(snapshotCurrentFingerprint)
                           && !string.Equals(s.IndexFingerprint, snapshotCurrentFingerprint, StringComparison.OrdinalIgnoreCase)
@@ -1886,6 +2062,44 @@ public partial class MainWindow : Window
         SettingsWebView.CoreWebView2.PostWebMessageAsJson(json);
     }
 
+    /// <summary>
+    /// 只推送一条进度文本。
+    ///
+    /// 不走 SendPatcherSnapshot：那条路径会探测客户端、读取快照清单，并对整份
+    /// _.index.bin 计算 SHA256（115~200 MB）。补丁写入期间进度消息可达上百条，
+    /// 每条都重算一次会造成数十 GB 的无谓磁盘读取，而且全部压在 UI 线程上。
+    /// </summary>
+    private void SendPatcherProgress(string message)
+    {
+        if (SettingsWebView.CoreWebView2 is null) return;
+
+        _patcherMessage = message;
+        _patcherError = null;
+
+        var json = JsonSerializer.Serialize(
+            new
+            {
+                version = 1,
+                type = "patcherSnapshot",
+                payload = new
+                {
+                    // 前端据此走轻量分支：只更新提示条，不覆盖完整状态。
+                    progressOnly = true,
+                    message
+                }
+            },
+            JsonOptions);
+
+        try
+        {
+            SettingsWebView.CoreWebView2.PostWebMessageAsJson(json);
+        }
+        catch (InvalidOperationException)
+        {
+            // WebView 正在关闭，忽略。
+        }
+    }
+
     private void HandleGetMtxDatabase()
     {
         if (SettingsWebView.CoreWebView2 is null) return;
@@ -1940,13 +2154,26 @@ public partial class MainWindow : Window
             MtxSelectedClass = cmd.SelectedClassCode
         });
 
+        // 只保存设置：自动保存路径不写客户端。
+        if (cmd.PersistOnly) return;
+
+        // 商城外观没有默认规则，必须手动选择条目。
+        if ((cmd.SelectedNames is null || cmd.SelectedNames.Count == 0)
+            && string.IsNullOrWhiteSpace(cmd.SelectedArmourSetName)
+            && string.IsNullOrWhiteSpace(cmd.SelectedPortalName)
+            && string.IsNullOrWhiteSpace(cmd.SelectedPetName))
+        {
+            SendPatcherSnapshot(error: "商城外观没有默认规则，请先手动勾选要替换的外观条目。");
+            return;
+        }
+
         SendPatcherSnapshot(message: "正在准备应用外观商城特效替换，请稍候...");
         string? progressLog = null;
-        RecordAutoSnapshot("商城外观特效替换");
+        await RecordAutoSnapshotAsync("商城外观特效替换");
 
         var options = new FreiAtlas.Patcher.MtxPatch.MtxPatchOptions
         {
-            SelectedNames = new HashSet<string>(cmd.SelectedNames, StringComparer.OrdinalIgnoreCase),
+            SelectedNames = new HashSet<string>(cmd.SelectedNames ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase),
             SelectedArmourSetName = cmd.SelectedArmourSetName,
             SelectedArmourSetFolder = cmd.SelectedArmourSetFolder,
             SelectedPortalName = cmd.SelectedPortalName,
@@ -1962,7 +2189,7 @@ public partial class MainWindow : Window
                 msg =>
                 {
                     progressLog = msg;
-                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    Dispatcher.Invoke(() => SendPatcherProgress(msg));
                 },
                 out var m);
             return (r, m);
@@ -1989,7 +2216,7 @@ public partial class MainWindow : Window
 
         SendPatcherSnapshot(message: "正在还原外观特效至纯净原版，请稍候...");
         string? progressLog = null;
-        RecordAutoSnapshot("还原商城外观特效");
+        await RecordAutoSnapshotAsync("还原商城外观特效");
 
         var (ok, message) = await Task.Run(() =>
         {
@@ -1998,7 +2225,7 @@ public partial class MainWindow : Window
                 msg =>
                 {
                     progressLog = msg;
-                    Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                    Dispatcher.Invoke(() => SendPatcherProgress(msg));
                 },
                 out var m);
             return (r, m);
@@ -2067,7 +2294,16 @@ public partial class MainWindow : Window
                 SendPatcherSnapshot(null, "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
                 return;
             }
-            IReadOnlyList<string> paths = cmd.Paths ?? Array.Empty<string>();
+            // 未配置自定义规则时使用默认规则：内置图标包全量。
+            // 这样用户只勾选「图标替换」、不进配置页，也能直接生效。
+            // 设置里仍然保存空列表，保持「空 = 默认规则」的语义。
+            IReadOnlyList<string> configuredPaths = cmd.Paths ?? Array.Empty<string>();
+            IReadOnlyList<string> paths = configuredPaths;
+            if (cmd.Enabled && paths.Count == 0)
+            {
+                paths = FreiAtlas.Patcher.IconPatch.IconPatchService.DefaultPaths;
+            }
+
             // 更新设置前先取出上次选中的路径：取消勾选的图标需要写回官方原件，
             // 否则界面上勾选数变少，但客户端里仍是修改版。
             IReadOnlyList<string> previousPaths =
@@ -2075,8 +2311,11 @@ public partial class MainWindow : Window
             _settingsStore.UpdateClientPatch(_settingsStore.ClientPatch with
             {
                 IconPatchEnabled = cmd.Enabled,
-                IconPatchSelectedPaths = paths
+                IconPatchSelectedPaths = configuredPaths
             });
+
+            // 只保存设置：自动保存路径不写客户端。
+            if (cmd.PersistOnly) return;
 
             // 关闭开关或清空选择时必须真正把官方图标写回客户端。
             // 只改内存开关会让界面显示「已关闭」而磁盘仍是替换后的版本。
@@ -2097,7 +2336,7 @@ public partial class MainWindow : Window
                     msg =>
                     {
                         restoreLog = msg;
-                        Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                        Dispatcher.Invoke(() => SendPatcherProgress(msg));
                     }));
 
                 if (restored.Success)
@@ -2118,13 +2357,13 @@ public partial class MainWindow : Window
             }
             SendPatcherSnapshot("正在准备写入图标，请稍候...");
             string? progressLog = null;
-            RecordAutoSnapshot("图标替换写入前");
+            await RecordAutoSnapshotAsync("图标替换写入前");
             IconPatchService service = _patcher.IconPatchService;
             string message = string.Empty;
             if (await Task.Run(() => service.Apply(gameInfo, paths, previousPaths, (string msg) =>
             {
                 progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }, out message)))
             {
                 SendPatcherSnapshot(message);
@@ -2142,12 +2381,12 @@ public partial class MainWindow : Window
                 return;
             }
             SendPatcherSnapshot("正在准备应用官方纯净简体中文汉化补丁，请稍候...");
-            RecordAutoSnapshot("汉化补丁写入");
+            await RecordAutoSnapshotAsync("汉化补丁写入");
             string? progressLog = null;
             TranslationPatchResult translationPatchResult = await Task.Run(() => _patcher.ApplyTranslation(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
             {
                 progressLog = msg;
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }));
             if (translationPatchResult.Success)
             {
@@ -2221,7 +2460,7 @@ public partial class MainWindow : Window
 
             var (flag, text) = await Task.Run(() => (r: _patcher.RestoreMudMan(
                 _settingsStore.ClientPatch.CustomGameDirectory,
-                (string msg) => { Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg)); },
+                (string msg) => { Dispatcher.Invoke(() => SendPatcherProgress(msg)); },
                 out string message,
                 force), m: message));
 
@@ -2260,7 +2499,7 @@ public partial class MainWindow : Window
             SendPatcherSnapshot("正在应用头顶血条补丁，请稍候（写入期间请勿关闭窗口）...");
             var (flag, text) = await Task.Run(() => (r: _patcher.ApplyHealthBar(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
             {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }, out string message), m: message));
             if (flag)
             {
@@ -2285,7 +2524,7 @@ public partial class MainWindow : Window
             SendPatcherSnapshot("正在还原头顶血条补丁，请稍候...");
             var (flag, text) = await Task.Run(() => (r: _patcher.RestoreHealthBar(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
             {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }, out string message), m: message));
             if (flag)
             {
@@ -2310,7 +2549,7 @@ public partial class MainWindow : Window
             SendPatcherSnapshot("正在应用技能特效屏蔽，请稍候（写入期间请勿关闭窗口）...");
             var (flag, text) = await Task.Run(() => (r: _patcher.ApplySpellBlocks(cmd.SpellIds, cmd.IncludeAudio, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
             {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }, out string message), m: message));
             if (flag)
             {
@@ -2336,7 +2575,7 @@ public partial class MainWindow : Window
             SendPatcherSnapshot("正在还原技能特效，请稍候...");
             var (flag, text) = await Task.Run(() => (r: _patcher.RestoreSpellBlocks(cmd.SpellIds, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
             {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
             }, out string message), m: message));
             if (flag)
             {
@@ -2357,6 +2596,25 @@ public partial class MainWindow : Window
         {
             if (_patcher == null || _settingsStore == null)
             {
+                return;
+            }
+
+            if (cmd.PersistOnly)
+            {
+                // 特效模块的设置在正常流程里是「写入成功后」才落库的（只保存成功的那部分）。
+                // 自动保存没有写入环节，这里无条件保存本次下发的参数。
+                var saved = _settingsStore.ClientPatch with
+                {
+                    EffectPatchRuleIds = cmd.RuleIds,
+                    ViewDistanceRatio = cmd.ViewDistanceRatio,
+                    BlockedSpellIds = cmd.SpellIds,
+                    SpellBlockIncludeAudio = cmd.IncludeAudio,
+                    MudManTier = cmd.MudManTier
+                };
+
+                if (cmd.HealthBarEnabled is { } healthBar) saved = saved with { HealthBarEnabled = healthBar };
+
+                _settingsStore.UpdateClientPatch(saved);
                 return;
             }
             SendPatcherSnapshot("正在保存并应用特效优化，请稍候（写入期间请勿关闭窗口）...");
@@ -2386,7 +2644,7 @@ public partial class MainWindow : Window
                     {
                         flag3 = _patcher.ApplyMudManTier(mudManTier2, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
                         {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
                         }, out string message6, refreshFingerprint: false);
                         if (flag3)
                         {
@@ -2402,7 +2660,7 @@ public partial class MainWindow : Window
                 {
                     flag3 = _patcher.RestoreMudMan(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
                     {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
                     }, out string message7);
                     if (flag3)
                     {
@@ -2414,11 +2672,18 @@ public partial class MainWindow : Window
                     }
                 }
                 IReadOnlyList<string> readOnlyList = _settingsStore.ClientPatch.EffectPatchRuleIds ?? Array.Empty<string>();
-                if (cmd.RuleIds.Count > 0)
+
+                // 未配置自定义规则时使用默认规则（33 条，已排除高危与不可用项）。
+                // 设置里仍保存空列表，保持「空 = 默认规则」的语义。
+                IReadOnlyList<string> effectiveRuleIds = cmd.RuleIds is { Count: > 0 }
+                    ? cmd.RuleIds
+                    : FreiAtlas.Patcher.EffectPatch.EffectPatchRules.DefaultRuleIds;
+
+                if (effectiveRuleIds.Count > 0)
                 {
-                    flag = _patcher.ApplyEffectRules(cmd.RuleIds, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
+                    flag = _patcher.ApplyEffectRules(effectiveRuleIds, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
                     {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
                     }, out string message2);
                     if (flag)
                     {
@@ -2433,7 +2698,7 @@ public partial class MainWindow : Window
                 {
                     flag = _patcher.RestoreEffectRules(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
                     {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
                     }, out string message3);
                     if (flag)
                     {
@@ -2449,7 +2714,7 @@ public partial class MainWindow : Window
                 {
                     flag2 = _patcher.ApplySpellBlocks(cmd.SpellIds, cmd.IncludeAudio, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
                     {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
                     }, out string message4);
                     if (flag2)
                     {
@@ -2464,7 +2729,7 @@ public partial class MainWindow : Window
                 {
                     flag2 = _patcher.RestoreSpellBlocks(readOnlyList2, _settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
                     {
-                Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                Dispatcher.Invoke(() => SendPatcherProgress(msg));
                     }, out string message5);
                     if (flag2)
                     {
@@ -2488,7 +2753,7 @@ public partial class MainWindow : Window
                     {
                         healthBarOk = _patcher.ApplyHealthBar(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
                         {
-                            Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                            Dispatcher.Invoke(() => SendPatcherProgress(msg));
                         }, out string hbMsg);
                         if (healthBarOk) list.Add(hbMsg);
                         else list2.Add("头顶血条应用失败：" + hbMsg);
@@ -2497,7 +2762,7 @@ public partial class MainWindow : Window
                     {
                         healthBarOk = _patcher.RestoreHealthBar(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
                         {
-                            Dispatcher.Invoke(() => SendPatcherSnapshot(message: msg));
+                            Dispatcher.Invoke(() => SendPatcherProgress(msg));
                         }, out string hbMsg2);
                         if (healthBarOk) list.Add(hbMsg2);
                         else list2.Add("头顶血条还原失败：" + hbMsg2);
@@ -2567,6 +2832,396 @@ public partial class MainWindow : Window
             SendPatcherSnapshot(null, text);
         }
 
+
+    // ── 批量应用 ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 批量应用的固定顺序。
+    ///
+    /// 顺序不是随意的：
+    /// - 特效模块内部第一步是泥人，而泥人切档会回滚整个索引，必须最先执行；
+    /// - 汉化是底稿重写（全部 CSD + 数据表），必须早于染色与物价；
+    /// - 外观的防具套装是整份 .ao 替换，必须最后执行，否则会盖掉泥人对 items 目录的改动。
+    /// </summary>
+    private static readonly string[] BatchModuleOrder =
+    [
+        "effectpatch", "translation", "fontmod", "price", "colormod",
+        "chests", "rumours", "mapbeam", "iconpatch", "mtxpatch"
+    ];
+
+    private static string BatchModuleDisplayName(string module) => module switch
+    {
+        "effectpatch" => "特效与性能优化",
+        "translation" => "官方简中汉化",
+        "fontmod" => "游戏字体与排版",
+        "price" => "原生价格注入",
+        "colormod" => "词缀多色彩染色",
+        "chests" => "宝箱掉落标注",
+        "rumours" => "异界地图传言",
+        "mapbeam" => "神图冲天光柱",
+        "iconpatch" => "图标替换",
+        "mtxpatch" => "商城外观特效",
+        _ => module
+    };
+
+    private void LogBatchProgress(string message)
+        => Dispatcher.Invoke(() => SendPatcherProgress(message));
+
+    /// <summary>保存大类门控开关。自动保存路径，不写客户端。</summary>
+    private void HandleSetBatchCategory(SetBatchCategoryWebCommand cmd)
+    {
+        if (_settingsStore is null) return;
+
+        var patch = _settingsStore.ClientPatch;
+        bool enabled = cmd.Enabled;
+
+        patch = cmd.Category.ToLowerInvariant() switch
+        {
+            "translation" => patch with { BatchCategoryTranslation = enabled },
+            "text" => patch with { BatchCategoryText = enabled },
+            "effect" => patch with { BatchCategoryEffect = enabled },
+            "mtx" => patch with { BatchCategoryMtx = enabled },
+            _ => patch
+        };
+
+        _settingsStore.UpdateClientPatch(patch);
+    }
+
+    /// <summary>保存模块启用开关。自动保存路径，不写客户端。</summary>
+    private void HandleSetModuleEnabled(SetModuleEnabledWebCommand cmd)
+    {
+        if (_settingsStore is null) return;
+
+        var patch = _settingsStore.ClientPatch;
+        bool enabled = cmd.Enabled;
+
+        patch = cmd.Module.ToLowerInvariant() switch
+        {
+            "translation" => patch with { TranslationEnabled = enabled },
+            "fontmod" => patch with { FontPatchEnabled = enabled },
+            "colormod" => patch with { ColorModEnabled = enabled },
+            "chests" => patch with { ChestEnhanced = enabled },
+            "rumours" => patch with { RumourEnhanced = enabled },
+            "price" => patch with { PricePatchEnabled = enabled },
+            "mapbeam" => patch with { MapBeamEnabled = enabled },
+            "iconpatch" => patch with { IconPatchEnabled = enabled },
+            "effectpatch" => patch with { EffectPatchEnabled = enabled },
+            "mtxpatch" => patch with { MtxPatchEnabled = enabled },
+            _ => patch
+        };
+
+        _settingsStore.UpdateClientPatch(patch);
+    }
+
+    /// <summary>
+    /// 批量应用：先确保基线可用（必要时恢复），再按固定顺序打勾选的模块。
+    ///
+    /// 为什么批量前要恢复基线：各模块都是增量写入，取消勾选某个模块后如果不先回滚，
+    /// 该模块此前的改动会一直留在客户端里，界面显示已关闭而实际仍生效。
+    /// </summary>
+    private async Task HandleApplyBatchAsync(ApplyBatchWebCommand cmd)
+    {
+        if (_patcher is null || _settingsStore is null) return;
+
+        var modules = cmd.Modules
+            .Where(m => !string.IsNullOrWhiteSpace(m))
+            .Select(m => m.Trim().ToLowerInvariant())
+            .Distinct()
+            .ToList();
+
+        if (modules.Count == 0)
+        {
+            SendPatcherSnapshot(error: "未勾选任何要应用的功能。");
+            return;
+        }
+
+        if (PatcherFacade.IsGameRunning())
+        {
+            SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
+            return;
+        }
+
+        var info = _patcher.GetGameInfo(_settingsStore.ClientPatch.CustomGameDirectory);
+        if (!info.IsValid)
+        {
+            SendPatcherSnapshot(error: $"未检测到有效的 PoE2 游戏目录：{info.ErrorMessage}");
+            return;
+        }
+
+        // ── 0. 客户端自检：索引与资源对不上时，任何写入都只会产生连锁错误 ──
+        var selfCheckError = _patcher.Engine.VerifyClientReadable(info);
+        if (selfCheckError is not null)
+        {
+            SendPatcherSnapshot(error: selfCheckError);
+            return;
+        }
+
+        // ── 1. 物价前置：数据过期直接中止整批 ──
+        if (modules.Contains("price"))
+        {
+            var book = _prices?.CurrentBook;
+            if (book is null || book.ItemCount == 0)
+            {
+                SendPatcherSnapshot(error: "尚未拉取到物价数据。请先在【物价注入】页刷新物价，或取消勾选物价注入。");
+                return;
+            }
+
+            if (!PatchPreconditions.IsPriceDataFresh(book.FetchedAtUtc, DateTimeOffset.UtcNow, PatchPreconditions.PriceDataMaxAge))
+            {
+                var age = DateTimeOffset.UtcNow - book.FetchedAtUtc;
+                SendPatcherSnapshot(error:
+                    $"物价数据已过期（上次更新 {age.TotalHours:F1} 小时前，上限 {PatchPreconditions.PriceDataMaxAge.TotalHours:0} 小时）。" +
+                    "请刷新物价后重试，或取消勾选物价注入。");
+                return;
+            }
+        }
+
+        // ── 2. 基线决策 ──
+        var baseline = _patcher.BackupManager.CheckBaseline(info, out var officialVersion, out var currentVersion);
+        var detectedPrefixes = _patcher.BackupManager.DetectPatchPrefixes(info);
+
+        // GGPK 模式下补丁 bundle 与原始 bundle 共用 Bundles2/LibGGPK3/ 命名空间，
+        // 前缀匹配永远返回空。改用索引指纹判断，两种模式都可靠；指纹不可用时才回退到前缀。
+        bool? patchedByFingerprint = _patcher.BackupManager.IsClientPatched(info);
+        bool clientDirty = patchedByFingerprint ?? detectedPrefixes.Count > 0;
+
+        bool baselineReady;
+        bool needRestore;
+
+        if (baseline == BaselineStatus.Ready)
+        {
+            baselineReady = true;
+            needRestore = clientDirty;
+        }
+        else if (!clientDirty)
+        {
+            // 客户端本身干净：建/重建基线即可，建完就是当前状态，无需再恢复。
+            LogBatchProgress(baseline == BaselineStatus.Missing
+                ? "正在为当前客户端建立纯净基线..."
+                : "游戏版本已变化，正在重建纯净基线...");
+
+            baselineReady = baseline == BaselineStatus.Missing
+                ? _patcher.BackupManager.EnsureBackup(info, LogBatchProgress)
+                : _patcher.BackupManager.RebuildBaselineAsIs(info, LogBatchProgress);
+            needRestore = false;
+        }
+        else
+        {
+            // 客户端带补丁，且基线缺失或版本不符：必须由用户决定。
+            string detail = baseline == BaselineStatus.Missing
+                ? "尚未建立纯净基线"
+                : $"现有基线版本 {officialVersion} 与当前客户端 {currentVersion} 不一致";
+
+            var choice = MessageBox.Show(
+                $"检测到客户端已包含补丁记录：{string.Join("、", detectedPrefixes)}\n"
+                + $"{detail}。\n\n"
+                + "选择【是】：以当前状态建立基线并继续应用补丁。\n"
+                + "  当前已有的补丁会被固化进基线；之后第三方工具更新或卸载，基线可能失效。\n\n"
+                + "选择【否】：取消本次操作。建议先在 Steam / 官方平台点一次【验证游戏完整性】。",
+                "批量应用 — 需要确认",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+
+            if (choice != MessageBoxResult.Yes)
+            {
+                SendPatcherSnapshot(message: "已取消批量应用，未做任何写入。");
+                return;
+            }
+
+            baselineReady = _patcher.BackupManager.RebuildBaselineAsIs(info, LogBatchProgress);
+            needRestore = false;
+        }
+
+        if (!baselineReady)
+        {
+            SendPatcherSnapshot(error: "无法建立可用的纯净基线，已中止批量应用。");
+            return;
+        }
+
+        // ── 3. 恢复基线（仅客户端已带补丁时）──
+        if (needRestore)
+        {
+            LogBatchProgress("正在恢复纯净基线...");
+            var restore = await Task.Run(() => _patcher.RestoreAllDetailed(
+                _settingsStore.ClientPatch.CustomGameDirectory,
+                LogBatchProgress));
+
+            if (!restore.Success)
+            {
+                SendPatcherSnapshot(error: $"恢复纯净基线失败：{restore.Message}");
+                return;
+            }
+
+            // 索引已整体回滚，各模块的瞬态标记与逐文件备份必须一并清掉，
+            // 否则泥人 / 血条会误判「已应用」而跳过写入。
+            _patcher.ClearTransientPatchStates();
+        }
+
+        // ── 4. 整批只记一次快照 ──
+        await RecordAutoSnapshotAsync("批量应用补丁");
+
+        // ── 5. 按固定顺序应用 ──
+        //
+        // 文本类六个模块（汉化/字体/物价/染色/宝箱/传言）全部是「读文件 → 改字节 → 写文件」，
+        // 串行执行会把整份索引重写六次。这里把它们放进一个写盘会话：
+        // 每个模块的写入只登记到内存，后一个模块读到的是前一个模块的输出，
+        // 六个模块跑完后一次性落盘。
+        //
+        // 特效与外观不在会话内：泥人切档会回滚整个索引，外观是整份 .ao 替换，
+        // 两者都不适合与其它模块叠加。
+        var selectedOrder = BatchModuleOrder.Where(modules.Contains).ToList();
+        var textModules = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "translation", "fontmod", "price", "colormod", "chests", "rumours"
+        };
+        int firstText = selectedOrder.FindIndex(m => textModules.Contains(m));
+        int lastText = selectedOrder.FindLastIndex(m => textModules.Contains(m));
+
+        // 汇总里标注每个模块本次用的是默认规则还是自定义规则，出问题便于判断来源。
+        // 必须在循环前算好：各模块处理器在应用过程中会改写设置。
+        string DescribeRuleSource(string module)
+        {
+            var patch = _settingsStore!.ClientPatch;
+            return module switch
+            {
+                "colormod" => patch.ColorModRules is { Count: > 0 } r ? $"自定义 {r.Count} 条" : "默认规则 482 条",
+                "chests" => patch.ChestItems is { Count: > 0 } c ? $"自定义 {c.Count} 条" : "默认规则",
+                "rumours" => patch.RumourItems is { Count: > 0 } u ? $"自定义 {u.Count} 条" : "默认规则 19 条",
+                "iconpatch" => patch.IconPatchSelectedPaths is { Count: > 0 } i ? $"自定义 {i.Count} 个" : "默认全量",
+                "effectpatch" => patch.EffectPatchRuleIds is { Count: > 0 } e ? $"自定义 {e.Count} 条" : "默认规则 33 条",
+                "mapbeam" => patch.MapBeamTargets is { Count: > 0 } m ? $"自定义 {m.Count} 张" : "默认 7 张",
+                "mtxpatch" => "手动选择",
+                _ => "内置"
+            };
+        }
+
+        var ruleSourceTags = selectedOrder.ToDictionary(m => m, DescribeRuleSource);
+
+        var succeeded = new List<string>();
+        var failed = new List<string>();
+
+        _batchMode = true;
+        bool sessionOpen = false;
+        // 文本类会话是否因失败被整组回滚。汇总里必须说明，否则用户只看得到失败的那一个模块。
+        bool sessionAborted = false;
+        try
+        {
+            for (int index = 0; index < selectedOrder.Count; index++)
+            {
+                string module = selectedOrder[index];
+                _patcherError = null;
+                LogBatchProgress($"正在应用：{BatchModuleDisplayName(module)} ...");
+
+                if (index == firstText)
+                {
+                    _patcher.Engine.BeginSession();
+                    sessionOpen = true;
+                }
+
+                await DispatchBatchModuleAsync(module, cmd);
+
+                if (string.IsNullOrEmpty(_patcherError))
+                {
+                    succeeded.Add($"{BatchModuleDisplayName(module)}（{ruleSourceTags[module]}）");
+                }
+                else
+                {
+                    failed.Add($"{BatchModuleDisplayName(module)}：{_patcherError}");
+                }
+
+                if (index != lastText) continue;
+
+                if (failed.Count == 0)
+                {
+                    LogBatchProgress("正在把文本类改动一次性写入客户端 ...");
+                    bool committed = _patcher.Engine.CommitSession(info);
+                    sessionOpen = false;
+
+                    if (!committed)
+                    {
+                        failed.Add($"文本类统一写入失败：{PatchEngine.LastWriteException?.Message ?? "未知原因"}");
+                    }
+                }
+                else
+                {
+                    _patcher.Engine.AbortSession();
+                    sessionOpen = false;
+                    sessionAborted = true;
+                    LogBatchProgress("文本类改动已放弃写入（前面有模块失败）。");
+                }
+            }
+        }
+        finally
+        {
+            if (sessionOpen) _patcher.Engine.AbortSession();
+            _batchMode = false;
+        }
+
+        // ── 6. 汇总 ──
+        string summary = failed.Count == 0
+            ? $"批量应用完成：{succeeded.Count} 项全部成功（{string.Join("、", succeeded)}）。"
+            : $"批量应用结束：成功 {succeeded.Count} 项，失败 {failed.Count} 项。\n失败明细：{string.Join("；", failed)}";
+
+        if (sessionAborted)
+        {
+            summary += "\n注意：文本类模块共用一次写入，任一失败会整组回滚 —— 汉化、字体、物价、染色、宝箱、传言本次均未写入客户端。";
+        }
+
+        if (failed.Count == 0) SendPatcherSnapshot(message: summary);
+        else SendPatcherSnapshot(error: summary);
+    }
+
+    /// <summary>把单个模块交给它自己的处理器，参数由批量命令里嵌套的同形 payload 提供。</summary>
+    private async Task DispatchBatchModuleAsync(string module, ApplyBatchWebCommand cmd)
+    {
+        switch (module)
+        {
+            case "effectpatch" when cmd.Effects is not null:
+                await HandleApplyAllEffectsAsync(cmd.Effects);
+                break;
+
+            case "translation":
+                await HandleApplyTranslationPatchAsync();
+                break;
+
+            case "fontmod" when cmd.Font is not null:
+                await HandleApplyFontPatchAsync(cmd.Font);
+                break;
+
+            case "price" when cmd.Price is not null:
+                await HandleApplyCurrentPricesPatchAsync(cmd.Price);
+                break;
+
+            case "colormod" when cmd.ColorMod is not null:
+                await HandleApplyColorModPatchAsync(cmd.ColorMod);
+                break;
+
+            case "chests" when cmd.Chests is not null:
+                await HandleApplyChestPatchAsync(cmd.Chests);
+                break;
+
+            case "rumours" when cmd.Rumours is not null:
+                await HandleApplyRumourPatchAsync(cmd.Rumours);
+                break;
+
+            case "mapbeam" when cmd.MapBeam is not null:
+                await HandleApplyMapBeamPatchAsync(cmd.MapBeam);
+                break;
+
+            case "iconpatch" when cmd.Icon is not null:
+                await HandleApplyIconPatchAsync(cmd.Icon);
+                break;
+
+            case "mtxpatch" when cmd.Mtx is not null:
+                await HandleApplyMtxPatchAsync(cmd.Mtx);
+                break;
+
+            default:
+                _patcherError = "缺少该模块的参数，已跳过。";
+                break;
+        }
+    }
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {

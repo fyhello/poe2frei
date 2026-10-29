@@ -62,6 +62,30 @@ public sealed class PatchSnapshotInfo
 
     /// <summary>生成该快照时的游戏版本号，仅用于界面展示。</summary>
     public string GameVersion { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 建立该基线时客户端中已存在的补丁 bundle 前缀（自身与第三方）。
+    ///
+    /// 用户确认「以当前状态建立基线」时，基线索引会引用这些 bundle。
+    /// 恢复前必须校验对应目录仍然存在：若第三方工具已被卸载，
+    /// 恢复后的索引会指向缺失资源，客户端可能无法启动。
+    /// </summary>
+    public List<string> ThirdPartyPrefixes { get; set; } = [];
+}
+
+/// <summary>
+/// 官方纯净基线的可用状态。
+/// </summary>
+public enum BaselineStatus
+{
+    /// <summary>基线存在且与当前客户端版本一致。</summary>
+    Ready,
+
+    /// <summary>基线存在，但版本与当前客户端不一致，不能用于还原。</summary>
+    VersionMismatch,
+
+    /// <summary>尚无基线。</summary>
+    Missing
 }
 
 /// <summary>
@@ -73,22 +97,47 @@ public sealed class PatchBackupManager
     private readonly string _backupDir;
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 
-    // 已知第三方及自身写入的补丁 bundle 路径特征。
+    // 本工具自身写入的补丁 bundle 目录前缀。
+    //
+    // 恢复纯净时只允许删除这些目录：它们由本工具创建，删除不会影响其他软件。
+    private static readonly string[] FreiAtlasManagedPrefixes =
+    [
+        "FreiAtlas",
+        "TinyPoe2Smoother",
+        "Poe2Price"
+    ];
+
+    // 第三方工具（易刷 E-farm / exilence-next-tx-app）的补丁 bundle 前缀。
+    //
+    // 只参与「客户端是否被改动」的检测，绝不参与删除：
+    // 用户可能同时安装多个工具，删掉别人的补丁属于越权破坏。
+    private static readonly string[] ThirdPartyPatchPrefixes =
+    [
+        "EniBundle",
+        "TinyBundle"
+    ];
+
+    // GGPK 模式下 LibBundle3 写补丁时使用的输出目录（Bundles2/LibGGPK3/）。
+    //
+    // 干净客户端里没有这个目录（已实测：142 GB 的 Content.ggpk 中 Bundles2/ 下
+    // 只有 Streaming/ 和 Content/ 两类子目录）。它的存在等价于「客户端已被写入补丁」。
+    //
+    // 这一项必须参与检测：GGPK 下补丁 bundle 全部落在这里，路径里不会出现
+    // FreiAtlas / EniBundle 这些前缀，漏掉它会导致打满补丁的客户端被判定为
+    // 「纯净」，进而把脏索引存成官方底包 —— 2026-10-28 的客户端损坏事故即由此而来。
+    // 只检测，不删除。
+    private static readonly string[] GgpkPatchBundlePrefixes =
+    [
+        "LibGGPK3"
+    ];
+
+    // 检测用的全量清单 = 自身 + 第三方 + GGPK 补丁目录。
     //
     // 这里只能放工具专有名，不能用 patch_、EF_ 之类通用片段：官方资源里存在
     // jackolanternpatch_01.ao、innocence_floor_relief_v01 这类路径，会被子串匹配
     // 误判成补丁，导致纯净客户端被拒绝创建底包。
     private static readonly string[] KnownPatchPrefixes =
-    [
-        "FreiAtlas",
-        "TinyPoe2Smoother",
-        "Poe2Price",
-        // 易刷 E-farm（exilence-next-tx-app）的补丁 bundle 前缀。
-        // 用户同时安装两个工具时，缺这两项会把对方的补丁误判成「来源不明」，
-        // 导致纯净底包无法创建。
-        "EniBundle",
-        "TinyBundle"
-    ];
+        [.. FreiAtlasManagedPrefixes, .. ThirdPartyPatchPrefixes, .. GgpkPatchBundlePrefixes];
 
     /// <summary>
     /// 当前实例的备份目录是否已成功初始化并可写。
@@ -445,7 +494,8 @@ public sealed class PatchBackupManager
         string? settingsJson = null,
         List<string>? activeModules = null,
         Action<string>? logger = null,
-        byte[]? indexBytes = null)
+        byte[]? indexBytes = null,
+        IReadOnlyList<string>? thirdPartyPrefixes = null)
     {
         if (!IsAvailable) return UnavailableResult();
 
@@ -513,7 +563,8 @@ public sealed class PatchBackupManager
                 EnabledModules = activeModules ?? [],
                 SettingsJson = null,
                 IndexFingerprint = ComputeFingerprint(indexBytes),
-                GameVersion = ReadGameVersion(info)
+                GameVersion = ReadGameVersion(info),
+                ThirdPartyPrefixes = thirdPartyPrefixes?.ToList() ?? []
             };
 
             list.Add(snap);
@@ -603,12 +654,27 @@ public sealed class PatchBackupManager
         // 只在两边的版本都读得到时才比较：读不到版本说明客户端损坏或快照来自旧格式，
         // 此时放行由调用方按指纹判断，避免把「未知」当成「不匹配」而误拒。
         string currentVersion = ReadGameVersion(info);
-        if (!string.IsNullOrEmpty(target.GameVersion)
-            && !string.IsNullOrEmpty(currentVersion)
-            && !string.Equals(target.GameVersion, currentVersion, StringComparison.OrdinalIgnoreCase))
+
+        // 版本缺失一律拒绝。
+        //
+        // 旧版本创建的底包没有记录版本号，无法证明它与当前客户端兼容；
+        // 一旦把旧构建的索引写进新客户端，索引与 bundle 布局错位，客户端直接起不来
+        // （2026-10-28 实测：120,749,196 字节的底包写进 115,161,316 字节的客户端，
+        //   Content.ggpk 报废，只能用官方平台重下）。
+        // 这里宁可拒绝，也不做「读不到就当匹配」的放行。
+        if (string.IsNullOrEmpty(target.GameVersion))
         {
             return new BackupRestoreResult(false,
-                $"快照【{target.Name}】创建于 {target.GameVersion} 版本，当前客户端是 {currentVersion}。\n" +
+                $"快照【{target.Name}】没有记录游戏版本，无法确认它与当前客户端兼容。\n\n" +
+                "用未知版本的索引还原可能让客户端无法启动，已拒绝。\n" +
+                "请改用当前版本创建的备份，或通过官方平台验证游戏文件。");
+        }
+
+        if (string.IsNullOrEmpty(currentVersion)
+            || !string.Equals(target.GameVersion, currentVersion, StringComparison.OrdinalIgnoreCase))
+        {
+            return new BackupRestoreResult(false,
+                $"快照【{target.Name}】创建于 {target.GameVersion} 版本，当前客户端是 {(string.IsNullOrEmpty(currentVersion) ? "未知" : currentVersion)}。\n" +
                 "跨版本还原会让索引与资源布局错位，客户端将无法启动，已拒绝。\n" +
                 "如需回退，请用「恢复纯净客户端」重建当前版本的底包，再按需重新打补丁。");
         }
@@ -656,20 +722,34 @@ public sealed class PatchBackupManager
                 var ggpkPath = PatchEngine.GetGgpkPath(info);
                 if (!File.Exists(ggpkPath)) return new BackupRestoreResult(false, $"未找到 Content.ggpk 文件：{ggpkPath}");
 
-                using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                if (ggpk.Root.TryFindNode("Bundles2/_.index.bin", out var node) && node is LibGGPK3.Records.FileRecord record)
-                {
-                    logger?.Invoke($"正在将快照【{target.Name}】索引写回 Content.ggpk...");
-                    record.Write(snapshotBytes);
-                    logger?.Invoke("写入完成！客户端状态已恢复至该版本。");
-                    return new BackupRestoreResult(true, $"已成功恢复到版本【{target.Name}】！");
-                }
-                return new BackupRestoreResult(false, "在 Content.ggpk 中未能寻址到 Bundles2/_.index.bin 节点。");
+                return WriteIndexIntoGgpk(
+                    ggpkPath, snapshotBytes,
+                    $"已成功恢复到版本【{target.Name}】！",
+                    logger);
             }
             else if (info.Mode == GameMode.Bundles2)
             {
                 var indexPath = PatchEngine.GetBundlesIndexPath(info);
                 var tmpPath = indexPath + ".tmp";
+
+                // 基线若是在「客户端带第三方补丁」的状态下建立的，索引会引用那些 bundle。
+                // 恢复前必须确认它们仍在：缺失时写回去等于让客户端引用不存在的资源。
+                if (target.Type == PatchSnapshotType.Official && target.ThirdPartyPrefixes.Count > 0)
+                {
+                    var missing = target.ThirdPartyPrefixes
+                        .Where(p => !Directory.Exists(Path.Combine(info.GameDirectory, "Bundles2", p)))
+                        .ToList();
+
+                    if (missing.Count > 0)
+                    {
+                        return new BackupRestoreResult(false,
+                            $"该基线建立时客户端包含第三方补丁（{string.Join("、", missing)}），" +
+                            "但这些目录现在已经不存在。\n\n" +
+                            "用这份基线还原会让索引指向缺失的资源，客户端可能无法启动。\n" +
+                            "请通过官方平台验证游戏完整性后，重新建立基线。");
+                    }
+                }
+
                 File.WriteAllBytes(tmpPath, snapshotBytes);
                 // 原子覆盖：不要先 Delete 再 Move。
                 // Windows 下 Delete 成功后若 Move 因句柄占用失败，
@@ -679,7 +759,7 @@ public sealed class PatchBackupManager
                 // 如果恢复的是纯净底包，顺带清理补丁文件夹
                 if (target.Type == PatchSnapshotType.Official)
                 {
-                    foreach (var prefix in KnownPatchPrefixes)
+                    foreach (var prefix in FreiAtlasManagedPrefixes)
                     {
                         var customDir = Path.Combine(info.GameDirectory, "Bundles2", prefix);
                         if (Directory.Exists(customDir))
@@ -834,7 +914,7 @@ public sealed class PatchBackupManager
     /// <summary>
     /// 确保存在纯净官方原版备份（具备纯净性防污染检测）
     /// </summary>
-    public bool EnsureBackup(GameModeInfo info, Action<string>? logger = null)
+    public bool EnsureBackup(GameModeInfo info, Action<string>? logger = null, bool allowDirtyBaseline = false)
     {
         if (!IsAvailable)
         {
@@ -866,6 +946,18 @@ public sealed class PatchBackupManager
 
         try
         {
+            // 版本号读不到时建出来的底包永远无法使用：
+            // CheckBaseline 会一直返回 VersionMismatch，RestoreSnapshot 也会拒绝，
+            // 用户会陷入「每次批量都重建底包、但底包永远不可用」的死循环。
+            // 与其留下一个不可用的底包，不如在这里挡下并给出可执行的引导。
+            if (string.IsNullOrEmpty(ReadGameVersion(info)))
+            {
+                logger?.Invoke(
+                    "无法读取当前游戏版本（logs/LatestClient.txt 缺失或其中没有版本号）。\n" +
+                    "请先启动一次游戏进入主菜单，让客户端生成日志，再回来打补丁。");
+                return false;
+            }
+
             if (info.Mode == GameMode.GGPK)
             {
                 var ggpkPath = PatchEngine.GetGgpkPath(info);
@@ -878,10 +970,16 @@ public sealed class PatchBackupManager
                 using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
                 if (ggpk.Root.TryFindNode("Bundles2/_.index.bin", out var node) && node is LibGGPK3.Records.FileRecord record)
                 {
-                    if (!IsCleanIndex(ggpk.Index))
+                    var dirtyPrefixes = DetectPatchPrefixesInIndex(ggpk.Index);
+                    if (dirtyPrefixes.Count > 0)
                     {
-                        logger?.Invoke("检测到客户端 index 中已包含补丁 Bundle 记录，判定为非纯净客户端，拒绝将其存为纯净备份。");
-                        return false;
+                        if (!allowDirtyBaseline)
+                        {
+                            logger?.Invoke("检测到客户端 index 中已包含补丁 Bundle 记录，判定为非纯净客户端，拒绝将其存为纯净备份。");
+                            return false;
+                        }
+
+                        logger?.Invoke($"已按用户确认，以当前状态建立基线。检测到的补丁前缀：{string.Join("、", dirtyPrefixes)}");
                     }
 
                     var indexBytes = record.Read();
@@ -894,7 +992,7 @@ public sealed class PatchBackupManager
                         info, PatchSnapshotType.Official,
                         "🌟 官方出厂纯净底包",
                         "首次未打补丁时的官方纯净原始索引，永久锁定不可覆盖",
-                        null, [], logger, indexBytes);
+                        null, [], logger, indexBytes, dirtyPrefixes);
                     if (!snapResult.Success)
                     {
                         logger?.Invoke($"底包文件已生成，但快照登记失败：{snapResult.Message}");
@@ -914,10 +1012,16 @@ public sealed class PatchBackupManager
                 try
                 {
                     using var index = new LibBundle3.Index(indexPath, parsePaths: false, driveFactory);
-                    if (!IsCleanIndex(index))
+                    var dirtyPrefixes = DetectPatchPrefixesInIndex(index);
+                    if (dirtyPrefixes.Count > 0)
                     {
-                        logger?.Invoke("检测到客户端 index 中已包含补丁 Bundle 记录，判定为非纯净客户端，拒绝将其存为纯净备份。");
-                        return false;
+                        if (!allowDirtyBaseline)
+                        {
+                            logger?.Invoke("检测到客户端 index 中已包含补丁 Bundle 记录，判定为非纯净客户端，拒绝将其存为纯净备份。");
+                            return false;
+                        }
+
+                        logger?.Invoke($"已按用户确认，以当前状态建立基线。检测到的补丁前缀：{string.Join("、", dirtyPrefixes)}");
                     }
 
                     File.Copy(indexPath, backupPath, overwrite: false);
@@ -929,7 +1033,7 @@ public sealed class PatchBackupManager
                         info, PatchSnapshotType.Official,
                         "🌟 官方出厂纯净底包",
                         "首次未打补丁时的官方纯净原始索引，永久锁定不可覆盖",
-                        null, [], logger, snapBytes);
+                        null, [], logger, snapBytes, dirtyPrefixes);
                     if (!snapResult.Success)
                     {
                         logger?.Invoke($"底包文件已生成，但快照登记失败：{snapResult.Message}");
@@ -959,21 +1063,7 @@ public sealed class PatchBackupManager
     {
         try
         {
-            var bundles = index.Bundles.Span;
-            for (int i = 0; i < bundles.Length; i++)
-            {
-                string bPath = bundles[i].Path;
-                if (string.IsNullOrEmpty(bPath)) continue;
-
-                foreach (var prefix in KnownPatchPrefixes)
-                {
-                    if (bPath.Contains(prefix, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return false;
-                    }
-                }
-            }
-            return true;
+            return DetectPatchPrefixesInIndex(index).Count == 0;
         }
         catch
         {
@@ -982,6 +1072,32 @@ public sealed class PatchBackupManager
             // 之后用它还原可能让客户端无法启动。
             return false;
         }
+    }
+
+    /// <summary>
+    /// 扫描已打开的索引，返回命中的补丁 bundle 前缀（自身与第三方）。
+    /// 供已经持有索引句柄的调用方使用，避免重复打开同一文件。
+    /// </summary>
+    private static List<string> DetectPatchPrefixesInIndex(LibBundle3.Index index)
+    {
+        var hits = new List<string>();
+        var bundles = index.Bundles.Span;
+        for (int i = 0; i < bundles.Length; i++)
+        {
+            string bPath = bundles[i].Path;
+            if (string.IsNullOrEmpty(bPath)) continue;
+
+            // 检测必须用全量清单：只认自身前缀会把第三方补丁当成「纯净」。
+            foreach (var prefix in KnownPatchPrefixes)
+            {
+                if (bPath.Contains(prefix, StringComparison.OrdinalIgnoreCase)
+                    && !hits.Contains(prefix, StringComparer.OrdinalIgnoreCase))
+                {
+                    hits.Add(prefix);
+                }
+            }
+        }
+        return hits;
     }
 
     /// <summary>
@@ -1069,14 +1185,65 @@ public sealed class PatchBackupManager
     }
 
     /// <summary>
+    /// 判断客户端当前索引是否与官方基线不同，即是否已经打过补丁。
+    ///
+    /// GGPK 模式下补丁 bundle 落在 Bundles2/LibGGPK3/ 下，与原始 bundle 共用同一个
+    /// 命名空间，靠路径前缀完全判断不出来（FreiAtlas / EniBundle 这类前缀一个都匹配不上）。
+    /// 只有比对索引指纹才是模式无关的可靠判据。
+    ///
+    /// 返回 null 表示无法判定（读不到当前索引，或基线没有记录指纹），调用方应保守处理。
+    /// </summary>
+    public bool? IsClientPatched(GameModeInfo info)
+    {
+        return CheckSnapshotStaleness(info, OfficialSnapshotId) switch
+        {
+            SnapshotStaleness.Fresh => false,
+            SnapshotStaleness.Stale => true,
+            _ => null
+        };
+    }
+
+    /// <summary>
     /// 计算当前客户端索引指纹。读取失败时返回空串，调用方应视为「无法判定」而非「版本已变」。
+    /// </summary>
+    private static readonly object _fingerprintCacheLock = new();
+    private static string _fingerprintCacheKey = string.Empty;
+    private static string _fingerprintCacheValue = string.Empty;
+
+    /// <summary>
+    /// 当前客户端索引指纹。
+    ///
+    /// 索引上百 MB，每次快照推送都重算 SHA256 会把 UI 线程卡住十几秒。
+    /// 这里按「路径 + 长度 + 最后写入时间」缓存：索引没变就直接复用，
+    /// 只有补丁真正写入后才会重算一次。
     /// </summary>
     public string GetCurrentFingerprint(GameModeInfo info)
     {
         try
         {
+            string indexPath = PatchEngine.GetClientIndexPath(info);
+            var file = new FileInfo(indexPath);
+            if (!file.Exists) return string.Empty;
+
+            string cacheKey = $"{file.FullName}|{file.Length}|{file.LastWriteTimeUtc.Ticks}";
+            lock (_fingerprintCacheLock)
+            {
+                if (string.Equals(cacheKey, _fingerprintCacheKey, StringComparison.Ordinal))
+                {
+                    return _fingerprintCacheValue;
+                }
+            }
+
             var bytes = ExtractCurrentClientIndexBytes(info);
-            return bytes is null ? string.Empty : ComputeFingerprint(bytes);
+            string value = bytes is null ? string.Empty : ComputeFingerprint(bytes);
+
+            lock (_fingerprintCacheLock)
+            {
+                _fingerprintCacheKey = cacheKey;
+                _fingerprintCacheValue = value;
+            }
+
+            return value;
         }
         catch
         {
@@ -1216,6 +1383,85 @@ public sealed class PatchBackupManager
     }
 
     /// <summary>
+    /// 查询官方纯净基线的可用状态。
+    ///
+    /// 调用方据此决定：直接重建、自动重建，还是先询问用户。
+    /// </summary>
+    public BaselineStatus CheckBaseline(
+        GameModeInfo info,
+        out string? officialVersion,
+        out string? currentVersion)
+    {
+        officialVersion = null;
+        currentVersion = null;
+
+        if (!IsAvailable || !info.IsValid) return BaselineStatus.Missing;
+
+        currentVersion = ReadGameVersion(info);
+
+        var official = GetSnapshots(info).FirstOrDefault(s => s.Type == PatchSnapshotType.Official);
+        if (official is null) return BaselineStatus.Missing;
+
+        officialVersion = official.GameVersion;
+
+        // 版本号缺失时无法证明基线匹配，一律按不匹配处理：
+        // 用旧索引还原新客户端会让资源布局错位。
+        if (string.IsNullOrEmpty(currentVersion) || string.IsNullOrEmpty(officialVersion))
+        {
+            return BaselineStatus.VersionMismatch;
+        }
+
+        return string.Equals(officialVersion, currentVersion, StringComparison.OrdinalIgnoreCase)
+            ? BaselineStatus.Ready
+            : BaselineStatus.VersionMismatch;
+    }
+
+    /// <summary>
+    /// 检测当前客户端索引中已存在的补丁 bundle 前缀（自身与第三方）。
+    /// 用于向用户说明「是谁改动了客户端」，不能只给一个布尔值。
+    /// </summary>
+    public IReadOnlyList<string> DetectPatchPrefixes(GameModeInfo info)
+    {
+        if (!IsAvailable || !info.IsValid) return [];
+
+        try
+        {
+            if (info.Mode == GameMode.GGPK)
+            {
+                var ggpkPath = PatchEngine.GetGgpkPath(info);
+                if (!File.Exists(ggpkPath)) return [];
+                using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
+                return DetectPatchPrefixesInIndex(ggpk.Index);
+            }
+
+            if (info.Mode == GameMode.Bundles2)
+            {
+                var bundlesDir = PatchEngine.GetBundlesDirectory(info);
+                var indexPath = PatchEngine.GetBundlesIndexPath(info);
+                if (!File.Exists(indexPath)) return [];
+
+                var driveFactory = new DriveBundleFactory(bundlesDir);
+                try
+                {
+                    using var index = new LibBundle3.Index(indexPath, parsePaths: false, driveFactory);
+                    return DetectPatchPrefixesInIndex(index);
+                }
+                finally
+                {
+                    (driveFactory as IDisposable)?.Dispose();
+                }
+            }
+        }
+        catch
+        {
+            // 探测失败不阻断调用方：返回空表示「无法判定」，
+            // 由调用方结合 IsCleanIndex 的严格结果决定是否继续。
+        }
+
+        return [];
+    }
+
+    /// <summary>
     /// 确保官方底包对应当前游戏版本。
     ///
     /// 游戏更新后旧底包会把客户端还原成旧版本资源，导致无法启动。检测到版本变化时：
@@ -1273,6 +1519,124 @@ public sealed class PatchBackupManager
         {
             logger?.Invoke($"检查游戏版本时发生异常：{ex.Message}");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 丢弃现有基线，并以「当前客户端状态」重建一份。
+    ///
+    /// 只在用户明确确认后调用：当前客户端可能带着第三方补丁，重建出的基线会把
+    /// 那些补丁的 bundle 记录一并固化进去。检测到的前缀会写入快照元数据，
+    /// 恢复前据此校验对应目录是否仍然存在。
+    ///
+    /// 先删后建是安全的：本方法只在「基线缺失」或「基线版本不符」时被调用，
+    /// 版本不符的旧基线本身无法用于还原，删掉不会损失可用数据。
+    /// </summary>
+    public bool RebuildBaselineAsIs(GameModeInfo info, Action<string>? logger = null)
+    {
+        if (!IsAvailable || !info.IsValid) return false;
+
+        try
+        {
+            var official = GetSnapshots(info).FirstOrDefault(s => s.Type == PatchSnapshotType.Official);
+            if (official is not null)
+            {
+                DeleteSnapshotInternal(info, official.Id, out _);
+                var remaining = GetSnapshots(info).Where(s => s.Type != PatchSnapshotType.Official).ToList();
+                if (!SaveManifest(info, remaining))
+                {
+                    logger?.Invoke(LastManifestError ?? "写入快照清单失败，旧基线未清理。");
+                    return false;
+                }
+            }
+
+            string backupPath = GetBackupFilePath(info);
+            if (File.Exists(backupPath)) File.Delete(backupPath);
+
+            return EnsureBackup(info, logger, allowDirtyBaseline: true);
+        }
+        catch (Exception ex)
+        {
+            logger?.Invoke($"以当前状态重建基线时发生异常：{ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 把索引写回 Content.ggpk。
+    ///
+    /// 不能用 FileRecord.Write：它按「原地改节点字节」的方式工作。索引长度与当前节点
+    /// 不一致时需要把差额交还 GGPK 空闲链表，这一步簿记不完整会破坏 GGPK 内部结构
+    /// —— 实测表现为恢复后客户端启动报 bad allocation、后续读取找不到 bundle。
+    ///
+    /// 这里改用库提供的节点替换接口 GGPK.Replace，它和打补丁走同一条路径，
+    /// 长度变化、空闲链表、根哈希都由库维护。
+    /// </summary>
+    private static BackupRestoreResult WriteIndexIntoGgpk(
+        string ggpkPath,
+        byte[] indexBytes,
+        string successMessage,
+        Action<string>? logger)
+    {
+        string tempFile = Path.Combine(Path.GetTempPath(), $"freiatlas_index_{Guid.NewGuid():N}.bin");
+
+        try
+        {
+            File.WriteAllBytes(tempFile, indexBytes);
+
+            using (var ggpk = new LibGGPK3.GGPK(ggpkPath))
+            {
+                if (!ggpk.Root.TryFindNode("Bundles2/_.index.bin", out var node)
+                    || node is not LibGGPK3.Records.FileRecord indexRecord)
+                {
+                    return new BackupRestoreResult(false, "在 Content.ggpk 中未能寻址到 Bundles2/_.index.bin 节点。");
+                }
+
+                logger?.Invoke($"正在将索引写入 Content.ggpk（{indexBytes.Length / (1024.0 * 1024.0):F2} MB）...");
+
+                int replaced = LibGGPK3.GGPK.Replace(indexRecord, tempFile, callback: null);
+                if (replaced <= 0)
+                {
+                    return new BackupRestoreResult(false, "写入 Content.ggpk 索引失败：库未替换任何条目。");
+                }
+
+                // 索引内容变了，根哈希必须重算，否则游戏校验会拒绝这份 GGPK。
+                ggpk.RenewHashes();
+                ggpk.Flush();
+            }
+
+            // 写后自检：重新打开读回索引并逐字节比对。
+            //
+            // 这是安全网：如果节点替换在长度变化时出了问题，必须在这里暴露，
+            // 而不是等用户启动游戏才发现客户端已经起不来。
+            using (var check = new LibGGPK3.GGPK(ggpkPath))
+            {
+                if (!check.Root.TryFindNode("Bundles2/_.index.bin", out var verifyNode)
+                    || verifyNode is not LibGGPK3.Records.FileRecord verifyRecord)
+                {
+                    return new BackupRestoreResult(false,
+                        "写入后自检失败：重新打开 Content.ggpk 找不到索引节点。客户端可能已损坏，请用官方平台验证游戏文件完整性。");
+                }
+
+                var actual = verifyRecord.Read().ToArray();
+                if (actual.Length != indexBytes.Length || !actual.AsSpan().SequenceEqual(indexBytes))
+                {
+                    return new BackupRestoreResult(false,
+                        $"写入后自检失败：读回 {actual.Length:N0} 字节，期望 {indexBytes.Length:N0} 字节，内容不一致。" +
+                        "客户端可能已损坏，请用官方平台验证游戏文件完整性。");
+                }
+            }
+
+            logger?.Invoke("写入完成，读回校验一致。");
+            return new BackupRestoreResult(true, successMessage);
+        }
+        catch (Exception ex)
+        {
+            return new BackupRestoreResult(false, $"写入 Content.ggpk 索引失败：{ex.Message}", ex);
+        }
+        finally
+        {
+            try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
         }
     }
 
@@ -1370,15 +1734,10 @@ public sealed class PatchBackupManager
                 var ggpkPath = PatchEngine.GetGgpkPath(info);
                 if (!File.Exists(ggpkPath)) return new BackupRestoreResult(false, $"未找到 Content.ggpk 文件：{ggpkPath}");
 
-                using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                if (ggpk.Root.TryFindNode("Bundles2/_.index.bin", out var node) && node is LibGGPK3.Records.FileRecord record)
-                {
-                    logger?.Invoke("正在将纯净索引写入 Content.ggpk...");
-                    record.Write(cleanBytes);
-                    logger?.Invoke("写入成功！官方纯净索引已恢复。");
-                    return new BackupRestoreResult(true, "已成功还原为纯净原版客户端！");
-                }
-                return new BackupRestoreResult(false, "在 Content.ggpk 中未能寻址到 Bundles2/_.index.bin 节点。");
+                return WriteIndexIntoGgpk(
+                    ggpkPath, cleanBytes,
+                    "已成功还原为纯净原版客户端！",
+                    logger);
             }
             else if (info.Mode == GameMode.Bundles2)
             {
@@ -1388,7 +1747,7 @@ public sealed class PatchBackupManager
                 // 同还原快照：原子覆盖，避免 Delete 成功而 Move 失败导致索引丢失。
                 File.Move(tmpPath, indexPath, overwrite: true);
 
-                foreach (var prefix in KnownPatchPrefixes)
+                foreach (var prefix in FreiAtlasManagedPrefixes)
                 {
                     var customDir = Path.Combine(info.GameDirectory, "Bundles2", prefix);
                     if (Directory.Exists(customDir))

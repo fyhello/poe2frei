@@ -502,6 +502,11 @@ public class Phase3Tests
         string indexPath = Path.Combine(b2Dir, "_.index.bin");
         File.WriteAllBytes(indexPath, Encoding.UTF8.GetBytes("VERSION_1_CONTENT"));
 
+        // 快照记录游戏版本；空版本在还原时会被拒绝，测试环境需提供版本日志。
+        string logsDir = Path.Combine(tempDir, "logs");
+        Directory.CreateDirectory(logsDir);
+        File.WriteAllText(Path.Combine(logsDir, "LatestClient.txt"), "poe2_production/tags/0.5.6");
+
         var info = new GameModeInfo { IsValid = true, GameDirectory = tempDir, Mode = GameMode.Bundles2 };
         var mgr = new PatchBackupManager(Path.Combine(tempDir, "backups"));
 

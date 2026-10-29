@@ -133,7 +133,11 @@ public sealed class WebMessageRouter
             "restoreHealthBar" => new RestoreHealthBarWebCommand(),
             "getMtxDatabase" => new GetMtxDatabaseWebCommand(),
             "applyMtxPatch" => RouteApplyMtxPatch(payload),
+        "applyBatch" => RouteApplyBatch(payload),
+        "setBatchCategory" => RouteSetBatchCategory(payload),
+        "setModuleEnabled" => RouteSetModuleEnabled(payload),
             "restoreMtxPatch" => new RestoreMtxPatchWebCommand(),
+            "restoreDefaultRules" => new RestoreDefaultRulesWebCommand(),
             "restoreAllPatches" => new RestoreAllPatchesWebCommand(),
             "getPatcherSnapshots" => new GetPatcherSnapshotsWebCommand(),
             "createPatcherSnapshot" => RouteCreatePatcherSnapshot(payload),
@@ -309,8 +313,13 @@ public sealed class WebMessageRouter
             title,
             tiny,
             presetId,
-            customPresets);
+            customPresets,
+            ReadPersistOnly(payload));
     }
+
+    /// <summary>读取「只保存设置、不写客户端」标记。</summary>
+    private static bool ReadPersistOnly(JsonElement payload)
+        => payload.TryGetProperty("persistOnly", out var el) && el.ValueKind == JsonValueKind.True;
 
     private static WebCommand? RouteApplyRumourPatch(JsonElement payload)
     {
@@ -334,7 +343,7 @@ public sealed class WebMessageRouter
                 }
             }
         }
-        return new ApplyRumourPatchWebCommand(enabled, items);
+        return new ApplyRumourPatchWebCommand(enabled, items, ReadPersistOnly(payload));
     }
 
     private static WebCommand? RouteApplyChestPatch(JsonElement payload)
@@ -355,7 +364,7 @@ public sealed class WebMessageRouter
                 }
             }
         }
-        return new ApplyChestPatchWebCommand(enabled, items);
+        return new ApplyChestPatchWebCommand(enabled, items, ReadPersistOnly(payload));
     }
 
     /// <summary>
@@ -379,7 +388,7 @@ public sealed class WebMessageRouter
                 paths.Add(path);
             }
         }
-        return new ApplyIconPatchWebCommand(enabled, paths);
+        return new ApplyIconPatchWebCommand(enabled, paths, ReadPersistOnly(payload));
     }
 
     private static WebCommand? RouteApplyColorModPatch(JsonElement payload)
@@ -410,7 +419,7 @@ public sealed class WebMessageRouter
                 rules.Add(new FreiAtlas.Core.Settings.ColorModRuleItem(id, string.Empty, group, color, itemStyle, tag, isDanger, itemEnabled));
             }
         }
-        return new ApplyColorModPatchWebCommand(enabled, style, rules);
+        return new ApplyColorModPatchWebCommand(enabled, style, rules, ReadPersistOnly(payload));
     }
 
 
@@ -433,7 +442,7 @@ public sealed class WebMessageRouter
                 }
             }
         }
-        return new ApplyMapBeamPatchWebCommand(enabled, targets);
+        return new ApplyMapBeamPatchWebCommand(enabled, targets, ReadPersistOnly(payload));
     }
 
 
@@ -446,7 +455,8 @@ public sealed class WebMessageRouter
             options.MinExalted,
             options.UnitMode,
             options.StripExisting,
-            options.Categories);
+            options.Categories,
+            ReadPersistOnly(payload));
     }
 
     private static WebCommand? RoutePreviewCurrentPricesPatch(JsonElement payload)
@@ -596,7 +606,7 @@ public sealed class WebMessageRouter
             healthBarEnabled = hbEl.ValueKind == JsonValueKind.True;
         }
 
-        return new ApplyAllEffectsWebCommand(ruleIds, spellIds, includeAudio, ratio, mudManTier, healthBarEnabled);
+        return new ApplyAllEffectsWebCommand(ruleIds, spellIds, includeAudio, ratio, mudManTier, healthBarEnabled, ReadPersistOnly(payload));
     }
 
     private static WebCommand? RouteApplyMtxPatch(JsonElement payload)
@@ -631,7 +641,70 @@ public sealed class WebMessageRouter
             ? cEl.GetString() ?? "all"
             : "all";
 
-        return new ApplyMtxPatchWebCommand(names, armour, portal, pet, cls, armourFolder);
+        return new ApplyMtxPatchWebCommand(names, armour, portal, pet, cls, armourFolder, ReadPersistOnly(payload));
+    }
+
+    /// <summary>设置大类门控开关。</summary>
+    private static WebCommand? RouteSetBatchCategory(JsonElement payload)
+    {
+        string category = payload.TryGetProperty("category", out var c) && c.ValueKind == JsonValueKind.String
+            ? c.GetString() ?? string.Empty
+            : string.Empty;
+        if (string.IsNullOrWhiteSpace(category)) return null;
+
+        bool enabled = payload.TryGetProperty("enabled", out var e) && e.ValueKind == JsonValueKind.True;
+        return new SetBatchCategoryWebCommand(category, enabled);
+    }
+
+    /// <summary>设置模块启用开关。</summary>
+    private static WebCommand? RouteSetModuleEnabled(JsonElement payload)
+    {
+        string module = payload.TryGetProperty("module", out var m) && m.ValueKind == JsonValueKind.String
+            ? m.GetString() ?? string.Empty
+            : string.Empty;
+        if (string.IsNullOrWhiteSpace(module)) return null;
+
+        bool enabled = payload.TryGetProperty("enabled", out var e) && e.ValueKind == JsonValueKind.True;
+        return new SetModuleEnabledWebCommand(module, enabled);
+    }
+
+    /// <summary>
+    /// 解析批量应用命令。
+    ///
+    /// 各模块参数复用其单模块路由方法：前端把同样的 payload 嵌在对应键下，
+    /// 后端不需要为批量再定义一套参数解析，避免两处逻辑漂移。
+    /// </summary>
+    private static WebCommand? RouteApplyBatch(JsonElement payload)
+    {
+        var modules = new List<string>();
+        if (payload.TryGetProperty("modules", out var mArr) && mArr.ValueKind == JsonValueKind.Array)
+        {
+            modules.AddRange(mArr.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.String)
+                .Select(e => e.GetString()!)
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+        }
+
+        if (modules.Count == 0) return null;
+
+        return new ApplyBatchWebCommand(
+            modules,
+            Font: RouteNested<ApplyFontPatchWebCommand>(payload, "font", RouteApplyFontPatch),
+            ColorMod: RouteNested<ApplyColorModPatchWebCommand>(payload, "colorMod", RouteApplyColorModPatch),
+            Chests: RouteNested<ApplyChestPatchWebCommand>(payload, "chests", RouteApplyChestPatch),
+            Rumours: RouteNested<ApplyRumourPatchWebCommand>(payload, "rumours", RouteApplyRumourPatch),
+            Price: RouteNested<ApplyCurrentPricesPatchWebCommand>(payload, "price", RouteApplyCurrentPricesPatch),
+            MapBeam: RouteNested<ApplyMapBeamPatchWebCommand>(payload, "mapBeam", RouteApplyMapBeamPatch),
+            Icon: RouteNested<ApplyIconPatchWebCommand>(payload, "icon", RouteApplyIconPatch),
+            Effects: RouteNested<ApplyAllEffectsWebCommand>(payload, "effects", RouteApplyAllEffects),
+            Mtx: RouteNested<ApplyMtxPatchWebCommand>(payload, "mtx", RouteApplyMtxPatch));
+    }
+
+    private static T? RouteNested<T>(JsonElement payload, string name, Func<JsonElement, WebCommand?> router)
+        where T : WebCommand
+    {
+        if (!payload.TryGetProperty(name, out var el) || el.ValueKind != JsonValueKind.Object) return null;
+        return router(el) as T;
     }
 }
 
