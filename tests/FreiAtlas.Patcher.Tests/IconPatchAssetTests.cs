@@ -63,7 +63,7 @@ public sealed class IconPatchAssetTests
     [Fact]
     public void 写入空列表被拒绝()
     {
-        bool ok = new IconPatchService().Apply(InvalidClient(), [], null, out var message);
+        bool ok = new IconPatchService().Apply(InvalidClient(), [], previousPaths: null, progress: null, out var message);
 
         Assert.False(ok);
         Assert.False(string.IsNullOrWhiteSpace(message));
@@ -75,7 +75,8 @@ public sealed class IconPatchAssetTests
         bool ok = new IconPatchService().Apply(
             InvalidClient(),
             ["art/2ditems/currency/abyss/ancientclavicle.dds"],
-            null,
+            previousPaths: null,
+            progress: null,
             out var message);
 
         Assert.False(ok);

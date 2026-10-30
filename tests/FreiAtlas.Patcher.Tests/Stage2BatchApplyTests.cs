@@ -32,10 +32,21 @@ public sealed class Stage2BatchApplyTests
 
         // 泥人（含在特效模块内）切档会回滚整个索引，必须最先；
         // 外观的防具套装是整份 .ao 替换，必须最后，否则会盖掉泥人对 items 的改动。
-        Assert.Contains(
-            "\"effectpatch\", \"translation\", \"fontmod\", \"price\", \"colormod\",",
-            mw);
-        Assert.Contains("\"chests\", \"rumours\", \"mapbeam\", \"iconpatch\", \"mtxpatch\"", mw);
+        // 用正则抽取数组里的模块 id，避免因换行/空格调整而误报。
+        int arrayStart = mw.IndexOf("BatchModuleOrder", StringComparison.Ordinal);
+        Assert.True(arrayStart >= 0);
+        int arrayEnd = mw.IndexOf("];", arrayStart, StringComparison.Ordinal);
+        Assert.True(arrayEnd > arrayStart);
+        var ids = System.Text.RegularExpressions.Regex
+            .Matches(mw[arrayStart..arrayEnd], "\"([a-z]+)\"")
+            .Select(m => m.Groups[1].Value)
+            .ToArray();
+        Assert.Equal(
+            [
+                "effectpatch", "translation", "fontmod", "price", "colormod",
+                "chests", "rumours", "mapbeam", "iconpatch", "mtxpatch"
+            ],
+            ids);
 
         int order = mw.IndexOf("BatchModuleOrder", StringComparison.Ordinal);
         int effects = mw.IndexOf("\"effectpatch\", \"translation\"", order, StringComparison.Ordinal);

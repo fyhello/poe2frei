@@ -908,6 +908,48 @@ public static class MtxTranslationDictionary
         ("V", "五型"),
     ];
 
+    // Translate 会被上千次调用（843 款外观 × 每次刷新列表），
+    // 原来每次调用都要 new 874 个 Regex 并重新解析模式，是刷新卡顿的主要来源。
+    // 这里一次性构建并按「长词组优先」排序，与下面注释的语义一致。
+    private static readonly (System.Text.RegularExpressions.Regex Regex, string Replacement)[] CompiledPhrases
+        = BuildCompiledPhrases();
+
+    private static (System.Text.RegularExpressions.Regex Regex, string Replacement)[] BuildCompiledPhrases()
+    {
+        var tmp = new List<(int Length, System.Text.RegularExpressions.Regex Regex, string Replacement)>(PhraseList.Length);
+        foreach (var (pattern, rep) in PhraseList)
+        {
+            tmp.Add((pattern.Length,
+                new System.Text.RegularExpressions.Regex(
+                    $@"\b{pattern}\b",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase),
+                rep));
+        }
+
+        // 保持原有数组顺序：改成「长度降序」会改变替换优先级，
+        // 进而改变部分外观的中文名（属行为变更，不在本次清理范围内）。
+        var result = new (System.Text.RegularExpressions.Regex, string)[tmp.Count];
+        for (int i = 0; i < tmp.Count; i++)
+        {
+            result[i] = (tmp[i].Regex, tmp[i].Replacement);
+        }
+        return result;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex CamelSplit =
+        new(@"([a-z])([A-Z])", System.Text.RegularExpressions.RegexOptions.None);
+
+    private static readonly System.Text.RegularExpressions.Regex Possessive =
+        new(@"'s\b", System.Text.RegularExpressions.RegexOptions.None);
+
+    private static readonly System.Text.RegularExpressions.Regex StopWords =
+        new(@"\b(of|the|and|in|on|with|a|an|to)\b",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex CategorySuffix =
+        new(@"传送门|宠物|防具|特效|背饰|光效|外观|外观包|指针|仓库|变身|翅膀|足迹|披风|饰品|套装|技能|藏身处|组合包",
+            System.Text.RegularExpressions.RegexOptions.None);
+
     /// <summary>
     /// 将英文商城外观名称翻译为地道、直观的中文名称。
     /// </summary>
@@ -917,13 +959,12 @@ public static class MtxTranslationDictionary
         if (ExactMap.TryGetValue(englishName, out var exact)) return exact;
 
         // 驼峰命名分词
-        var s = System.Text.RegularExpressions.Regex.Replace(englishName, @"([a-z])([A-Z])", "$1 $2");
-        s = System.Text.RegularExpressions.Regex.Replace(s, @"'s\b", "之");
+        var s = CamelSplit.Replace(englishName, "$1 $2");
+        s = Possessive.Replace(s, "之");
 
-        // 依序进行短语与词根匹配替换 (长词组优先)
-        foreach (var (pattern, rep) in PhraseList)
+        // 依序进行短语与词根匹配替换（顺序与原有实现一致，仅复用预编译实例）
+        foreach (var (reg, rep) in CompiledPhrases)
         {
-            var reg = new System.Text.RegularExpressions.Regex($@"\b{pattern}\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             if (reg.IsMatch(s))
             {
                 s = reg.Replace(s, $" {rep} ");
@@ -931,7 +972,7 @@ public static class MtxTranslationDictionary
         }
 
         // 清理介词虚词
-        s = System.Text.RegularExpressions.Regex.Replace(s, @"\b(of|the|and|in|on|with|a|an|to)\b", " ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        s = StopWords.Replace(s, " ");
 
         // 分词与去重
         var tokens = s.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -948,7 +989,7 @@ public static class MtxTranslationDictionary
         var finalZh = string.Join(" ", resList);
 
         // 兜底补齐分类后缀
-        if (!System.Text.RegularExpressions.Regex.IsMatch(finalZh, @"传送门|宠物|防具|特效|背饰|光效|外观|外观包|指针|仓库|变身|翅膀|足迹|披风|饰品|套装|技能|藏身处|组合包"))
+        if (!CategorySuffix.IsMatch(finalZh))
         {
             finalZh += category switch
             {

@@ -450,8 +450,7 @@ public sealed class PatchEngine
     public bool WriteGameFiles(
         GameModeInfo info,
         IEnumerable<(string VirtualPath, byte[] Data)> files,
-        IReadOnlySet<string>? allowedNewPaths = null,
-        PatchSession.WriteMode mode = PatchSession.WriteMode.Transform)
+        IReadOnlySet<string>? allowedNewPaths = null)
     {
         lock (_fileLock)
         {
@@ -472,7 +471,7 @@ public sealed class PatchEngine
             int staged = 0;
             foreach (var (vPath, data) in fileList)
             {
-                if (!session.Stage(vPath, data, mode))
+                if (!session.Stage(vPath, data))
                 {
                     LastWriteException = new InvalidOperationException(
                         "批量写入出现路径冲突：" + string.Join("；", session.Conflicts));

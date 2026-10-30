@@ -236,19 +236,6 @@ public sealed class IconPatchService
     }
 
     /// <summary>
-    /// 把指定路径的图标写入客户端。
-    ///
-    /// 传入的路径会再次对照客户端索引校验：即使前端提交了失效路径，也不会被写进索引，
-    /// 避免向游戏注入无效条目导致启动异常。
-    /// </summary>
-    public bool Apply(
-        GameModeInfo info,
-        IReadOnlyList<string> paths,
-        Action<string>? progress,
-        out string message)
-        => Apply(info, paths, previousPaths: null, progress, out message);
-
-    /// <summary>
     /// 应用图标替换，并把「上次选过、这次取消」的图标还原成官方原版。
     ///
     /// 为什么需要 <paramref name="previousPaths"/>：图标补丁直接覆盖 DDS，

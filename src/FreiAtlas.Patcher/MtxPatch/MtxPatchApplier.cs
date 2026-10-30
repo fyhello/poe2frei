@@ -491,7 +491,14 @@ public sealed class MtxPatchApplier
         Dictionary<string, byte[]> plannedFiles)
     {
         var folder = armourEntry.ArmourSetFolder!.Trim().Replace('\\', '/').Trim('/');
-        var allPaths = session.AllFilePaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // 后续只用到 .ao 路径：先过滤再收集，避免把 426 万条全量物化到 HashSet
+        //（那是数 GB 的字符串与哈希开销，实测是防具套装覆盖的主要耗时之一）。
+        var allPaths = new List<string>();
+        foreach (var (path, _) in session.Records)
+        {
+            if (path.EndsWith(".ao", StringComparison.OrdinalIgnoreCase)) allPaths.Add(path);
+        }
 
         foreach (var (root, part) in MtxDatabase.ArmourRoots)
         {

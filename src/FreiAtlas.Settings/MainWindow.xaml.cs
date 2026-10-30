@@ -2430,6 +2430,11 @@ public partial class MainWindow : Window
             {
                 return;
             }
+            if (PatcherFacade.IsGameRunning())
+            {
+                SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
+                return;
+            }
             SendPatcherSnapshot("正在准备应用官方纯净简体中文汉化补丁，请稍候...");
             await RecordAutoSnapshotAsync("汉化补丁写入");
             string? progressLog = null;
@@ -2546,6 +2551,11 @@ public partial class MainWindow : Window
             {
                 return;
             }
+            if (PatcherFacade.IsGameRunning())
+            {
+                SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
+                return;
+            }
             SendPatcherSnapshot("正在应用头顶血条补丁，请稍候（写入期间请勿关闭窗口）...");
             var (flag, text) = await Task.Run(() => (r: _patcher.ApplyHealthBar(_settingsStore.ClientPatch.CustomGameDirectory, (string msg) =>
             {
@@ -2594,6 +2604,11 @@ public partial class MainWindow : Window
         {
             if (_patcher == null || _settingsStore == null)
             {
+                return;
+            }
+            if (PatcherFacade.IsGameRunning())
+            {
+                SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
                 return;
             }
             SendPatcherSnapshot("正在应用技能特效屏蔽，请稍候（写入期间请勿关闭窗口）...");
@@ -2646,6 +2661,13 @@ public partial class MainWindow : Window
         {
             if (_patcher == null || _settingsStore == null)
             {
+                return;
+            }
+
+            // 只保存设置时不应因游戏运行被拦；真正写盘前才检查。
+            if (!cmd.PersistOnly && PatcherFacade.IsGameRunning())
+            {
+                SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
                 return;
             }
 
