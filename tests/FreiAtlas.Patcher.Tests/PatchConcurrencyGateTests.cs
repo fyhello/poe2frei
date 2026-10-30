@@ -98,6 +98,7 @@ public sealed class PatchConcurrencyGateTests
         var gate = new PatchConcurrencyGate();
         int granted = 0;
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var attempted = new CountdownEvent(16);
 
         var tasks = Enumerable.Range(0, 16).Select(_ => Task.Run(async () =>
         {
@@ -106,10 +107,15 @@ public sealed class PatchConcurrencyGateTests
             if (lease is not null)
             {
                 Interlocked.Increment(ref granted);
-                // 持有到全部并发尝试结束，才能验证「同时只有一个」
-                await Task.Delay(50);
-                lease.Dispose();
             }
+
+            attempted.Signal();
+            // 必须等全部 16 次尝试都结束后再释放。
+            // 原先用 Task.Delay(50) 代替同步：线程池繁忙时晚启动的任务会在释放后
+            // 抢到第二个凭据，导致 granted = 2 的偶发失败。
+            attempted.Wait(TimeSpan.FromSeconds(10));
+
+            lease?.Dispose();
         })).ToArray();
 
         ready.SetResult();

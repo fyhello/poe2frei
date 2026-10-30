@@ -38,17 +38,42 @@ public sealed class Stage5RuleBasedConfigTests
     {
         string js = ReadJs();
 
-        int start = js.IndexOf("function " + functionName, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"未找到 {functionName}");
-        int end = js.IndexOf("\n  function ", start + 10, StringComparison.Ordinal);
-        Assert.True(end > start);
-        string body = js[start..end];
+        string body = ExtractFunction(js, functionName);
 
         // 必须读设置里的规则
         Assert.Contains(settingsKey, body);
         // 扫描列表优先，为空时用已保存规则
         Assert.Contains(".length > 0 ?", body);
         Assert.Contains(field, body);
+    }
+
+    /// <summary>
+    /// 按大括号配对提取一个 JS 函数体。
+    ///
+    /// 原先用 "\n  function " 按两空格缩进切片：一旦缩进改成 4 空格，
+    /// 切片会一直吞到文件末尾，后面的断言恒真 —— 典型的假通过。
+    /// </summary>
+    private static string ExtractFunction(string js, string functionName)
+    {
+        int start = js.IndexOf("function " + functionName, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"未找到 {functionName}");
+
+        int brace = js.IndexOf('{', start);
+        Assert.True(brace > start, $"{functionName} 缺少函数体");
+
+        int depth = 0;
+        for (int i = brace; i < js.Length; i++)
+        {
+            if (js[i] == '{') depth++;
+            else if (js[i] == '}')
+            {
+                depth--;
+                if (depth == 0) return js[start..(i + 1)];
+            }
+        }
+
+        Assert.Fail($"{functionName} 的大括号未闭合");
+        return string.Empty;
     }
 
     [Fact]
