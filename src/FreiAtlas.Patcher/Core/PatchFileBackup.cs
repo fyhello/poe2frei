@@ -25,9 +25,17 @@ public static class PatchFileBackup
     /// <summary>最近一次清单读写的失败原因。查询失败时为 null。</summary>
     public static string? LastManifestError { get; private set; }
 
+    /// <summary>测试用备份根目录覆盖；生产环境保持为 null。</summary>
+    internal static string? RootDirectoryOverride { get; set; }
+
     /// <summary>备份根目录。</summary>
     public static string GetRootDirectory()
     {
+        if (!string.IsNullOrEmpty(RootDirectoryOverride))
+        {
+            return RootDirectoryOverride;
+        }
+
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var current = Path.Combine(local, "FreiAtlas", "patch_file_backup");
         var legacy = Path.Combine(local, "FreiAtlas", "spell_backup");
@@ -108,6 +116,10 @@ public static class PatchFileBackup
 
         var targets = new HashSet<string>(targetPaths, StringComparer.OrdinalIgnoreCase);
         var manifest = LoadManifest(dir);
+        // 一次目录枚举取代并行循环里的逐文件 File.Exists。
+        // 商城首次备份有 13,306 个文件，逐条探测在杀软实时扫描下约 2 ms/次，
+        // 单这一项就占掉近 20 秒；目录枚举一次即可得到同样的「已存在」判断。
+        var existingFileNames = EnumerateExistingFileNames(dir);
         int saved = 0;
 
         // 首次备份可能涉及上万个小文件（商城套装一次 13,306 个）。
@@ -130,7 +142,7 @@ public static class PatchFileBackup
 
                 var fileName = FileNameFor(kv.Key);
                 var filePath = Path.Combine(dir, fileName);
-                if (File.Exists(filePath)) return;   // 清单缺失但文件在（异常恢复场景）
+                if (existingFileNames.Contains(fileName)) return;   // 清单缺失但文件在（异常恢复场景）
 
                 File.WriteAllBytes(filePath, kv.Value);
                 written[kv.Key] = new BackupEntry
@@ -333,6 +345,24 @@ public static class PatchFileBackup
     /// <summary>虚拟路径转成扁平文件名，避免在备份目录里再造一层目录。</summary>
     private static string FileNameFor(string virtualPath) =>
         virtualPath.Replace('\\', '/').TrimStart('/').Replace('/', '_');
+
+    /// <summary>
+    /// 枚举备份目录里已存在的文件名。
+    /// 只做一次目录枚举，避免 SaveOriginals 对每个待备份文件单独调用 File.Exists。
+    /// </summary>
+    private static HashSet<string> EnumerateExistingFileNames(string directory)
+    {
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in Directory.EnumerateFiles(directory))
+        {
+            var name = Path.GetFileName(path);
+            if (!string.IsNullOrEmpty(name))
+            {
+                names.Add(name);
+            }
+        }
+        return names;
+    }
 
     private static Dictionary<string, BackupEntry> LoadManifest(string dir)
     {
