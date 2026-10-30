@@ -13,6 +13,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="FreiAtlas.Patcher.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="LibBundle3">
       <HintPath>..\..\libs\LibBundle3.dll</HintPath>
     </Reference>
@@ -63,7 +67,7 @@
   <ItemGroup>
     <!-- 子目录资源必须显式列出并指定 LogicalName：
          通配符 Resources\*.gz 与子目录同名扩展名会争抢同一文件，导致其中一条被静默丢弃。 -->
-    <EmbeddedResource Include="Resources\*.json;Resources\*.gz" Exclude="Resources\iconpatch\**;Resources\mudman\**;Resources\mtx\**" />
+    <EmbeddedResource Include="Resources\*.json;Resources\*.gz" Exclude="Resources\iconpatch\**;Resources\mudman\**;Resources\mtx\**;Resources\colormod\**" />
     <EmbeddedResource Include="Resources\iconpatch\icons.dat">
       <LogicalName>FreiAtlas.Patcher.Resources.iconpatch.icons.dat</LogicalName>
     </EmbeddedResource>
@@ -78,9 +82,16 @@
     <EmbeddedResource Include="Resources\mudman\graytables.gz">
       <LogicalName>FreiAtlas.Patcher.Resources.mudman.graytables.gz</LogicalName>
     </EmbeddedResource>
-    <!-- PoE 2 商城外观 (MTX) 数据库与鼠标指针位图 -->
+    <!-- PoE 2 商城外观 (MTX) 数据库、翻译词典与鼠标指针位图 -->
     <EmbeddedResource Include="Resources\mtx\poe2_mtx.json.gz">
       <LogicalName>FreiAtlas.Patcher.Resources.mtx.poe2_mtx.json.gz</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\mtx\translations.json.gz">
+      <LogicalName>FreiAtlas.Patcher.Resources.mtx.translations.json.gz</LogicalName>
+    </EmbeddedResource>
+    <!-- 词缀染色默认表：481 条颜色 / 8 条样式 -->
+    <EmbeddedResource Include="Resources\colormod\defaults.json.gz">
+      <LogicalName>FreiAtlas.Patcher.Resources.colormod.defaults.json.gz</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Resources\mtx\cursors\**\*.bmp" />
   </ItemGroup>
