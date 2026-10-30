@@ -3,6 +3,8 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Text;
 
+using FreiAtlas.Patcher.Core;
+
 namespace FreiAtlas.Patcher.EffectPatch.MudMan;
 
 /// <summary>
@@ -70,7 +72,7 @@ public static class MudManTables
     }
 
     private static string Normalize(string path) =>
-        path.Replace('\\', '/').TrimStart('/').ToLowerInvariant();
+        VirtualPath.Normalize(path).ToLowerInvariant();
 
     private static Tables Load()
     {
@@ -82,8 +84,7 @@ public static class MudManTables
                 return Tables.Fail($"内嵌资源缺失：{ResourceName}");
             }
 
-            using var gzip = new GZipStream(stream, CompressionMode.Decompress);
-            using var reader = new StreamReader(gzip, Encoding.UTF8);
+            using var reader = new StringReader(GzipUtil.DecompressToString(stream, 32 * 1024 * 1024));
 
             var magic = reader.ReadLine();
             if (magic != Magic)
@@ -146,7 +147,7 @@ public static class MudManTables
         }
     }
 
-    private static bool TryReadCount(StreamReader reader, out int count)
+    private static bool TryReadCount(TextReader reader, out int count)
     {
         count = 0;
         var line = reader.ReadLine();

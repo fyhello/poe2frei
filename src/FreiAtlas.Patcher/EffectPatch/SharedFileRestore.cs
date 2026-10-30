@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
 
+using FreiAtlas.Patcher.Core;
+
 namespace FreiAtlas.Patcher.EffectPatch;
 
 /// <summary>
@@ -27,7 +29,7 @@ public static class SharedFileRestore
     /// </summary>
     public static bool IsSharedFile(string virtualPath)
         => !string.IsNullOrEmpty(virtualPath)
-           && virtualPath.Replace('\\', '/')
+           && VirtualPath.Normalize(virtualPath)
                .EndsWith("/characters/character.ot", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
@@ -218,7 +220,7 @@ public static class SharedFileRestore
             int openBrace = content.IndexOf('{', m.Index);
             if (openBrace < 0) break;
 
-            int closeBrace = FindMatchingBrace(content, openBrace);
+            int closeBrace = EffectTextScanner.FindMatchingBrace(content, openBrace);
             if (closeBrace < 0) break;
 
             string inner = content.Substring(openBrace + 1, closeBrace - openBrace - 1);
@@ -241,66 +243,6 @@ public static class SharedFileRestore
 
         sb.Append(content, cursor, content.Length - cursor);
         return sb.ToString();
-    }
-
-    /// <summary>
-    /// 从开括号位置找配平的闭括号。字符串与注释内的括号不参与计数。
-    ///
-    /// 单引号必须识别：.ao 里的 <c>animations = '[...]'</c> 用单引号包裹
-    /// JSON 数组，内部全是花括号，漏判会让块边界错位、还原时删错范围。
-    /// </summary>
-    private static int FindMatchingBrace(string text, int openBrace)
-    {
-        int depth = 0;
-        bool inString = false;
-        char stringQuote = '\0';
-        bool inLineComment = false;
-        bool inBlockComment = false;
-
-        for (int i = openBrace; i < text.Length; i++)
-        {
-            char c = text[i];
-
-            if (inLineComment)
-            {
-                if (c == '\n') inLineComment = false;
-                continue;
-            }
-            if (inBlockComment)
-            {
-                if (c == '*' && i + 1 < text.Length && text[i + 1] == '/') { inBlockComment = false; i++; }
-                continue;
-            }
-            if (inString)
-            {
-                if (c == '\\') { i++; continue; }
-                if (c == stringQuote) inString = false;
-                continue;
-            }
-
-            switch (c)
-            {
-                case '"':
-                case '\'':
-                    inString = true;
-                    stringQuote = c;
-                    break;
-                case '/':
-                    if (i + 1 < text.Length)
-                    {
-                        if (text[i + 1] == '/') { inLineComment = true; i++; }
-                        else if (text[i + 1] == '*') { inBlockComment = true; i++; }
-                    }
-                    break;
-                case '{': depth++; break;
-                case '}':
-                    depth--;
-                    if (depth == 0) return i;
-                    break;
-            }
-        }
-
-        return -1;
     }
 
     /// <summary>
