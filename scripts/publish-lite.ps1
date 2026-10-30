@@ -1,7 +1,10 @@
 [CmdletBinding()]
 param(
     [ValidateNotNullOrEmpty()]
-    [string] $ReleaseName = 'FreiAtlas-2026.08.02-win-x64-r11-lite-zh-runtime-check'
+    [string] $ReleaseName = 'FreiAtlas-2026.08.02-win-x64-r11-lite-zh-runtime-check',
+
+    # 可选：写入程序集版本（如 2026.10.30）。留空则沿用工程默认 1.0.0。
+    [string] $Version = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -36,6 +39,12 @@ if (Test-Path -LiteralPath $zipPath) {
 New-Item -ItemType Directory -Path (Split-Path -Parent $stagePath) -Force | Out-Null
 New-Item -ItemType Directory -Path (Split-Path -Parent $zipPath) -Force | Out-Null
 
+$versionArgs = @()
+if (-not [string]::IsNullOrWhiteSpace($Version)) {
+    $versionArgs = @("-p:Version=$Version")
+    Write-Host "Using version: $Version"
+}
+
 # 两次 publish 都带 --no-restore，因此必须先针对 win-x64 还原一次。
 # 缺这步会报 NETSDK1047：资产文件没有 net10.0-windows/win-x64 目标 ——
 # 任何一次普通的 dotnet build（Debug/非 RID）都会覆盖 project.assets.json，
@@ -58,7 +67,8 @@ if ($LASTEXITCODE -ne 0) {
     --no-restore `
     -p:DebugType=None `
     -p:DebugSymbols=false `
-    -o $managedStagePath
+    -o $managedStagePath `
+    @versionArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Settings publish failed with exit code $LASTEXITCODE."
 }
@@ -81,7 +91,8 @@ if ($frameworkNames.Count -lt 2 -or
     --no-restore `
     -p:DebugType=None `
     -p:DebugSymbols=false `
-    -o $stagePath
+    -o $stagePath `
+    @versionArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Launcher publish failed with exit code $LASTEXITCODE."
 }
