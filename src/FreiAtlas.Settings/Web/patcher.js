@@ -501,6 +501,14 @@
     if (toggleInput && toggleInput.checked !== checked) {
       toggleInput.checked = checked;
     }
+    // 关闭总开关时同步取消批量勾选：否则会出现「模块勾着、但因总开关关闭
+    // 不会被应用」的歧义（这正是批量显示成功却零写入的历史成因之一）。
+    const batchToggle = document.querySelector(`.batch-module-toggle[data-module="${moduleId}"]`);
+    if (!checked && batchToggle && batchToggle.checked) {
+      batchToggle.checked = false;
+      post("setModuleEnabled", { module: moduleId, enabled: false });
+      updateBatchHint();
+    }
   }
 
   // 状态反馈提示 (Toast)
@@ -3158,7 +3166,7 @@
     mtx: 'batchCategoryMtx'
   };
 
-  /** 当前实际会被应用的模块：大类已勾选 ∩ 小功能已勾选。 */
+  /** 当前实际会被应用的模块：大类已勾选 ∩ 小功能已勾选 ∩ 总开关未关闭。 */
   function collectSelectedModules() {
     const out = [];
     Object.entries(BATCH_CATEGORIES).forEach(([category, modules]) => {
@@ -3166,23 +3174,60 @@
       if (!catEl || !catEl.checked) return;
       modules.forEach(mod => {
         const el = document.querySelector(`.batch-module-toggle[data-module="${mod}"]`);
-        if (el && el.checked) out.push(mod);
+        if (el && el.checked && moduleMasters[mod] !== false) out.push(mod);
       });
     });
     return out;
+  }
+
+  /**
+   * 勾了模块、但不会被应用的项。
+   *
+   * 两种原因：所属大类没勾（两级门控），或模块总开关已关闭（Enabled 语义）。
+   * collectSelectedModules 会把它们排除；这里统计出来显式提示，
+   * 避免用户看到「勾上了但点了没反应」。
+   */
+  function collectExcludedModules() {
+    const out = [];
+    Object.entries(BATCH_CATEGORIES).forEach(([category, modules]) => {
+      const catEl = document.querySelector(`.batch-category-toggle[data-category="${category}"]`);
+      const categoryOff = !catEl || !catEl.checked;
+      modules.forEach(mod => {
+        const el = document.querySelector(`.batch-module-toggle[data-module="${mod}"]`);
+        if (!el || !el.checked) return;
+        if (categoryOff || moduleMasters[mod] === false) out.push(mod);
+      });
+    });
+    return out;
+  }
+
+  /** 勾选模块时自动点亮所属大类，从源头避免「勾了模块却被大类拦下」。 */
+  function ensureCategoryChecked(mod) {
+    Object.entries(BATCH_CATEGORIES).forEach(([category, modules]) => {
+      if (!modules.includes(mod)) return;
+      const catEl = document.querySelector(`.batch-category-toggle[data-category="${category}"]`);
+      if (catEl && !catEl.checked) {
+        catEl.checked = true;
+        post("setBatchCategory", { category, enabled: true });
+      }
+    });
   }
 
   function updateBatchHint() {
     const hint = element("batchApplyHint");
     if (!hint) return;
     const selected = collectSelectedModules();
+    const excluded = collectExcludedModules();
+    const excludedText = excluded.length > 0
+      ? `（另有 ${excluded.length} 项因大类未启用或总开关关闭被排除：${excluded.map(m => MODULE_TITLES[m] || m).join("、")}）`
+      : "";
     if (selected.length === 0) {
-      hint.innerText = "已选 0 项";
-      hint.style.color = "var(--text-muted, #94a3b8)";
+      hint.innerText = "已选 0 项" + excludedText;
+      hint.style.color = excluded.length > 0 ? "#f59e0b" : "var(--text-muted, #94a3b8)";
       return;
     }
-    hint.innerText = `已选 ${selected.length} 项：${selected.map(m => MODULE_TITLES[m] || m).join("、")}`;
-    hint.style.color = "#34d399";
+    hint.innerText = `已选 ${selected.length} 项：${selected.map(m => MODULE_TITLES[m] || m).join("、")}${excludedText}`;
+    hint.style.color = excluded.length > 0 ? "#f59e0b" : "#34d399";
   }
 
   /** 按后端下发的设置回显勾选状态。 */
@@ -3214,6 +3259,7 @@
     document.querySelectorAll(".batch-module-toggle").forEach(el => {
       el.addEventListener("change", () => {
         const mod = el.dataset.module;
+        if (el.checked) ensureCategoryChecked(mod);
         post("setModuleEnabled", { module: mod, enabled: el.checked });
         if (mod in moduleMasters) moduleMasters[mod] = el.checked;
         updateBatchHint();

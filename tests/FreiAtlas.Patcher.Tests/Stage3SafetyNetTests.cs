@@ -79,8 +79,9 @@ public sealed class Stage3SafetyNetTests
         string body = mw[start..end];
 
         // GGPK 下前缀匹配永远返回空，必须优先用指纹。
+        // 前缀探测失败（null）时按「可能已打补丁」保守处理，不能当成纯净。
         Assert.Contains("IsClientPatched(info)", body);
-        Assert.Contains("patchedByFingerprint ?? detectedPrefixes.Count > 0", body);
+        Assert.Contains("patchedByFingerprint ?? (detectedPrefixes is null || detectedPrefixes.Count > 0)", body);
     }
 
     [Fact]
@@ -113,5 +114,19 @@ public sealed class Stage3SafetyNetTests
         Assert.Contains("metadata/ui/uisettings.xml", engine);
         Assert.Contains("data/balance/baseitemtypes.datc64", engine);
         Assert.Contains("metadata/characters/character.ot", engine);
+    }
+
+    [Fact]
+    public void 颜色规则库未加载时必须中止而不是静默成功()
+    {
+        string service = Read("src", "FreiAtlas.Patcher", "Modules", "ColorMod", "ColorModService.cs");
+
+        int start = service.IndexOf("public bool ApplyColorMods", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+
+        // 入口 1500 字符内必须检查规则库加载状态并返回失败。
+        string entry = service.Substring(start, Math.Min(1500, service.Length - start));
+        Assert.Contains("ColorModOverrides.IsLoaded", entry);
+        Assert.Contains("return false;", entry);
     }
 }

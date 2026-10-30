@@ -69,9 +69,9 @@ public sealed class Stage2BatchApplyTests
         // 大类未勾选时整组跳过
         Assert.Contains(".batch-category-toggle", body);
         Assert.Contains("if (!catEl || !catEl.checked) return;", body);
-        // 小功能未勾选时跳过
+        // 小功能未勾选时跳过；总开关关闭的模块也跳过（Enabled 只表示总开关）
         Assert.Contains(".batch-module-toggle", body);
-        Assert.Contains("if (el && el.checked) out.push(mod);", body);
+        Assert.Contains("if (el && el.checked && moduleMasters[mod] !== false) out.push(mod);", body);
     }
 
     [Fact]

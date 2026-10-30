@@ -53,6 +53,15 @@ public partial class MainWindow : Window
     private PatcherFacade? _patcher;
     private string? _patcherMessage;
     private string? _patcherError;
+
+    /// <summary>
+    /// 本轮批量内累积的错误。
+    ///
+    /// _patcherError 只是「最近一条错误」的展示字段，会被下一条 message 快照清空；
+    /// 批量成功与否必须看这份累积列表，否则模块先报错、再推一条进度消息，
+    /// 就会被误判为成功。
+    /// </summary>
+    private readonly List<string> _patcherIssues = [];
     private PendingPricePatch? _pendingPricePatch;
 
     /// <summary>
@@ -1950,6 +1959,7 @@ public partial class MainWindow : Window
             // 红字在界面上一闪而过，必须同时落盘，否则事后无法定位。
             AppendProgressLog("ERROR", error);
             _patcherError = error;
+            _patcherIssues.Add(error);
             _patcherMessage = null;
         }
         else if (message is not null)
@@ -2187,8 +2197,6 @@ public partial class MainWindow : Window
         // 只保存设置：自动保存路径不写客户端。
         if (cmd.PersistOnly) return;
 
-        _patcher.Engine.ReleaseClientIndex();
-
         LogBatchProgress($"[诊断] 商城(选择前): 名称={cmd.SelectedNames?.Count ?? -1}, 套装={(string.IsNullOrWhiteSpace(cmd.SelectedArmourSetName) ? "无" : cmd.SelectedArmourSetName)}, 传送门={(string.IsNullOrWhiteSpace(cmd.SelectedPortalName) ? "无" : cmd.SelectedPortalName)}, 宠物={(string.IsNullOrWhiteSpace(cmd.SelectedPetName) ? "无" : cmd.SelectedPetName)}, persistOnly={cmd.PersistOnly}");
 
         // 商城外观没有默认规则，必须手动选择条目。
@@ -2335,10 +2343,8 @@ public partial class MainWindow : Window
             // 未配置自定义规则时使用默认规则：内置图标包全量。
             // 这样用户只勾选「图标替换」、不进配置页，也能直接生效。
             // 设置里仍然保存空列表，保持「空 = 默认规则」的语义。
-            // Apply 内部会做 CheckResourceLock；共享索引句柄会独占 Content.ggpk，
-            // 导致它把我们自己判成「其他进程占用」。这里必须先释放。
-            _patcher.Engine.ReleaseClientIndex();
-
+            // 占用检测已改为「独占失败后用共享模式二次探测」，不会再把自己的
+            // 只读索引句柄误判成外部占用，因此这里不需要预先释放会话。
             LogBatchProgress($"[诊断] 图标: enabled={cmd.Enabled}, 传入路径={cmd.Paths?.Count ?? -1}, 内置可用={FreiAtlas.Patcher.IconPatch.IconPatchService.IsAvailable}");
 
             IReadOnlyList<string> configuredPaths = cmd.Paths ?? Array.Empty<string>();
@@ -3105,8 +3111,10 @@ public partial class MainWindow : Window
 
         // GGPK 模式下补丁 bundle 与原始 bundle 共用 Bundles2/LibGGPK3/ 命名空间，
         // 前缀匹配永远返回空。改用索引指纹判断，两种模式都可靠；指纹不可用时才回退到前缀。
+        // 前缀探测返回 null 表示「无法判定」：此时按「可能已打补丁」保守处理，
+        // 避免把来源不明的客户端固化成纯净底包。
         bool? patchedByFingerprint = _patcher.BackupManager.IsClientPatched(info);
-        bool clientDirty = patchedByFingerprint ?? detectedPrefixes.Count > 0;
+        bool clientDirty = patchedByFingerprint ?? (detectedPrefixes is null || detectedPrefixes.Count > 0);
 
         MarkStage("基线检查");
 
@@ -3138,7 +3146,7 @@ public partial class MainWindow : Window
                 : $"现有基线版本 {officialVersion} 与当前客户端 {currentVersion} 不一致";
 
             var choice = MessageBox.Show(
-                $"检测到客户端已包含补丁记录：{string.Join("、", detectedPrefixes)}\n"
+                $"检测到客户端已包含补丁记录：{string.Join("、", detectedPrefixes ?? [])}\n"
                 + $"{detail}。\n\n"
                 + "选择【是】：以当前状态建立基线并继续应用补丁。\n"
                 + "  当前已有的补丁会被固化进基线；之后第三方工具更新或卸载，基线可能失效。\n\n"
@@ -3234,6 +3242,7 @@ public partial class MainWindow : Window
 
         var succeeded = new List<string>();
         var failed = new List<string>();
+        _patcherIssues.Clear();
 
         _batchMode = true;
         bool sessionOpen = false;
@@ -3245,6 +3254,7 @@ public partial class MainWindow : Window
             {
                 string module = selectedOrder[index];
                 _patcherError = null;
+                int issueMark = _patcherIssues.Count;
                 LogBatchProgress($"正在应用：{BatchModuleDisplayName(module)} ...");
 
                 if (index == firstSession)
@@ -3258,17 +3268,21 @@ public partial class MainWindow : Window
                 await DispatchBatchModuleAsync(module, cmd);
                 int moduleWrites = _patcher.Engine.ModuleWriteCounts.TryGetValue(
                     BatchModuleDisplayName(module), out var wc) ? wc : 0;
-                LogBatchProgress($"[汇总] {BatchModuleDisplayName(module)}: 写入 {moduleWrites} 个文件, 错误={(string.IsNullOrEmpty(_patcherError) ? "无" : _patcherError)}");
+
+                // 以累积列表判定成败：_patcherError 可能已被后续 message 快照清空，
+                // 单看它会把「报错后又推了条进度」的模块误判为成功。
+                string moduleIssues = string.Join("；", _patcherIssues.Skip(issueMark));
+                LogBatchProgress($"[汇总] {BatchModuleDisplayName(module)}: 写入 {moduleWrites} 个文件, 错误={(moduleIssues.Length == 0 ? "无" : moduleIssues)}");
                 _patcher.Engine.CurrentModuleTag = null;
                 MarkStage(BatchModuleDisplayName(module), moduleTimer.ElapsedMilliseconds);
 
-                if (string.IsNullOrEmpty(_patcherError))
+                if (moduleIssues.Length == 0)
                 {
                     succeeded.Add($"{BatchModuleDisplayName(module)}（{ruleSourceTags[module]}）");
                 }
                 else
                 {
-                    failed.Add($"{BatchModuleDisplayName(module)}：{_patcherError}");
+                    failed.Add($"{BatchModuleDisplayName(module)}：{moduleIssues}");
                 }
 
                 if (index != lastSession) continue;
@@ -3282,7 +3296,7 @@ public partial class MainWindow : Window
 
                     if (!committed)
                     {
-                        failed.Add($"会话统一写入失败：{PatchEngine.LastWriteException?.Message ?? "未知原因"}");
+                        failed.Add($"会话统一写入失败：{_patcher.Engine.LastWriteException?.Message ?? "未知原因"}");
                     }
                 }
                 else
@@ -3392,7 +3406,7 @@ public partial class MainWindow : Window
             // 批量勾选本身就是「启用」意图：强制 Enabled=true，
             // 否则会被各模块自己的总开关（默认关闭）拦下，表现为「显示成功但没写入」。
             case "iconpatch" when cmd.Icon is not null:
-                await HandleApplyIconPatchAsync(cmd.Icon with { Enabled = true });
+                await HandleApplyIconPatchAsync(cmd.Icon);
                 break;
 
             case "mtxpatch" when cmd.Mtx is not null:
