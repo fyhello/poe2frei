@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 
 #nullable enable
 
+using FreiAtlas.Patcher.Core;
 namespace FreiAtlas.Patcher.Modules.ColorMod;
 
 public static class ColorModDefaults
@@ -373,8 +374,8 @@ public static class ColorModDefaults
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException($"内嵌颜色表资源缺失：{ResourceName}");
 
-        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
-        var document = JsonSerializer.Deserialize<ColorModDocument>(gzip, ResourceJsonOptions)
+        var jsonBytes = GzipUtil.DecompressToBytes(stream, 8 * 1024 * 1024);
+        var document = JsonSerializer.Deserialize<ColorModDocument>(jsonBytes, ResourceJsonOptions)
             ?? throw new InvalidOperationException($"内嵌颜色表资源为空：{ResourceName}");
 
         if (document.Version != 1)

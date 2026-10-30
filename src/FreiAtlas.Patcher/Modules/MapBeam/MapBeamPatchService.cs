@@ -320,7 +320,7 @@ public sealed class MapBeamPatchService
         // 而原路径的 wrapper 已经写进去并引用它 —— 结果是模型引用不存在的资源。
         var allowedNewPaths = new HashSet<string>(
             filesToWrite
-                .Select(f => f.VirtualPath.Replace('\\', '/').TrimStart('/'))
+                .Select(f => VirtualPath.Normalize(f.VirtualPath))
                 .Where(p => p.Contains("EF_SceneryChild_", StringComparison.OrdinalIgnoreCase)),
             StringComparer.OrdinalIgnoreCase);
 
@@ -359,7 +359,7 @@ public sealed class MapBeamPatchService
             return true;
         }
 
-        string errorDetail = PatchEngine.LastWriteException != null ? $" ({PatchEngine.LastWriteException.Message})" : "";
+        string errorDetail = _engine.LastWriteException != null ? $" ({_engine.LastWriteException.Message})" : "";
         progress?.Invoke($"写入游戏文件失败{errorDetail}，请检查客户端文件访问权限或备份状态。");
         return false;
     }
@@ -489,7 +489,7 @@ public sealed class MapBeamPatchService
 
         if (string.IsNullOrWhiteSpace(probe)) return fallback;
 
-        string normalized = probe.Replace('\\', '/');
+        string normalized = VirtualPath.Normalize(probe);
         int slash = normalized.LastIndexOf('/');
         if (slash <= 0) return fallback;
 

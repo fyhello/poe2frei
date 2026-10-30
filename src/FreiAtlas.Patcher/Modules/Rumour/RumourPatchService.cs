@@ -47,7 +47,12 @@ public sealed class RumourRule
 /// </summary>
 public sealed class RumourPatchService
 {
-    private sealed record DatLayout(int RowCount, int RowSize, int StringBase);
+    /// <summary>
+    /// 未写入的指针槽填充值（0xFE 重复 8 字节）。
+    /// 与 .datc64 的哨兵 0xBBBBBBBBBBBBBBBB 不同，这里表示「该槽未被赋值」。
+    /// </summary>
+    private const ulong EmptyPointerFill = 0xFEFEFEFEFEFEFEFEUL;
+
 
     public const int RumourTextOffset = 227;
 
@@ -528,7 +533,7 @@ public sealed class RumourPatchService
         if (!ok)
         {
             // 透出根因，否则用户只看到「写入失败」无法定位问题。
-            progress?.Invoke($"写入传言补丁失败：{PatchEngine.LastWriteException?.Message ?? "未知原因"}");
+            progress?.Invoke($"写入传言补丁失败：{_engine.LastWriteException?.Message ?? "未知原因"}");
             return false;
         }
 
@@ -681,7 +686,7 @@ public sealed class RumourPatchService
         if (waData.Length < 16) return dict;
 
         int rowCount = BitConverter.ToInt32(waData, 0);
-        int sentinelPos = DatBinaryUtils.FindSentinel(waData);
+        int sentinelPos = DatBinaryUtils.FindSentinel(waData, rowCount);
 
         if (sentinelPos < 0 || rowCount <= 0) return dict;
         int rowBytes = sentinelPos - 4;
@@ -694,7 +699,7 @@ public sealed class RumourPatchService
             if (pointerPos + 8 <= sentinelPos)
             {
                 ulong offset = BitConverter.ToUInt64(waData, pointerPos);
-                if (offset >= 8 && offset != 18374403900871474942uL)
+                if (offset >= 8 && offset != EmptyPointerFill)
                 {
                     int start = sentinelPos + (int)offset;
                     if (start + 1 < waData.Length)

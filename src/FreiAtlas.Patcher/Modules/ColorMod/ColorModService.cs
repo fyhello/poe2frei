@@ -51,7 +51,7 @@ public sealed class ColorModService
 
                 // 立即快照异常：静态字段后续可能被别的读取覆盖。
                 // 扫描属只读流程，读取失败时明确告知是 IO / 损坏问题，而不是「客户端没有这些文件」。
-                var scanReadEx = PatchEngine.LastReadException;
+                var scanReadEx = _engine.LastReadException;
                 if (scanReadEx is not null)
                 {
                     progress?.Invoke($"动态扫描读取客户端资源异常：{scanReadEx.Message}");
@@ -132,6 +132,15 @@ public sealed class ColorModService
             return false;
         }
 
+        // 规则库是颜色映射的唯一来源：加载失败时继续跑，所有未被用户显式覆盖的词缀
+        // 都会原样返回，界面却报「成功」。这里必须显式中止并说明原因。
+        if (!ColorModOverrides.IsLoaded)
+        {
+            progress?.Invoke(
+                $"颜色规则库未加载：{ColorModOverrides.LoadError ?? "未知原因"}。已中止上色，避免输出与预期不符。");
+            return false;
+        }
+
         var entryList = entries.ToList();
         var enabledEntries = entryList.Where(e => e.Enabled && !string.IsNullOrWhiteSpace(e.StatId)).ToList();
 
@@ -167,7 +176,7 @@ public sealed class ColorModService
 
         // 写入流程对读取失败零容忍：读不到 CSD 会导致 filesToWrite 为空，
         // 若继续往下走会变成「没改任何文件却报成功」的假成功。
-        var applyReadEx = PatchEngine.LastReadException;
+        var applyReadEx = _engine.LastReadException;
         if (applyReadEx is not null)
         {
             progress?.Invoke($"读取客户端 CSD 文件失败，已中止染色写入：{applyReadEx.Message}");
@@ -234,7 +243,7 @@ public sealed class ColorModService
         {
             // 透出根因：写入失败可能是备份不可用、路径不匹配或写入后校验不一致，
             // 只提示「检查文件占用或运行权限」会把用户引向错误方向。
-            progress?.Invoke($"写入客户端文件失败：{PatchEngine.LastWriteException?.Message ?? "请检查文件占用或运行权限。"}");
+            progress?.Invoke($"写入客户端文件失败：{_engine.LastWriteException?.Message ?? "请检查文件占用或运行权限。"}");
         }
 
         return writeSuccess;
@@ -257,7 +266,7 @@ public sealed class ColorModService
         if (string.IsNullOrWhiteSpace(text)) return bytes;
 
         string[] array = text.Split(["\r\n", "\n"], StringSplitOptions.None);
-        string fileName = Path.GetFileName(path.Replace('\\', '/'));
+        string fileName = Path.GetFileName(VirtualPath.Normalize(path));
         var occurrenceMap = new Dictionary<string, int>(StringComparer.Ordinal);
         var outputLines = new List<string>(array.Length);
         bool changed = false;

@@ -161,7 +161,7 @@ public sealed class HealthBarApplier
             progress?.Invoke($"写入 {files.Count} 个文件...");
             if (!_engine.WriteGameFiles(info, files))
             {
-                message = PatchEngine.LastWriteException?.Message ?? "写入失败。";
+                message = _engine.LastWriteException?.Message ?? "写入失败。";
                 return false;
             }
 
@@ -211,7 +211,7 @@ public sealed class HealthBarApplier
             progress?.Invoke($"正在还原 {files.Count} 个文件至官方原版...");
             if (!_engine.WriteGameFiles(info, files))
             {
-                message = PatchEngine.LastWriteException?.Message ?? "还原写入失败。";
+                message = _engine.LastWriteException?.Message ?? "还原写入失败。";
                 return false;
             }
 

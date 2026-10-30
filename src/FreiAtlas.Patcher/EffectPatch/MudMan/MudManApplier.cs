@@ -223,7 +223,7 @@ public sealed class MudManApplier
 
             if (!_engine.WriteGameFiles(info, files))
             {
-                message = PatchEngine.LastWriteException?.Message ?? "写入失败。";
+                message = _engine.LastWriteException?.Message ?? "写入失败。";
                 return false;
             }
 

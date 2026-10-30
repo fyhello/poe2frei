@@ -106,16 +106,54 @@ public sealed class PatcherFacade
         "Client"
     ];
 
+    private static readonly object GameRunningGate = new();
+    private static DateTime _gameRunningCheckedAtUtc = DateTime.MinValue;
+    private static bool _gameRunningCached;
+
+    /// <summary>
+    /// 检测游戏是否在运行。
+    ///
+    /// 结果缓存 1 秒：批量与快照推送会连续调用几十次，每次都枚举 6 个进程名
+    /// 既慢又会泄漏 Process 句柄。Process 对象必须 Dispose，
+    /// 否则单次用户操作就能累积上百个未释放的句柄。
+    /// </summary>
     public static bool IsGameRunning()
     {
-        foreach (var name in PoE2ProcessNames)
+        lock (GameRunningGate)
         {
-            if (Process.GetProcessesByName(name).Length > 0)
+            if (DateTime.UtcNow - _gameRunningCheckedAtUtc < TimeSpan.FromSeconds(1))
             {
-                return true;
+                return _gameRunningCached;
             }
         }
-        return false;
+
+        bool running = false;
+        foreach (var name in PoE2ProcessNames)
+        {
+            var processes = Process.GetProcessesByName(name);
+            try
+            {
+                if (processes.Length > 0)
+                {
+                    running = true;
+                    break;
+                }
+            }
+            finally
+            {
+                foreach (var process in processes)
+                {
+                    process.Dispose();
+                }
+            }
+        }
+
+        lock (GameRunningGate)
+        {
+            _gameRunningCached = running;
+            _gameRunningCheckedAtUtc = DateTime.UtcNow;
+        }
+        return running;
     }
 
     public IReadOnlyList<FontItem> GetInstalledFonts() => FontPatchService.GetInstalledFonts();
@@ -185,13 +223,13 @@ public sealed class PatcherFacade
         FreiAtlas.Patcher.EffectPatch.MudMan.MudManApplier.ClearState();
         FreiAtlas.Patcher.EffectPatch.HealthBar.HealthBarApplier.ClearState();
 
-        PatchFileBackup.Clear("effect_patch");
-        PatchFileBackup.Clear("mtx_patch_v1");
+        PatchFileBackup.Clear(FreiAtlas.Patcher.EffectPatch.EffectPatchApplier.BackupGroup);
+        PatchFileBackup.Clear(FreiAtlas.Patcher.MtxPatch.MtxPatchApplier.BackupGroup);
         PatchFileBackup.Clear(FreiAtlas.Patcher.IconPatch.IconPatchService.BackupGroup);
         PatchFileBackup.Clear(FreiAtlas.Patcher.EffectPatch.SpellEffectBlocker.BackupGroup);
         // 旧版本技能屏蔽曾用独立分组存放闪电球特效，现已并入 spell_block_v2。
         // 老用户机器上可能仍有残留，一并清掉。
-        PatchFileBackup.Clear("lightning_spark");
+        PatchFileBackup.Clear(FreiAtlas.Patcher.EffectPatch.SpellEffectBlocker.LegacyLightningSparkGroup);
     }
 
     /// <summary>是否有可还原的图标备份。</summary>
@@ -793,7 +831,6 @@ public sealed class PatcherFacade
     /// <summary>泥人名单表条目数。</summary>
     public int MudManListCount => MudManTables.ListCount;
 
-    /// <summary>应用指定泥人档位。</summary>
     /// <summary>
     /// 把泥人还原点的索引指纹同步到当前客户端索引。
     ///
@@ -807,14 +844,22 @@ public sealed class PatcherFacade
         var info = GetGameInfo(preferredDirectory);
         if (!info.IsValid) return false;
 
-        var point = _backupManager.GetSnapshots(info)
-            .Where(s => s.Name.StartsWith(MudManApplier.RestorePointPrefix, StringComparison.Ordinal))
-            .OrderByDescending(s => s.CreatedAt)
-            .FirstOrDefault();
+        var point = FindMudManRestorePoint(info);
 
         return point is not null
                && _backupManager.RefreshSnapshotFingerprint(info, point.Id);
     }
+
+    /// <summary>
+    /// 取最近一次泥人还原点。
+    /// 状态查询与指纹刷新必须用同一判据，否则会出现
+    /// 「界面说有还原点、刷新时却找不到」的分叉。
+    /// </summary>
+    private PatchSnapshotInfo? FindMudManRestorePoint(GameModeInfo info) =>
+        _backupManager.GetSnapshots(info)
+            .Where(s => s.Name.StartsWith(MudManApplier.RestorePointPrefix, StringComparison.Ordinal))
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefault();
 
     public bool ApplyMudManTier(
         MudManTier tier,
@@ -880,13 +925,9 @@ public sealed class PatcherFacade
         string? preferredDirectory = null)
     {
         var info = GetGameInfo(preferredDirectory);
-        if (!info.IsValid || _backupManager is null) return (false, null, false);
+        if (!info.IsValid) return (false, null, false);
 
-        var point = _backupManager.GetSnapshots(info)
-            .Where(s => s.Name.StartsWith(MudManApplier.RestorePointPrefix, StringComparison.Ordinal))
-            .OrderByDescending(s => s.CreatedAt)
-            .FirstOrDefault();
-
+        var point = FindMudManRestorePoint(info);
         if (point is null) return (false, null, false);
 
         string current = PatchBackupManager.ReadGameVersion(info);

@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
+using FreiAtlas.Patcher.Core;
 namespace FreiAtlas.Patcher.EffectPatch;
 
 /// <summary>
@@ -220,9 +221,7 @@ public static class Poe2SpellBlockDatabase
         using var stream = asm.GetManifestResourceStream(ResourceName)
             ?? throw new FileNotFoundException($"内嵌资源未找到：{ResourceName}");
 
-        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
-        using var reader = new StreamReader(gzip, System.Text.Encoding.UTF8);
-        var json = reader.ReadToEnd();
+        var json = GzipUtil.DecompressToString(stream, 16 * 1024 * 1024);
 
         var root = JsonSerializer.Deserialize<RawDatabaseRoot>(json, new JsonSerializerOptions
         {

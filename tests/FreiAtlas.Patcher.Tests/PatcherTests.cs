@@ -155,6 +155,7 @@ public class PatcherTests
     }
 
     [Fact]
+    [Trait("Category", "RequiresGameClient")]
     public void ReadRealGgpkFile_WhenPresent_Succeeds()
     {
         string realGameDir = @"E:\PSAutoRecover\ui\rood\Grinding Gear Games\Path of Exile 2";
@@ -183,6 +184,7 @@ public class PatcherTests
     }
 
     [Fact]
+    [Trait("Category", "RequiresGameClient")]
     public void ProcessRealGgpkData_Succeeds()
     {
         string realGameDir = @"E:\PSAutoRecover\ui\rood\Grinding Gear Games\Path of Exile 2";

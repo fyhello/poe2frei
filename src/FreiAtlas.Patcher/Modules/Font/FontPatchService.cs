@@ -281,7 +281,7 @@ public sealed class FontPatchService
 
         foreach (var path in UiSettingPaths)
         {
-            var cleanPath = path.Replace('\\', '/').TrimStart('/');
+            var cleanPath = VirtualPath.Normalize(path);
             if (!batch.TryGetValue(cleanPath, out var bytes) || bytes.Length == 0) continue;
 
             var res = ParseFontSettings(bytes, cleanPath);
@@ -368,7 +368,7 @@ public sealed class FontPatchService
 
         foreach (var path in UiSettingPaths)
         {
-            var cleanPath = path.Replace('\\', '/').TrimStart('/');
+            var cleanPath = VirtualPath.Normalize(path);
             if (!settingsBatch.TryGetValue(cleanPath, out var bytes) || bytes.Length == 0) continue;
             string actualPath = cleanPath;
 
@@ -416,7 +416,7 @@ public sealed class FontPatchService
         {
             // 透出 PatchEngine 记录的根因：写入失败可能是备份不可用、路径不匹配
             // 或写入后校验不一致，只报「失败」用户无从判断该做什么。
-            progress?.Invoke($"字体补丁写入失败：{PatchEngine.LastWriteException?.Message ?? "未知原因"}");
+            progress?.Invoke($"字体补丁写入失败：{_engine.LastWriteException?.Message ?? "未知原因"}");
         }
         return success;
     }

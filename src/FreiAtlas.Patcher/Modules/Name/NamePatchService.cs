@@ -47,7 +47,7 @@ public sealed class NamePatchService
         public bool IsIdString => FileName != "archnemesismods.datc64";
     }
 
-    private record DatLayout(int RowCount, int RowSize, int StringBase);
+
 
     private static readonly Dictionary<NamePatchKind, KindInfo> KindInfos = new()
     {
@@ -424,7 +424,7 @@ public sealed class NamePatchService
         {
             // 透出根因，否则用户只看到「写入失败」无法判断是游戏没关、
             // 备份目录不可写还是写入后校验不一致。
-            progress?.Invoke($"{label}补丁写入失败：{PatchEngine.LastWriteException?.Message ?? "未知原因"}");
+            progress?.Invoke($"{label}补丁写入失败：{_engine.LastWriteException?.Message ?? "未知原因"}");
         }
         return success;
     }

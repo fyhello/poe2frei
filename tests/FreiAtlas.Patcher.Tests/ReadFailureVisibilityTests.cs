@@ -6,7 +6,7 @@ namespace FreiAtlas.Patcher.Tests;
 /// <summary>
 /// 读取失败可见化。
 ///
-/// 早期 <c>PatchEngine.ReadGameFiles</c> 捕获异常后只写静态属性 <c>LastReadException</c>，
+/// 早期 <c>PatchEngine.ReadGameFiles</c> 捕获异常后只写 <c>LastReadException</c> 字段，
 /// 然后返回空字典。5 个调用方都不检查它，于是「IO 占用 / 解压损坏 / 权限异常」
 /// 与「客户端确实没有这个文件」在调用方看来完全一样。
 ///
@@ -70,7 +70,7 @@ public sealed class ReadFailureVisibilityTests
         // 在 SaveOriginals 之前必须出现 LastReadException 检查
         int readIdx = text.IndexOf("_engine.ReadGameFiles(info, unbackedTargets)", StringComparison.Ordinal);
         int saveIdx = text.IndexOf("PatchFileBackup.SaveOriginals(BackupGroup, unbackedTargets", StringComparison.Ordinal);
-        int checkIdx = text.IndexOf("PatchEngine.LastReadException", readIdx, StringComparison.Ordinal);
+        int checkIdx = text.IndexOf("_engine.LastReadException", readIdx, StringComparison.Ordinal);
 
         Assert.True(readIdx > 0, "未找到读取原件的调用");
         Assert.True(saveIdx > readIdx, "未找到 SaveOriginals 调用");
@@ -92,7 +92,7 @@ public sealed class ReadFailureVisibilityTests
 
         // 读取之后 400 字符内必须出现异常检查与 return false
         string window = text.Substring(readIdx, Math.Min(500, text.Length - readIdx));
-        Assert.Contains("PatchEngine.LastReadException", window, StringComparison.Ordinal);
+        Assert.Contains("_engine.LastReadException", window, StringComparison.Ordinal);
         Assert.Contains("return false;", window, StringComparison.Ordinal);
     }
 
@@ -109,12 +109,12 @@ public sealed class ReadFailureVisibilityTests
         Assert.True(readIdx > 0, "未找到汉化的读取调用");
 
         string window = text.Substring(readIdx, Math.Min(600, text.Length - readIdx));
-        Assert.Contains("PatchEngine.LastReadException", window, StringComparison.Ordinal);
+        Assert.Contains("_engine.LastReadException", window, StringComparison.Ordinal);
         Assert.Contains("ErrorMessage", window, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// 静态属性在多线程下可能被后续调用覆盖，调用方必须立即快照到本地变量。
+    /// 同一引擎的后续读取会覆盖字段，调用方必须立即快照到本地变量。
     /// </summary>
     [Fact]
     public void 调用方必须立即快照异常到本地变量()
@@ -125,11 +125,11 @@ public sealed class ReadFailureVisibilityTests
         int readLine = Array.FindIndex(lines, l => l.Contains("_engine.ReadGameFiles(info, unbackedTargets)", StringComparison.Ordinal));
         Assert.True(readLine >= 0, "未找到读取调用");
 
-        // 读取后的 3 行内必须出现 var xxx = PatchEngine.LastReadException;
+        // 读取后的 3 行内必须出现 var xxx = _engine.LastReadException;
         bool snapshotted = false;
         for (int i = readLine; i < Math.Min(readLine + 4, lines.Length); i++)
         {
-            if (lines[i].Contains("= PatchEngine.LastReadException", StringComparison.Ordinal)) { snapshotted = true; break; }
+            if (lines[i].Contains("= _engine.LastReadException", StringComparison.Ordinal)) { snapshotted = true; break; }
         }
 
         Assert.True(snapshotted, "读取后必须立即把 LastReadException 快照到本地变量，避免被后续读取覆盖");

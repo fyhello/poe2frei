@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Text.Json;
 
+using FreiAtlas.Patcher.Core;
 namespace FreiAtlas.Patcher.MtxPatch;
 
 /// <summary>
@@ -38,8 +39,8 @@ public static class MtxTranslationDictionary
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException($"内嵌翻译词典资源缺失：{ResourceName}");
 
-        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
-        var document = JsonSerializer.Deserialize<TranslationDocument>(gzip, ResourceJsonOptions)
+        var jsonBytes = GzipUtil.DecompressToBytes(stream, 16 * 1024 * 1024);
+        var document = JsonSerializer.Deserialize<TranslationDocument>(jsonBytes, ResourceJsonOptions)
             ?? throw new InvalidOperationException($"内嵌翻译词典资源为空：{ResourceName}");
 
         if (document.Version != 1)

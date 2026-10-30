@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Text.Json;
 
+using FreiAtlas.Patcher.Core;
 namespace FreiAtlas.Patcher.MtxPatch;
 
 /// <summary>
@@ -120,8 +121,8 @@ public sealed class MtxDatabase
             throw new FileNotFoundException($"嵌入资源未找到: {ResourceName}");
         }
 
-        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
-        using var doc = JsonDocument.Parse(gzip);
+        var jsonBytes = GzipUtil.DecompressToBytes(stream, 16 * 1024 * 1024);
+        using var doc = JsonDocument.Parse(jsonBytes);
 
         foreach (var prop in doc.RootElement.EnumerateObject())
         {

@@ -353,7 +353,7 @@ public sealed class MtxPatchApplier
             var restorePayload = BuildRestorePayload(info, restoredFiles, progress);
             long restoreMs = buildSw.ElapsedMilliseconds;
             var filesToWrite = plannedFiles
-                .Select(kv => (VirtualPath: kv.Key.Replace('\\', '/').Trim().TrimStart('/'), Data: kv.Value))
+                .Select(kv => (VirtualPath: VirtualPath.Normalize(kv.Key), Data: kv.Value))
                 .Concat(restorePayload)
                 .ToList();
             progress?.Invoke($"[耗时] 商城构造写入列表: {buildSw.ElapsedMilliseconds} ms (计划 {plannedFiles.Count} 个, 恢复 {restoredFiles.Count} 个, 其中恢复读取 {restoreMs} ms)");
@@ -364,7 +364,7 @@ public sealed class MtxPatchApplier
             progress?.Invoke($"[耗时] 商城会话暂存: {mtxSw.ElapsedMilliseconds} ms");
             if (!writeSuccess)
             {
-                var reason = PatchEngine.LastWriteException?.Message ?? "客户端索引替换未生效或校验不一致";
+                var reason = _engine.LastWriteException?.Message ?? "客户端索引替换未生效或校验不一致";
                 return MtxApplyResult.Failure($"写入游戏客户端文件失败：{reason}");
             }
 
@@ -415,7 +415,7 @@ public sealed class MtxPatchApplier
             var writeSuccess = _engine.WriteGameFiles(info, filesToWrite);
             if (!writeSuccess)
             {
-                var reason = PatchEngine.LastWriteException?.Message ?? "客户端索引替换未生效或校验不一致";
+                var reason = _engine.LastWriteException?.Message ?? "客户端索引替换未生效或校验不一致";
                 return MtxApplyResult.Failure($"写入还原数据失败：{reason}");
             }
 
@@ -490,7 +490,7 @@ public sealed class MtxPatchApplier
         MtxEntry armourEntry,
         Dictionary<string, byte[]> plannedFiles)
     {
-        var folder = armourEntry.ArmourSetFolder!.Trim().Replace('\\', '/').Trim('/');
+        var folder = VirtualPath.Normalize(armourEntry.ArmourSetFolder).TrimEnd('/');
 
         // 后续只用到 .ao 路径：先过滤再收集，避免把 426 万条全量物化到 HashSet
         //（那是数 GB 的字符串与哈希开销，实测是防具套装覆盖的主要耗时之一）。
@@ -740,7 +740,7 @@ public sealed class MtxPatchApplier
         var files = new List<(string VirtualPath, byte[] Data)>(restoredFiles.Count);
 
         var sharedPaths = restoredFiles
-            .Select(x => x.VirtualPath.Replace('\\', '/').Trim().TrimStart('/'))
+            .Select(x => VirtualPath.Normalize(x.VirtualPath))
             .Where(SharedFileRestore.IsSharedFile)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -750,7 +750,7 @@ public sealed class MtxPatchApplier
 
         foreach (var (rawPath, originalBytes) in restoredFiles)
         {
-            string path = rawPath.Replace('\\', '/').Trim().TrimStart('/');
+            string path = VirtualPath.Normalize(rawPath);
 
             if (!SharedFileRestore.IsSharedFile(path))
             {

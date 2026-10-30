@@ -23,7 +23,7 @@ namespace FreiAtlas.Patcher.EffectPatch;
 /// </summary>
 public sealed class EffectPatchApplier
 {
-    private const string BackupGroup = "effect_patch";
+    public const string BackupGroup = "effect_patch";
 
     private static readonly string[] TargetExtensions =
         [".ot", ".aoc", ".ao", ".env", ".hlsl", ".epk", ".pet", ".trl", ".fxgraph", ".ffx"];
@@ -169,7 +169,7 @@ public sealed class EffectPatchApplier
             progress?.Invoke($"写入 {files.Count} 个文件...");
             if (!_engine.WriteGameFiles(info, files))
             {
-                message = PatchEngine.LastWriteException?.Message ?? "写入失败。";
+                message = _engine.LastWriteException?.Message ?? "写入失败。";
                 return false;
             }
 
@@ -234,7 +234,7 @@ public sealed class EffectPatchApplier
             progress?.Invoke($"还原 {files.Count} 个文件...");
             if (!_engine.WriteGameFiles(info, files))
             {
-                message = PatchEngine.LastWriteException?.Message ?? "还原写入失败。";
+                message = _engine.LastWriteException?.Message ?? "还原写入失败。";
                 return false;
             }
 
@@ -284,7 +284,7 @@ public sealed class EffectPatchApplier
                 continue;
             }
 
-            var cleanPath = path.Replace('\\', '/').TrimStart('/');
+            var cleanPath = VirtualPath.Normalize(path);
             if (!currentFiles.TryGetValue(cleanPath, out var currentBytes) || currentBytes.Length == 0)
             {
                 files.Add((path, originalBytes));

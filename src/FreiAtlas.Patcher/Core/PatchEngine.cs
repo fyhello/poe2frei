@@ -12,8 +12,10 @@ public sealed class PatchEngine
 
     public PatchBackupManager BackupManager => _backupManager;
 
-    public static Exception? LastReadException { get; set; }
-    public static Exception? LastWriteException { get; set; }
+    /// <summary>最近一次读取失败的原因。实例字段：多引擎/并行测试不再互相覆盖。</summary>
+    public Exception? LastReadException { get; set; }
+    /// <summary>最近一次写入失败的原因。实例字段：多引擎/并行测试不再互相覆盖。</summary>
+    public Exception? LastWriteException { get; set; }
 
     public PatchEngine(PatchBackupManager? backupManager = null)
     {
@@ -30,14 +32,6 @@ public sealed class PatchEngine
     /// 没有它就无法区分「模块没干活」与「写了但游戏不认」。
     /// </summary>
     public string? CurrentModuleTag { get; set; }
-
-    /// <summary>
-    /// 本引擎当前是否持有客户端索引句柄。
-    ///
-    /// CheckResourceLock 用「能否独占打开」判断占用，会把本进程自己的只读句柄
-    /// 误判成「其他进程占用」。占用检查必须先问这个标记。
-    /// </summary>
-    public static bool ClientIndexHeld { get; private set; }
 
     /// <summary>本次批量中各模块实际写入的文件数。</summary>
     public Dictionary<string, int> ModuleWriteCounts { get; } = new(StringComparer.Ordinal);
@@ -56,9 +50,20 @@ public sealed class PatchEngine
     private ClientIndexSession? _clientIndex;
     private string? _clientIndexKey;
     private int _clientIndexLeaseCount;
+    private IReadOnlyList<string>? _clientPathCache;
+    private string? _clientPathCacheKey;
+
+    /// <summary>
+    /// 路径缓存条目上限。超过就不缓存：4.26M 条路径的 List&lt;string&gt; 约数百 MB，
+    /// 宁可多付一次解析，也不要把这部分字符串常驻进程。
+    /// </summary>
+    private const int MaxCachedPaths = 6_000_000;
 
     /// <summary>当前仍被模块借用的索引会话数量（仅用于诊断与测试）。</summary>
     internal int ClientIndexLeaseCount => _clientIndexLeaseCount;
+
+    /// <summary>缓存路径数量（仅用于诊断与测试）。</summary>
+    internal int ClientPathCacheCount => _clientPathCache?.Count ?? 0;
 
     /// <summary>
     /// 释放共享索引会话。
@@ -79,7 +84,6 @@ public sealed class PatchEngine
             _clientIndex?.Dispose();
             _clientIndex = null;
             _clientIndexKey = null;
-            ClientIndexHeld = false;
         }
     }
 
@@ -111,6 +115,57 @@ public sealed class PatchEngine
     }
 
     /// <summary>
+    /// 枚举客户端索引记录：优先复用跨索引会话的路径缓存，其次才解析路径树。
+    /// 写盘后索引对象会重建，但同一游戏版本的路径集合基本不变，缓存可以跨会话复用。
+    /// </summary>
+    internal IEnumerable<(string Path, LibBundle3.Records.FileRecord Record)> GetClientRecords(
+        ClientIndexSession session)
+    {
+        lock (_fileLock)
+        {
+            if (session.PathsParsed)
+            {
+                if (_clientPathCache is null) CachePaths(session);
+                return session.Records;
+            }
+
+            var cached = _clientPathCache;
+            if (cached is not null)
+            {
+                return session.EnumerateRecords(cached);
+            }
+
+            session.EnsurePathsParsed();
+            CachePaths(session);
+            return session.Records;
+        }
+    }
+
+    /// <summary>
+    /// 建立路径缓存，超过 <see cref="MaxCachedPaths"/> 时放弃缓存。
+    /// </summary>
+    private void CachePaths(ClientIndexSession session)
+    {
+        var paths = session.GetAllPaths();
+        _clientPathCache = paths.Count <= MaxCachedPaths ? paths : null;
+    }
+
+    /// <summary>
+    /// 丢弃跨会话的路径缓存。
+    ///
+    /// 批量会话结束（提交或放弃）后主动清一次，把内存还给进程；
+    /// 下一次批量重新建立即可。索引戳变化时也会自动失效，见 <see cref="GetOrOpenClientIndex"/>。
+    /// </summary>
+    public void ClearPathCache()
+    {
+        lock (_fileLock)
+        {
+            _clientPathCache = null;
+            _clientPathCacheKey = null;
+        }
+    }
+
+    /// <summary>
     /// 读取客户端文件：批量会话叠加层优先，其次才是磁盘索引。
     /// </summary>
     internal byte[]? ReadClientFile(ClientIndexSession session, string path)
@@ -135,7 +190,7 @@ public sealed class PatchEngine
         string path,
         Func<string, byte[]?> readFromDisk)
     {
-        var clean = path.Replace('\\', '/').TrimStart('/');
+        var clean = VirtualPath.Normalize(path);
         var staged = session?.TryGet(clean);
         return staged ?? readFromDisk(clean);
     }
@@ -145,21 +200,27 @@ public sealed class PatchEngine
         string path,
         Func<string, bool> existsOnDisk)
     {
-        var clean = path.Replace('\\', '/').TrimStart('/');
+        var clean = VirtualPath.Normalize(path);
         return session?.TryGet(clean) is not null || existsOnDisk(clean);
     }
 
     private ClientIndexSession? GetOrOpenClientIndex(GameModeInfo info)
     {
-        // 索引文件被恢复/写入/外部改动后，缓存的会话必须失效重建，
-        // 否则后续模块会读到补丁前的旧内容，算出「无变化」而静默跳过写入。
+        // 路径缓存与索引会话都按「模式 + 目录 + 索引文件戳」隔离：
+        // 游戏原地更新会改变索引大小/时间戳，从而丢弃旧路径表与会话，
+        // 避免漏掉新增文件、或枚举到已被删除的路径。
         string indexPath = GetClientIndexPath(info);
         var indexFile = new FileInfo(indexPath);
         string fileStamp = indexFile.Exists
             ? $"{indexFile.Length}|{indexFile.LastWriteTimeUtc.Ticks}"
             : "missing";
-
         string key = $"{info.Mode}|{info.GameDirectory}|{fileStamp}";
+
+        if (!string.Equals(_clientPathCacheKey, key, StringComparison.OrdinalIgnoreCase))
+        {
+            _clientPathCache = null;
+            _clientPathCacheKey = key;
+        }
 
         // 借用期间必须返回同一个会话：中途换索引会让借用方读到不一致的视图。
         // 索引文件 stamp 变化会等到最后一个借用归还后的下一次获取再处理。
@@ -177,7 +238,6 @@ public sealed class PatchEngine
         _clientIndex?.Dispose();
         _clientIndex = ClientIndexSession.Open(info);
         _clientIndexKey = _clientIndex is null ? null : key;
-        ClientIndexHeld = _clientIndex is not null;
         return _clientIndex;
     }
 
@@ -197,6 +257,9 @@ public sealed class PatchEngine
         lock (_fileLock)
         {
             _session = null;
+            // 批量结束即释放路径缓存，避免整批的 4.26M 路径常驻到下次批量。
+            _clientPathCache = null;
+            _clientPathCacheKey = null;
         }
     }
 
@@ -214,17 +277,36 @@ public sealed class PatchEngine
             _session = null;
 
             if (session is null) return true;
-            if (!session.IsValid) return false;
+            if (!session.IsValid)
+            {
+                // 会话无效时必须把原因写进 LastWriteException：
+                // 否则调用方只能报「未知原因」，而真正的原因（路径冲突、超出内存上限）
+                // 只存在于这个局部变量里，随方法返回一起丢失。
+                LastWriteException = new InvalidOperationException(
+                    session.Conflicts.Count > 0
+                        ? "批量写入会话无效，已放弃写入：" + string.Join("；", session.Conflicts)
+                        : "批量写入会话无效，已放弃写入（未记录具体原因）。");
+                _clientPathCache = null;
+                _clientPathCacheKey = null;
+                return false;
+            }
             if (session.Pending.Count == 0) return true;
 
             var files = session.Pending
                 .Select(kv => (VirtualPath: kv.Key, Data: kv.Value))
                 .ToList();
 
-            return WriteGameFilesCore(
+            bool written = WriteGameFilesCore(
                 info,
                 files,
+                out _,
                 allowedNewPaths: session.AllowedNewPaths.Count > 0 ? session.AllowedNewPaths : null);
+
+            // 写入后索引已变，路径缓存必然过期；直接丢掉，下一次批量重建。
+            _clientPathCache = null;
+            _clientPathCacheKey = null;
+
+            return written;
         }
     }
 
@@ -268,7 +350,7 @@ public sealed class PatchEngine
                 var remaining = new List<string>();
                 foreach (var vPath in virtualPaths)
                 {
-                    var clean = vPath.Replace('\\', '/').TrimStart('/');
+                    var clean = VirtualPath.Normalize(vPath);
                     var staged = session?.TryGet(clean);
                     if (staged is not null) result[clean] = staged;
                     else remaining.Add(clean);
@@ -289,7 +371,7 @@ public sealed class PatchEngine
 
                     foreach (var vPath in virtualPaths)
                     {
-                        var cleanPath = vPath.Replace('\\', '/').TrimStart('/');
+                        var cleanPath = VirtualPath.Normalize(vPath);
 
                         // TryGetFile 走 NameHash 哈希查找，且 NameHash 内部对路径做了
                         // ToLowerInvariant，因此天然忽略大小写，任何大小写变体都能命中。
@@ -306,7 +388,7 @@ public sealed class PatchEngine
 
                     foreach (var vPath in virtualPaths)
                     {
-                        var cleanPath = vPath.Replace('\\', '/').TrimStart('/');
+                        var cleanPath = VirtualPath.Normalize(vPath);
                         var data = clientIndex.ReadFile(cleanPath);
                         if (data is not null) result[cleanPath] = data;
                     }
@@ -352,10 +434,8 @@ public sealed class PatchEngine
                     var clientIndex = GetOrOpenClientIndex(info);
                     if (clientIndex is null) return result;
 
-                    // 按谓词枚举必须依赖路径树：整个批量期间只解析一次。
-                    clientIndex.EnsurePathsParsed();
-
-                    foreach (var (path, record) in clientIndex.Records)
+                    // 按谓词枚举必须遍历全部路径；优先复用跨会话路径缓存。
+                    foreach (var (path, record) in GetClientRecords(clientIndex))
                     {
                         if (!predicate(path)) continue;
                         // 叠加层优先：磁盘上的旧内容不能覆盖会话中已改写的版本。
@@ -369,8 +449,7 @@ public sealed class PatchEngine
                     var clientIndex = GetOrOpenClientIndex(info);
                     if (clientIndex is null) return result;
 
-                    clientIndex.EnsurePathsParsed();
-                    foreach (var (path, record) in clientIndex.Records)
+                    foreach (var (path, record) in GetClientRecords(clientIndex))
                     {
                         if (!predicate(path)) continue;
                         if (session?.TryGet(path) is not null) continue;
@@ -408,17 +487,29 @@ public sealed class PatchEngine
         try
         {
             var batch = ReadGameFiles(info, samples);
+            int ok = 0;
+            var missing = new List<string>();
             foreach (var path in samples)
             {
-                if (!batch.TryGetValue(path, out var data) || data is null || data.Length == 0)
+                if (batch.TryGetValue(path, out var data) && data is { Length: > 0 })
                 {
-                    return $"客户端自检失败：读不到 {path}。\n\n" +
-                           "这说明当前索引与客户端资源已经对不上，继续写入只会产生更多错误。\n" +
-                           "请先用 Steam / 官方平台【验证游戏文件完整性】，再回来应用补丁。";
+                    ok++;
+                }
+                else
+                {
+                    missing.Add(path);
                 }
             }
 
-            return null;
+            // 三个样本分别覆盖界面 XML、数据表、角色模型三条链路。
+            // 某个渠道/版本缺其中一两个属于正常差异，不能据此判定客户端损坏；
+            // 只有连 2 个都读不到，才说明索引与资源确实对不上。
+            if (ok >= 2) return null;
+
+            return $"客户端自检失败：{samples.Length} 个样本中有 {missing.Count} 个读不到" +
+                   $"（{string.Join("、", missing)}）。\n\n" +
+                   "这说明当前索引与客户端资源已经对不上，继续写入只会产生更多错误。\n" +
+                   "请先用 Steam / 官方平台【验证游戏文件完整性】，再回来应用补丁。";
         }
         catch (Exception ex)
         {
@@ -434,7 +525,7 @@ public sealed class PatchEngine
     {
         actualPath = virtualPath;
         var batch = ReadGameFiles(info, [virtualPath]);
-        var cleanPath = virtualPath.Replace('\\', '/').TrimStart('/');
+        var cleanPath = VirtualPath.Normalize(virtualPath);
         if (batch.TryGetValue(cleanPath, out var bytes))
         {
             return bytes;
@@ -475,7 +566,7 @@ public sealed class PatchEngine
         var batch = ReadGameFiles(info, candidates);
         foreach (var path in candidates)
         {
-            var cleanPath = path.Replace('\\', '/').TrimStart('/');
+            var cleanPath = VirtualPath.Normalize(path);
             if (batch.TryGetValue(cleanPath, out var bytes) && bytes.Length > 0)
             {
                 actualPath = cleanPath;
@@ -487,7 +578,10 @@ public sealed class PatchEngine
     }
 
     /// <summary>
-    /// 把文件写入客户端索引。
+    /// 写入文件。
+    ///
+    /// 批量会话进行中时只登记到叠加层，不落盘 —— 由 CommitSession 统一写一次。
+    /// 会话之外的行为与之前完全一致。
     /// </summary>
     /// <param name="info">客户端信息。</param>
     /// <param name="files">待写入的（虚拟路径, 内容）列表。</param>
@@ -498,12 +592,6 @@ public sealed class PatchEngine
     /// 引用该副本。新路径在当前客户端中并不存在，必须显式放行，否则副本
     /// 会被静默丢弃，wrapper 变成悬空引用（引用不存在的资源，模型不显示）。
     /// </param>
-    /// <summary>
-    /// 写入文件。
-    ///
-    /// 批量会话进行中时只登记到叠加层，不落盘 —— 由 CommitSession 统一写一次。
-    /// 会话之外的行为与之前完全一致。
-    /// </summary>
     public bool WriteGameFiles(
         GameModeInfo info,
         IEnumerable<(string VirtualPath, byte[] Data)> files,
@@ -516,8 +604,8 @@ public sealed class PatchEngine
 
             if (session is null)
             {
-                bool written = WriteGameFilesCore(info, fileList, allowedNewPaths);
-                if (written) AddWriteCount(fileList.Count);
+                bool written = WriteGameFilesCore(info, fileList, out int writtenCount, allowedNewPaths);
+                if (written) AddWriteCount(writtenCount);
                 return written;
             }
 
@@ -545,8 +633,11 @@ public sealed class PatchEngine
     private bool WriteGameFilesCore(
         GameModeInfo info,
         IEnumerable<(string VirtualPath, byte[] Data)> files,
+        out int writtenCount,
         IReadOnlySet<string>? allowedNewPaths = null)
     {
+        writtenCount = 0;
+
         lock (_fileLock)
         {
             OodleNative.EnsureLoaded(info.GameDirectory);
@@ -580,7 +671,16 @@ public sealed class PatchEngine
                     using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
                 foreach (var (vPath, data) in fileList)
                 {
-                    var cleanPath = vPath.Replace('\\', '/').TrimStart('/');
+                    var cleanPath = VirtualPath.Normalize(vPath);
+                    // Zip 条目名会被归档器当路径解释：含 ".."、盘符或 UNC 的条目
+                    // 可能写到包外。写入前先拒绝。
+                    if (!VirtualPath.IsSafeRelative(cleanPath))
+                    {
+                        LastWriteException = new InvalidOperationException(
+                            $"拒绝写入不安全的虚拟路径：{vPath}");
+                        return false;
+                    }
+
                     var entry = archive.CreateEntry(cleanPath, CompressionLevel.Fastest);
                     using var entryStream = entry.Open();
                     entryStream.Write(data, 0, data.Length);
@@ -613,6 +713,7 @@ public sealed class PatchEngine
                     // 只注入当前客户端真实存在的路径。向索引写入不存在的条目会让游戏
                     // 加载时找不到对应资源，是启动异常的直接来源。
                     validFiles = FilterExisting(ggpk.Index, fileList, allowedNewPaths);
+                    writtenCount = validFiles.Count;
                     if (validFiles.Count == 0)
                     {
                         LastWriteException = new InvalidOperationException($"待写入的文件在客户端索引中未找到对应的目标文件（共规划 {fileList.Count} 个文件）。可能是客户端缺少相应的基础资源或路径不匹配。");
@@ -623,7 +724,7 @@ public sealed class PatchEngine
                     // 确保 LibBundle3.Index.Replace 能够将其作为已存在文件写入自定义补丁 Bundle，避免抛出 FileNotFoundException
                     foreach (var (vPath, _) in validFiles)
                     {
-                        var cleanPath = vPath.Replace('\\', '/').TrimStart('/');
+                        var cleanPath = VirtualPath.Normalize(vPath);
                         ggpk.Index.AddFileRecordPlaceholder(cleanPath);
                     }
 
@@ -668,6 +769,7 @@ public sealed class PatchEngine
                         // 同 GGPK 分支：写盘链路只使用 NameHash / _Files，不需要 ParsePaths。
                         // 只注入当前客户端真实存在的路径
                         validFiles = FilterExisting(index, fileList, allowedNewPaths);
+                        writtenCount = validFiles.Count;
                         if (validFiles.Count == 0)
                         {
                             LastWriteException = new InvalidOperationException($"待写入的文件在客户端索引中未找到对应的目标文件（共规划 {fileList.Count} 个文件）。可能是客户端缺少相应的基础资源或路径不匹配。");
@@ -677,7 +779,7 @@ public sealed class PatchEngine
                         // 写入前为所有待写文件在索引中预注册占位符
                         foreach (var (vPath, _) in validFiles)
                         {
-                            var cleanPath = vPath.Replace('\\', '/').TrimStart('/');
+                            var cleanPath = VirtualPath.Normalize(vPath);
                             index.AddFileRecordPlaceholder(cleanPath);
                         }
 
@@ -724,7 +826,8 @@ public sealed class PatchEngine
             catch
             {
                 // finally 中的临时文件清理：删除失败不影响本次写入结果，
-                // 也不应掩盖上方 try 里真正的异常。残留的临时 zip 会在下次写入时被覆盖。
+                // 也不应掩盖上方 try 里真正的异常。临时文件名含 GUID，
+                // 不会被后续写入覆盖；删除失败只会在 TEMP 留下一个孤立文件。
             }
         }
 
@@ -743,7 +846,7 @@ public sealed class PatchEngine
     /// 验证时重新打开一份索引，避免复用写入过程中的句柄——那个句柄的状态
     /// 不能代表磁盘上的最终结果。
     /// </summary>
-    private static bool VerifyWrittenFiles(
+    private bool VerifyWrittenFiles(
         GameModeInfo info,
         List<(string VirtualPath, byte[] Data)> written)
     {
@@ -752,32 +855,23 @@ public sealed class PatchEngine
         var expected = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
         foreach (var (vPath, data) in written)
         {
-            expected[vPath.Replace('\\', '/').TrimStart('/')] = data;
+            expected[VirtualPath.Normalize(vPath)] = data;
         }
 
         try
         {
-            if (info.Mode == GameMode.GGPK)
+            // 复用统一的只读会话：GGPK 与 Bundles2 的打开差异收敛到 ClientIndexSession，
+            // 验证逻辑不再各自 new BundledGGPK / Index。
+            using var session = ClientIndexSession.Open(info);
+            if (session?.Index is null)
             {
-                var ggpkPath = GetGgpkPath(info);
-                using var verify = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                // CompareAll 只按路径精确比对（TryGetFile），不需要路径树。
-                return CompareAll(verify.Index, expected);
+                LastWriteException = new InvalidOperationException(
+                    "写入后验证失败：无法打开客户端索引。");
+                return false;
             }
 
-            var bundlesDir = GetBundlesDirectory(info);
-            var indexPath = Path.Combine(bundlesDir, "_.index.bin");
-            var factory = new DriveBundleFactory(bundlesDir);
-            try
-            {
-                using var index = new LibBundle3.Index(indexPath, parsePaths: false, factory);
-                // CompareAll 只按路径精确比对（TryGetFile），不需要路径树。
-                return CompareAll(index, expected);
-            }
-            finally
-            {
-                (factory as IDisposable)?.Dispose();
-            }
+            // CompareAll 只按路径精确比对（TryGetFile），不需要路径树。
+            return CompareAll(session.Index, expected);
         }
         catch (Exception ex)
         {
@@ -787,7 +881,7 @@ public sealed class PatchEngine
         }
     }
 
-    private static bool CompareAll(
+    private bool CompareAll(
         LibBundle3.Index index,
         Dictionary<string, byte[]> expected)
     {
@@ -795,7 +889,7 @@ public sealed class PatchEngine
         {
             if (!index.TryGetFile(vPath, out var record))
             {
-                PatchEngine.LastWriteException = new InvalidOperationException(
+                LastWriteException = new InvalidOperationException(
                     $"写入后验证失败：{vPath} 在索引中不存在。");
                 return false;
             }
@@ -807,21 +901,21 @@ public sealed class PatchEngine
             }
             catch (Exception ex)
             {
-                PatchEngine.LastWriteException = new InvalidOperationException(
+                LastWriteException = new InvalidOperationException(
                     $"写入后验证失败：{vPath} 无法读取 —— {ex.Message}", ex);
                 return false;
             }
 
             if (actual.Length != data.Length)
             {
-                PatchEngine.LastWriteException = new InvalidOperationException(
+                LastWriteException = new InvalidOperationException(
                     $"写入后验证失败：{vPath} 长度不符（期望 {data.Length}，实际 {actual.Length}）。");
                 return false;
             }
 
             if (!actual.AsSpan().SequenceEqual(data))
             {
-                PatchEngine.LastWriteException = new InvalidOperationException(
+                LastWriteException = new InvalidOperationException(
                     $"写入后验证失败：{vPath} 内容与写入值不一致。");
                 return false;
             }
@@ -830,10 +924,6 @@ public sealed class PatchEngine
         return true;
     }
 
-    /// <summary>
-    /// 只保留当前客户端索引中真实存在的路径。
-    ///
-    /// 向索引写入不存在的条目会让游戏加载时找不到资源，是启动异常的直接来源。
     /// <summary>
     /// 过滤掉当前客户端索引中不存在的路径，只保留可安全写入的文件。
     ///
@@ -852,7 +942,7 @@ public sealed class PatchEngine
         var result = new List<(string, byte[])>(files.Count);
         foreach (var file in files)
         {
-            var cleanPath = file.VirtualPath.Replace('\\', '/').TrimStart('/');
+            var cleanPath = VirtualPath.Normalize(file.VirtualPath);
             bool exists = index.TryGetFile(cleanPath, out _);
             bool allowedNew = !exists
                 && allowedNewPaths is not null

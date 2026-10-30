@@ -51,9 +51,7 @@ public sealed class PricePatchService
         public int DisplayEnd { get; init; }
     }
 
-    public sealed record DatLayout(int RowCount, int RowSize, int StringBase);
-
-    public sealed class BaseItemName
+        public sealed class BaseItemName
     {
         public int RowIndex { get; init; }
         public string MetadataPath { get; init; } = string.Empty;
@@ -518,7 +516,7 @@ public sealed class PricePatchService
                 if (!_engine.WriteGameFiles(info, pendingWrites))
                 {
                     result.ErrorMessage = "写入物价数据表失败："
-                        + (PatchEngine.LastWriteException?.Message ?? "未知原因");
+                        + (_engine.LastWriteException?.Message ?? "未知原因");
                     progress?.Invoke(result.ErrorMessage);
                     return result;
                 }
@@ -653,7 +651,7 @@ public sealed class PricePatchService
                     // 磁盘满或文件被锁时界面照样提示「清洗成功」，用户被误导。
                     result.Success = false;
                     result.ErrorMessage = "写入清洗后的物价数据表失败："
-                        + (PatchEngine.LastWriteException?.Message ?? "未知原因");
+                        + (_engine.LastWriteException?.Message ?? "未知原因");
                     progress?.Invoke(result.ErrorMessage);
                     return result;
                 }
@@ -824,8 +822,8 @@ public sealed class PricePatchService
             {
                 int enStart = (int)enStartL;
                 int displayStart = (int)displayStartL;
-                string enName = ReadUtf16LeZ(data, enStart);
-                string displayName = ReadUtf16LeZ(data, displayStart);
+                string enName = DatBinaryUtils.ReadUtf16LeZ(data, enStart);
+                string displayName = DatBinaryUtils.ReadUtf16LeZ(data, displayStart);
                 int displayEnd = displayStart + displayName.Length * 2;
 
                 if (!string.IsNullOrEmpty(enName) && !string.IsNullOrEmpty(displayName))
@@ -1088,8 +1086,8 @@ public sealed class PricePatchService
 
             if (metaStart >= 0 && metaStart < data.Length - 1 && nameStart >= 0 && nameStart < data.Length - 1)
             {
-                string meta = ReadUtf16LeZ(data, (int)metaStart);
-                string name = ReadUtf16LeZ(data, (int)nameStart);
+                string meta = DatBinaryUtils.ReadUtf16LeZ(data, (int)metaStart);
+                string name = DatBinaryUtils.ReadUtf16LeZ(data, (int)nameStart);
                 int nameEnd = (int)nameStart + name.Length * 2;
 
                 if (meta.StartsWith("Metadata/Items/", StringComparison.OrdinalIgnoreCase) &&
@@ -1469,8 +1467,6 @@ public sealed class PricePatchService
         return list;
     }
 
-    private static string ReadUtf16LeZ(byte[] data, int start, int maxChars = 500) =>
-        DatBinaryUtils.ReadUtf16LeZ(data, start, maxChars);
 
     private static int IndexOfBytes(byte[] haystack, byte[] needle, int start = 0)
     {

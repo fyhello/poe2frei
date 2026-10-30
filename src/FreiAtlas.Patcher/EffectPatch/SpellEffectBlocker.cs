@@ -17,6 +17,9 @@ public sealed class SpellEffectBlocker
     /// <summary>逐文件备份分组标识。全量还原纯净客户端时需要据此清理。</summary>
     public const string BackupGroup = "spell_block_v2";
 
+    /// <summary>旧版本技能屏蔽使用的独立分组（闪电球特效），已并入 spell_block_v2，仅用于清理残留。</summary>
+    public const string LegacyLightningSparkGroup = "lightning_spark";
+
     private readonly PatchEngine _engine;
 
     public SpellEffectBlocker(PatchEngine? engine = null)
@@ -150,7 +153,7 @@ public sealed class SpellEffectBlocker
                 var newOriginals = _engine.ReadGameFiles(info, unbackedTargets);
 
                 // 立即快照异常：LastReadException 是静态字段，后续任何读取都可能覆盖它。
-                var readEx = PatchEngine.LastReadException;
+                var readEx = _engine.LastReadException;
                 if (readEx is not null)
                 {
                     // 读不到原件时绝不能继续 SaveOriginals —— 那会把空数据当成原始备份存下去，
@@ -175,7 +178,7 @@ public sealed class SpellEffectBlocker
 
             // 此处读取失败不影响正确性：读不到当前状态时下面会退化为「不跳过、直接写入」，
             // 但必须让用户知道本次写入不是基于最新的客户端状态。
-            var currentReadEx = PatchEngine.LastReadException;
+            var currentReadEx = _engine.LastReadException;
             if (currentReadEx is not null)
             {
                 progress?.Invoke($"警告：读取客户端当前状态失败，本次将不做幂等跳过：{currentReadEx.Message}");
@@ -237,7 +240,7 @@ public sealed class SpellEffectBlocker
             progress?.Invoke($"正在写入客户端（改动 {filesToWrite.Count} 个，还原 {restoredFiles.Count} 个）...");
             if (!_engine.WriteGameFiles(info, allWriteFiles))
             {
-                message = PatchEngine.LastWriteException?.Message ?? "写入客户端失败。";
+                message = _engine.LastWriteException?.Message ?? "写入客户端失败。";
                 return false;
             }
 
@@ -344,13 +347,13 @@ public sealed class SpellEffectBlocker
             progress?.Invoke($"正在还原 {files.Count} 个文件至官方原版...");
             if (!_engine.WriteGameFiles(info, files))
             {
-                message = PatchEngine.LastWriteException?.Message ?? "还原写入失败。";
+                message = _engine.LastWriteException?.Message ?? "还原写入失败。";
                 return false;
             }
 
             // 只移除已还原成功的条目，保留其他技能的原件备份。
             PatchFileBackup.RemoveOriginals(BackupGroup, restoredPaths);
-            PatchFileBackup.RemoveOriginals("lightning_spark", restoredPaths);
+            PatchFileBackup.RemoveOriginals(LegacyLightningSparkGroup, restoredPaths);
 
             message = $"已还原 {spellList.Count} 个技能涉及的特效（共 {files.Count} 个文件）。";
             return true;
@@ -383,7 +386,7 @@ public sealed class SpellEffectBlocker
         // 1. 旧版单技能备份（如 lightning_spark）
         try
         {
-            foreach (var (vp, data) in PatchFileBackup.LoadOriginals("lightning_spark"))
+            foreach (var (vp, data) in PatchFileBackup.LoadOriginals(LegacyLightningSparkGroup))
             {
                 result[vp] = data;
             }
@@ -433,44 +436,25 @@ public sealed class SpellEffectBlocker
         }
     }
 
-    private static List<string> EnumerateClientPaths(GameModeInfo info)
+    /// <summary>
+    /// 枚举客户端全部虚拟路径。
+    ///
+    /// 必须借用引擎的索引会话：自行 new BundledGGPK + ParsePaths 会重解析
+    /// 426 万条路径（8~10 秒），并把整份路径表再复制一遍；批量期间引擎
+    /// 已持有会话，借用即可直接复用（含跨会话路径缓存）。
+    /// </summary>
+    private List<string> EnumerateClientPaths(GameModeInfo info)
     {
         var paths = new List<string>();
 
-        if (info.Mode == GameMode.GGPK)
-        {
-            var ggpkPath = PatchEngine.GetGgpkPath(info);
-            if (!File.Exists(ggpkPath)) return paths;
+        using var lease = _engine.AcquireClientIndex(info);
+        if (lease is null) return paths;
 
-            using var ggpk = new LibBundledGGPK3.BundledGGPK(ggpkPath, parsePathsInIndex: false);
-            ggpk.Index.ParsePaths();
-            foreach (var record in ggpk.Index.Files.Values)
-            {
-                var p = record.Path;
-                if (!string.IsNullOrEmpty(p)) paths.Add(p.Replace('\\', '/'));
-            }
-            return paths;
+        foreach (var (path, _) in lease.Records)
+        {
+            if (!string.IsNullOrEmpty(path)) paths.Add(path);
         }
 
-        var bundlesDir = PatchEngine.GetBundlesDirectory(info);
-        var indexPath = PatchEngine.GetBundlesIndexPath(info);
-        if (!File.Exists(indexPath)) return paths;
-
-        var factory = new DriveBundleFactory(bundlesDir);
-        try
-        {
-            using var index = new LibBundle3.Index(indexPath, parsePaths: false, factory);
-            index.ParsePaths();
-            foreach (var record in index.Files.Values)
-            {
-                var p = record.Path;
-                if (!string.IsNullOrEmpty(p)) paths.Add(p.Replace('\\', '/'));
-            }
-        }
-        finally
-        {
-            (factory as IDisposable)?.Dispose();
-        }
         return paths;
     }
 }

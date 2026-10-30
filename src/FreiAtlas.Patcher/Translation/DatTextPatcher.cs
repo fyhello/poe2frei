@@ -69,8 +69,8 @@ public static class DatTextPatcher
         {
             if (stream != null)
             {
-                using var gz = new GZipStream(stream, CompressionMode.Decompress);
-                _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(gz, _jsonOptions) ?? new();
+                var jsonBytes = GzipUtil.DecompressToBytes(stream, 64 * 1024 * 1024);
+                _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(jsonBytes, _jsonOptions) ?? new();
                 return _cachedCatalog;
             }
         }
@@ -80,8 +80,8 @@ public static class DatTextPatcher
         if (File.Exists(fallbackGz))
         {
             using var fs = File.OpenRead(fallbackGz);
-            using var gz = new GZipStream(fs, CompressionMode.Decompress);
-            _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(gz, _jsonOptions) ?? new();
+            var jsonBytes = GzipUtil.DecompressToBytes(fs, 64 * 1024 * 1024);
+            _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(jsonBytes, _jsonOptions) ?? new();
             return _cachedCatalog;
         }
 
@@ -111,7 +111,7 @@ public static class DatTextPatcher
         if (rowCount <= 0) return (originalBytes, 0);
 
         int rowSize = def.RowSize;
-        int stringBase = FindMagic(originalBytes, rowCount);
+        int stringBase = DatBinaryUtils.FindSentinel(originalBytes, rowCount);
         if (stringBase <= 4)
         {
             stringBase = 4 + rowCount * rowSize;
@@ -150,7 +150,7 @@ public static class DatTextPatcher
         if (replacements.Count == 0)
             return (originalBytes, 0);
 
-        byte[] patched = RewriteStringPointersAppend(originalBytes, stringBase, replacements);
+        byte[] patched = DatBinaryUtils.RewriteStringPointersAppend(originalBytes, stringBase, replacements);
         return (patched, replacements.Count);
     }
 
@@ -199,7 +199,7 @@ public static class DatTextPatcher
             return (originalBytes, 0);
         }
 
-        byte[] patched = RewriteStringPointersAppend(originalBytes, layout.StringBase, replacements);
+        byte[] patched = DatBinaryUtils.RewriteStringPointersAppend(originalBytes, layout.StringBase, replacements);
         return (patched, replacements.Count);
     }
 
@@ -220,26 +220,4 @@ public static class DatTextPatcher
         return name.Substring(stripped.Length);
     }
 
-    /// <summary>
-    /// 通用字符串指针追加重写算法。
-    ///
-    /// 实现已统一到 <see cref="DatBinaryUtils.RewriteStringPointersAppend"/>：
-    /// 此前该算法在 5 个模块各有一份副本，行尺寸校验、去重、对齐的实现
-    /// 逐渐分叉，导致同一类缺陷要在多处分别修。
-    /// 这里保留签名以兼容现有调用方，实际委托给公共实现。
-    /// </summary>
-    public static byte[] RewriteStringPointersAppend(
-        byte[] data,
-        int stringBase,
-        IEnumerable<(int PointerPos, string NewText)> replacements)
-        => DatBinaryUtils.RewriteStringPointersAppend(data, stringBase, replacements);
-
-    /// <summary>
-    /// 查找 DAT 表中的哨兵边界，可指定 rowCount 校验行对齐。
-    /// </summary>
-    public static int FindMagic(byte[] data, int rowCount = 0) =>
-        DatBinaryUtils.FindSentinel(data, rowCount);
-
-    public static string ReadUtf16LeZ(byte[] data, int start) =>
-        DatBinaryUtils.ReadUtf16LeZTrimmed(data, start);
 }

@@ -51,7 +51,7 @@ public sealed class PatchSession
     /// <summary>已登记内容的总字节数。</summary>
     public long TotalBytes { get; private set; }
 
-    private static string Normalize(string path) => path.Replace('\\', '/').TrimStart('/');
+    private static string Normalize(string path) => VirtualPath.Normalize(path);
 
     /// <summary>读取叠加层中的最新内容；未登记过返回 null。</summary>
     public byte[]? TryGet(string path)
@@ -76,7 +76,17 @@ public sealed class PatchSession
 
         if (TotalBytes > MaxPendingBytes)
         {
-            _conflicts.Add($"待写入内容超过 {MaxPendingBytes / (1024 * 1024)} MB 上限，已中止批量应用。");
+            // 超限时清空本次登记：否则数据已进内存、TotalBytes 已累加，
+            // 会话虽被标记无效，但残留内容会让统计与诊断产生误导。
+            _pending.Clear();
+            TotalBytes = 0;
+
+            // 冲突原因只保留第一条：每多失败一次就追加一条会让日志无限增长。
+            if (_conflicts.Count == 0)
+            {
+                _conflicts.Add($"待写入内容超过 {MaxPendingBytes / (1024 * 1024)} MB 上限，已中止批量应用。");
+            }
+
             IsValid = false;
             return false;
         }

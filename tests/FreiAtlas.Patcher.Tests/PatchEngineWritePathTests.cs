@@ -1,3 +1,5 @@
+using FreiAtlas.Patcher.Core;
+
 namespace FreiAtlas.Patcher.Tests;
 
 /// <summary>
@@ -17,11 +19,52 @@ public sealed class PatchEngineWritePathTests
         foreach (var signature in new[]
                  {
                      "private bool WriteGameFilesCore(",
-                     "private static bool VerifyWrittenFiles("
+                     "private bool VerifyWrittenFiles("
                  })
         {
             string body = ExtractMethodBody(source, signature);
             Assert.DoesNotContain("ParsePaths()", body, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// 会话无效时 CommitSession 必须把原因写进 LastWriteException。
+    ///
+    /// 否则调用方只能显示「未知原因」，而真正的原因（路径冲突 / 超出内存上限）
+    /// 只存在于局部变量 session.Conflicts 里，随方法返回一起丢失。
+    /// </summary>
+    [Fact]
+    public void CommitSession_会话无效时必须写入LastWriteException()
+    {
+        string root = Path.Combine(
+            Path.GetTempPath(), "FreiAtlasCommitSessionTest_" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            var engine = new PatchEngine(new PatchBackupManager(root));
+            engine.LastWriteException = null;
+
+            var session = engine.BeginSession();
+            typeof(PatchSession).GetProperty("IsValid")!
+                .GetSetMethod(nonPublic: true)!
+                .Invoke(session, [false]);
+
+            var info = new GameModeInfo
+            {
+                IsValid = true,
+                Mode = GameMode.GGPK,
+                GameDirectory = Path.Combine(root, "game")
+            };
+
+            bool ok = engine.CommitSession(info);
+
+            Assert.False(ok);
+            Assert.NotNull(engine.LastWriteException);
+            Assert.Contains("会话无效", engine.LastWriteException!.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
 

@@ -39,24 +39,35 @@ public static class GameInstallDetector
             foreach (var name in PatcherFacade.PoE2ProcessNames)
             {
                 var procs = Process.GetProcessesByName(name);
-                foreach (var proc in procs)
+                try
                 {
-                    try
+                    foreach (var proc in procs)
                     {
-                        var mainModule = proc.MainModule?.FileName;
-                        if (!string.IsNullOrEmpty(mainModule))
+                        try
                         {
-                            var dir = Path.GetDirectoryName(mainModule);
-                            if (!string.IsNullOrEmpty(dir) && !candidates.Contains(dir, StringComparer.OrdinalIgnoreCase))
+                            var mainModule = proc.MainModule?.FileName;
+                            if (!string.IsNullOrEmpty(mainModule))
                             {
-                                candidates.Add(dir);
+                                var dir = Path.GetDirectoryName(mainModule);
+                                if (!string.IsNullOrEmpty(dir) && !candidates.Contains(dir, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    candidates.Add(dir);
+                                }
                             }
                         }
+                        catch
+                        {
+                            // 读取其他进程的 MainModule 需要更高权限，32/64 位进程间也常失败。
+                            // 探测类逻辑：拿不到就跳过这个进程，继续试下一个候选来源。
+                        }
                     }
-                    catch
+                }
+                finally
+                {
+                    // Process 对象持有系统句柄，必须显式释放。
+                    foreach (var proc in procs)
                     {
-                        // 读取其他进程的 MainModule 需要更高权限，32/64 位进程间也常失败。
-                        // 探测类逻辑：拿不到就跳过这个进程，继续试下一个候选来源。
+                        proc.Dispose();
                     }
                 }
             }

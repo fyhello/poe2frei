@@ -125,11 +125,9 @@ internal static class IconPatchAssets
                     return;
                 }
 
-                using var gzip = new GZipStream(binStream, CompressionMode.Decompress);
-                using var blobBuffer = new MemoryStream();
-                gzip.CopyTo(blobBuffer);
-
-                _blob = blobBuffer.ToArray();
+                // 图标图集是内嵌资源：限制解压后大小，防止资源被替换/损坏时无界分配。
+                // 实测解压后约 16.7 MB，上限留一倍余量。
+                _blob = GzipUtil.DecompressToBytes(binStream, 32 * 1024 * 1024);
                 _index = document;
             }
             catch (Exception ex)
@@ -203,10 +201,10 @@ public sealed class IconPatchService
         try
         {
             progress?.Invoke("正在打开客户端索引...");
-            using var probe = ClientIndexProbe.Open(info);
+            using var probe = OpenProbe(info);
             foreach (var item in items)
             {
-                var file = probe.Find(item.Path);
+                var file = probe.GetFileSize(item.Path);
                 if (file is null)
                 {
                     skipped++;
@@ -319,7 +317,7 @@ public sealed class IconPatchService
         try
         {
             progress?.Invoke("正在打开客户端索引并校验图标路径...");
-            using var probe = ClientIndexProbe.Open(info);
+            using var probe = OpenProbe(info);
             foreach (var path in paths)
             {
                 if (!items.TryGetValue(path, out var item))
@@ -327,7 +325,7 @@ public sealed class IconPatchService
                     missing.Add(path);
                     continue;
                 }
-                if (probe.Find(path) is null)
+                if (probe.GetFileSize(path) is null)
                 {
                     missing.Add(path);
                     continue;
@@ -374,7 +372,7 @@ public sealed class IconPatchService
         bool ok = _engine.WriteGameFiles(info, files);
         if (!ok)
         {
-            message = PatchEngine.LastWriteException?.Message ?? "写入失败。";
+            message = _engine.LastWriteException?.Message ?? "写入失败。";
             return false;
         }
 
@@ -410,10 +408,10 @@ public sealed class IconPatchService
 
         try
         {
-            using var probe = ClientIndexProbe.Open(info);
+            using var probe = OpenProbe(info);
             foreach (var path in targetPaths)
             {
-                var bytes = probe.Read(path);
+                var bytes = probe.ReadFile(path);
                 if (bytes is not null && bytes.Length > 0)
                 {
                     originals[path] = bytes;
@@ -473,7 +471,7 @@ public sealed class IconPatchService
 
         if (!_engine.WriteGameFiles(info, files))
         {
-            message = PatchEngine.LastWriteException?.Message ?? "还原图标失败。";
+            message = _engine.LastWriteException?.Message ?? "还原图标失败。";
             return IconPatchRestoreResult.Failure(message);
         }
 
@@ -508,80 +506,13 @@ public sealed class IconPatchService
     public static int BackupCount() => PatchFileBackup.CountOriginals(BackupGroup);
 
     /// <summary>
-    /// 客户端索引探针。封装 GGPK 与 Bundles2 两种形态，只暴露「按路径查大小」。
+    /// 打开客户端索引会话；文件缺失时抛出与旧实现一致的异常。
+    /// 复用 <see cref="ClientIndexSession"/>，不再自行 new BundledGGPK/Index。
     /// </summary>
-    private sealed class ClientIndexProbe : IDisposable
-    {
-        private readonly LibBundledGGPK3.BundledGGPK? _ggpk;
-        private readonly LibBundle3.Index? _index;
-        private readonly DriveBundleFactory? _factory;
-
-        private ClientIndexProbe(
-            LibBundledGGPK3.BundledGGPK? ggpk,
-            LibBundle3.Index? index,
-            DriveBundleFactory? factory)
-        {
-            _ggpk = ggpk;
-            _index = index;
-            _factory = factory;
-        }
-
-        public static ClientIndexProbe Open(GameModeInfo info)
-        {
-            if (info.Mode == GameMode.GGPK)
-            {
-                var ggpkPath = PatchEngine.GetGgpkPath(info);
-                if (!File.Exists(ggpkPath))
-                {
-                    throw new FileNotFoundException($"未找到客户端文件：{ggpkPath}");
-                }
-                var ggpk = new LibBundledGGPK3.BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                ggpk.Index.ParsePaths();
-                return new ClientIndexProbe(ggpk, null, null);
-            }
-
-            var bundlesDir = PatchEngine.GetBundlesDirectory(info);
-            var indexPath = PatchEngine.GetBundlesIndexPath(info);
-            if (!File.Exists(indexPath))
-            {
-                throw new FileNotFoundException($"未找到客户端索引：{indexPath}");
-            }
-            var factory = new DriveBundleFactory(bundlesDir);
-            var index = new LibBundle3.Index(indexPath, parsePaths: false, factory);
-            index.ParsePaths();
-            return new ClientIndexProbe(null, index, factory);
-        }
-
-        /// <summary>返回文件大小；客户端不存在该路径时返回 null。</summary>
-        public int? Find(string virtualPath)
-        {
-            var target = _ggpk?.Index ?? _index;
-            if (target is null) return null;
-            return target.TryGetFile(virtualPath, out var record) ? record.Size : null;
-        }
-
-        /// <summary>读取客户端中该路径的原始内容；不存在或读取失败时返回 null。</summary>
-        public byte[]? Read(string virtualPath)
-        {
-            var target = _ggpk?.Index ?? _index;
-            if (target is null) return null;
-            if (!target.TryGetFile(virtualPath, out var record)) return null;
-            try
-            {
-                return record.Read().ToArray();
-            }
-            catch
-            {
-                // 单个文件读取失败按「拿不到原件」处理，由调用方决定是否继续。
-                return null;
-            }
-        }
-
-        public void Dispose()
-        {
-            _ggpk?.Dispose();
-            _index?.Dispose();
-            (_factory as IDisposable)?.Dispose();
-        }
-    }
+    private static ClientIndexSession OpenProbe(GameModeInfo info)
+        => ClientIndexSession.Open(info)
+           ?? throw new FileNotFoundException(
+               info.Mode == GameMode.GGPK
+                   ? $"未找到客户端文件：{PatchEngine.GetGgpkPath(info)}"
+                   : $"未找到客户端索引：{PatchEngine.GetBundlesIndexPath(info)}");
 }
