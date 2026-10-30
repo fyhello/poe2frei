@@ -1,5 +1,6 @@
 using System.IO;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace FreiAtlas.Patcher.Core;
@@ -22,8 +23,20 @@ public static class PatchFileBackup
 {
     private const string ManifestName = "manifest.json";
 
+    /// <summary>
+    /// 串行化 SaveOriginals / SaveManifest / RemoveOriginals。
+    ///
+    /// 这些方法都走「读清单 → 改内存 → 写回清单」的流程，并发调用会互相覆盖：
+    /// 后写入的一方拿着旧快照，把前一方刚登记的条目抹掉。备份属于低频操作，
+    /// 用一把进程内的锁换正确性是划算的。
+    /// </summary>
+    private static readonly object SaveGate = new();
+
     /// <summary>最近一次清单读写的失败原因。查询失败时为 null。</summary>
     public static string? LastManifestError { get; private set; }
+
+    /// <summary>最近一次 SaveOriginals 中从孤儿文件补录进清单的条目数（异常恢复观测用）。</summary>
+    public static int LastAdoptedCount { get; private set; }
 
     /// <summary>测试用备份根目录覆盖；生产环境保持为 null。</summary>
     internal static string? RootDirectoryOverride { get; set; }
@@ -93,8 +106,17 @@ public static class PatchFileBackup
     }
 
     /// <summary>某个技能的备份目录。</summary>
-    public static string GetGroupDirectory(string groupId) =>
-        Path.Combine(GetRootDirectory(), Sanitize(groupId));
+    public static string GetGroupDirectory(string groupId)
+    {
+        // groupId 会直接参与 Path.Combine，必须挡住 ".." 与绝对路径：
+        // 否则一个构造出来的分组标识就能把备份写到根目录之外。
+        if (!VirtualPath.IsSafeRelative(groupId))
+        {
+            throw new ArgumentException($"备份分组标识不是安全的相对名称：{groupId}", nameof(groupId));
+        }
+
+        return Path.Combine(GetRootDirectory(), Sanitize(groupId));
+    }
 
     /// <summary>
     /// 保存原始字节。已存在的备份不覆盖。
@@ -111,59 +133,111 @@ public static class PatchFileBackup
         ISet<string>? reconstructedPaths = null,
         string? gameVersion = null)
     {
-        var dir = GetGroupDirectory(groupId);
-        Directory.CreateDirectory(dir);
-
-        var targets = new HashSet<string>(targetPaths, StringComparer.OrdinalIgnoreCase);
-        var manifest = LoadManifest(dir);
-        // 一次目录枚举取代并行循环里的逐文件 File.Exists。
-        // 商城首次备份有 13,306 个文件，逐条探测在杀软实时扫描下约 2 ms/次，
-        // 单这一项就占掉近 20 秒；目录枚举一次即可得到同样的「已存在」判断。
-        var existingFileNames = EnumerateExistingFileNames(dir);
-        int saved = 0;
-
-        // 首次备份可能涉及上万个小文件（商城套装一次 13,306 个）。
-        // 逐个 WriteAllBytes + SHA256 是纯串行 IO，实测占掉近 30 秒；
-        // 这里并行写文件与算哈希，manifest 合并仍在主线程完成，格式不变。
-        var written = new System.Collections.Concurrent.ConcurrentDictionary<string, BackupEntry>(
-            StringComparer.OrdinalIgnoreCase);
-
-        System.Threading.Tasks.Parallel.ForEach(
-            originals,
-            new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 8 },
-            kv =>
-            {
-                if (!targets.Contains(kv.Key)) return;
-
-                // 清单里已有这条备份 → 直接跳过，绝不触碰磁盘。
-                // 逐个 File.Exists 在开启杀软实时扫描的机器上约 2ms/次，
-                // 上万条就是几十秒，这是商城模块最大的隐形开销。
-                if (manifest.ContainsKey(kv.Key)) return;
-
-                var fileName = FileNameFor(kv.Key);
-                var filePath = Path.Combine(dir, fileName);
-                if (existingFileNames.Contains(fileName)) return;   // 清单缺失但文件在（异常恢复场景）
-
-                File.WriteAllBytes(filePath, kv.Value);
-                written[kv.Key] = new BackupEntry
-                {
-                    FileName = fileName,
-                    Length = kv.Value.Length,
-                    Sha256 = Convert.ToHexString(SHA256.HashData(kv.Value)),
-                    SavedAt = DateTime.Now,
-                    IsReconstructed = reconstructedPaths?.Contains(kv.Key) == true,
-                    GameVersion = gameVersion
-                };
-            });
-
-        foreach (var (virtualPath, entry) in written)
+        lock (SaveGate)
         {
-            manifest[virtualPath] = entry;
-            saved++;
-        }
+            var dir = GetGroupDirectory(groupId);
+            Directory.CreateDirectory(dir);
 
-        SaveManifest(dir, manifest);
-        return saved;
+            var targets = new HashSet<string>(targetPaths, StringComparer.OrdinalIgnoreCase);
+            var manifest = LoadManifest(dir);
+            // 一次目录枚举取代并行循环里的逐文件 File.Exists。
+            // 商城首次备份有 13,306 个文件，逐条探测在杀软实时扫描下约 2 ms/次，
+            // 单这一项就占掉近 20 秒；目录枚举一次即可得到同样的「已存在」判断。
+            var existingFileNames = EnumerateExistingFileNames(dir);
+            var written = new System.Collections.Concurrent.ConcurrentDictionary<string, BackupEntry>(
+                StringComparer.OrdinalIgnoreCase);
+            var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
+            int adopted = 0;
+
+            // 首次备份可能涉及上万个小文件（商城套装一次 13,306 个）。
+            // 逐个 WriteAllBytes + SHA256 是纯串行 IO，实测占掉近 30 秒；
+            // 这里并行写文件与算哈希，manifest 合并仍在主线程完成，格式不变。
+            System.Threading.Tasks.Parallel.ForEach(
+                originals,
+                new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 8 },
+                kv =>
+                {
+                    if (!targets.Contains(kv.Key)) return;
+
+                    try
+                    {
+                        var fileName = FileNameFor(kv.Key);
+                        var filePath = Path.Combine(dir, fileName);
+
+                        // 清单里已有记录：只有备份文件仍在才算真正完成。
+                        // 逐个 File.Exists 在开启杀软实时扫描的机器上约 2ms/次，
+                        // 上万条就是几十秒，因此复用一次目录枚举的结果。
+                        if (manifest.TryGetValue(kv.Key, out var existing)
+                            && !string.IsNullOrEmpty(existing.FileName)
+                            && existingFileNames.Contains(existing.FileName))
+                        {
+                            return;
+                        }
+
+                        if (existingFileNames.Contains(fileName))
+                        {
+                            // 文件在、清单里没有：上一次 SaveOriginals 写完文件后
+                            // 未能落盘清单（断电 / 进程被杀 / 磁盘满）留下的孤儿。
+                            // 内容来自当时的原始字节，但无法证明来源，因此补录进
+                            // 清单并标记为「重建」——否则下一次应用会把它当作
+                            // 「已备份」跳过，这份原件就永远不可见了。
+                            long length = new FileInfo(filePath).Length;
+                            written[kv.Key] = new BackupEntry
+                            {
+                                FileName = fileName,
+                                Length = (int)Math.Min(length, int.MaxValue),
+                                Sha256 = ComputeFileSha256(filePath),
+                                SavedAt = File.GetLastWriteTimeUtc(filePath),
+                                IsReconstructed = true,
+                                GameVersion = gameVersion
+                            };
+                            Interlocked.Increment(ref adopted);
+                            return;
+                        }
+
+                        WriteBackupFile(filePath, kv.Value);
+                        written[kv.Key] = new BackupEntry
+                        {
+                            FileName = fileName,
+                            Length = kv.Value.Length,
+                            Sha256 = Convert.ToHexString(SHA256.HashData(kv.Value)),
+                            SavedAt = DateTime.UtcNow,
+                            IsReconstructed = reconstructedPaths?.Contains(kv.Key) == true,
+                            GameVersion = gameVersion
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        // 单个文件失败不能中断整批：一旦整批抛出，已写入的文件
+                        // 会留在磁盘上却进不了清单，全部变成下一次被跳过的孤儿。
+                        failures.Add($"{kv.Key}（{ex.Message}）");
+                    }
+                });
+
+            int saved = 0;
+            foreach (var (virtualPath, entry) in written)
+            {
+                manifest[virtualPath] = entry;
+                saved++;
+            }
+
+            LastAdoptedCount = adopted;
+            if (failures.Count > 0)
+            {
+                LastManifestError =
+                    $"有 {failures.Count} 个文件未能写入备份目录：" +
+                    string.Join("；", failures.Take(5)) +
+                    (failures.Count > 5 ? $"…（共 {failures.Count} 个）" : string.Empty);
+            }
+
+            // 有新增/补录才写清单；纯跳过时不产生无谓磁盘写入。
+            if (saved > 0 || failures.Count > 0)
+            {
+                SaveManifest(dir, manifest);
+            }
+
+            return saved;
+        }
     }
 
     /// <summary>
@@ -172,7 +246,19 @@ public static class PatchFileBackup
     public static IReadOnlyList<(string VirtualPath, string FilePath, int Length)> ListOriginals(string groupId)
     {
         var dir = GetGroupDirectory(groupId);
-        var manifest = LoadManifest(dir);
+
+        Dictionary<string, BackupEntry> manifest;
+        try
+        {
+            manifest = LoadManifest(dir);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            // 查询类接口不抛：清单损坏按「无备份」处理并保留 LastManifestError，
+            // 由写入路径负责强制上报。与 CountOriginals 的契约保持一致，
+            // 避免 UI 状态查询因一份坏清单直接崩掉。
+            return [];
+        }
 
         var result = new List<(string, string, int)>();
         foreach (var (virtualPath, entry) in manifest)
@@ -186,9 +272,6 @@ public static class PatchFileBackup
         return result;
     }
 
-    /// <summary>
-    /// 读取某个分组的全部原始字节。
-    /// </summary>
     /// <summary>
     /// 只统计清单条目数，不读取任何备份文件内容。
     ///
@@ -218,14 +301,26 @@ public static class PatchFileBackup
         var result = new List<(string, byte[])>();
         var failures = new List<string>();
 
-        foreach (var (virtualPath, filePath, _) in ListOriginals(groupId))
+        foreach (var (virtualPath, filePath, length) in ListOriginals(groupId))
         {
             // 单个文件读失败不应让整组加载崩掉：备份目录里可能有几十上百个文件，
             // 其中一个被杀软隔离或磁盘坏道，不该导致「全部还原」失败。
             // 失败的条目收集起来，由最后统一上报（不静默吞掉）。
             try
             {
-                result.Add((virtualPath, File.ReadAllBytes(filePath)));
+                var bytes = File.ReadAllBytes(filePath);
+
+                // 长度校验：manifest 记录了备份时的字节数。磁盘满、杀软隔离或
+                // 进程中断都可能留下截断文件，若当成有效原件写回客户端，
+                // 得到的就是一个损坏的资源。宁可拒绝还原并明确报错。
+                if (length > 0 && bytes.Length != length)
+                {
+                    failures.Add(
+                        $"{virtualPath}（长度不符：清单 {length} 字节，实际 {bytes.Length} 字节，可能已截断）");
+                    continue;
+                }
+
+                result.Add((virtualPath, bytes));
             }
             catch (Exception ex)
             {
@@ -284,34 +379,37 @@ public static class PatchFileBackup
     /// </summary>
     public static void RemoveOriginals(string groupId, IEnumerable<string> virtualPaths)
     {
-        var dir = GetGroupDirectory(groupId);
-        if (!Directory.Exists(dir)) return;
-
-        var manifest = LoadManifest(dir);
-        if (manifest.Count == 0) return;
-
-        bool changed = false;
-        foreach (var vp in virtualPaths)
+        lock (SaveGate)
         {
-            if (manifest.TryGetValue(vp, out var entry))
+            var dir = GetGroupDirectory(groupId);
+            if (!Directory.Exists(dir)) return;
+
+            var manifest = LoadManifest(dir);
+            if (manifest.Count == 0) return;
+
+            bool changed = false;
+            foreach (var vp in virtualPaths)
             {
-                manifest.Remove(vp);
-                changed = true;
-                try
+                if (manifest.TryGetValue(vp, out var entry))
                 {
-                    var filePath = Path.Combine(dir, entry.FileName);
-                    if (File.Exists(filePath)) File.Delete(filePath);
-                }
-                catch
-                {
-                    // 忽略单个文件删除异常
+                    manifest.Remove(vp);
+                    changed = true;
+                    try
+                    {
+                        var filePath = Path.Combine(dir, entry.FileName);
+                        if (File.Exists(filePath)) File.Delete(filePath);
+                    }
+                    catch
+                    {
+                        // 忽略单个文件删除异常
+                    }
                 }
             }
-        }
 
-        if (changed)
-        {
-            SaveManifest(dir, manifest);
+            if (changed)
+            {
+                SaveManifest(dir, manifest);
+            }
         }
     }
 
@@ -342,9 +440,35 @@ public static class PatchFileBackup
         return new string(chars);
     }
 
-    /// <summary>虚拟路径转成扁平文件名，避免在备份目录里再造一层目录。</summary>
-    private static string FileNameFor(string virtualPath) =>
-        virtualPath.Replace('\\', '/').TrimStart('/').Replace('/', '_');
+    /// <summary>
+    /// 虚拟路径转成扁平文件名。
+    ///
+    /// 不能用「把 / 换成 _」：a/b_c 与 a_b/c 会撞成同一个名字，两份备份
+    /// 互相覆盖，还原时把 A 的内容写进 B 的路径。改用路径的 SHA-256 前 16 位，
+    /// 既避免碰撞，也不受 Windows 260 字符路径长度限制。
+    /// </summary>
+    private static string FileNameFor(string virtualPath)
+    {
+        var normalized = VirtualPath.Normalize(virtualPath);
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
+        return Convert.ToHexString(hash)[..16].ToLowerInvariant() + ".bin";
+    }
+
+    /// <summary>
+    /// 写单个备份文件：先写 .tmp 再原子改名，避免中途失败留下截断文件。
+    /// </summary>
+    private static void WriteBackupFile(string filePath, byte[] bytes)
+    {
+        string tmp = filePath + ".tmp";
+        File.WriteAllBytes(tmp, bytes);
+        File.Move(tmp, filePath, overwrite: true);
+    }
+
+    private static string ComputeFileSha256(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream));
+    }
 
     /// <summary>
     /// 枚举备份目录里已存在的文件名。
@@ -396,11 +520,21 @@ public static class PatchFileBackup
         }
     }
 
+    /// <summary>
+    /// 写清单：先写 .tmp 再原子改名。
+    ///
+    /// 清单是全部逐文件备份的唯一索引。上万个备份文件写完后，若清单写到一半
+    /// 断电 / 被杀 / 磁盘满，下一次 LoadManifest 会判定「清单损坏」，
+    /// 整组备份全部不可见。原子写保证目标文件要么是旧完整内容，
+    /// 要么是新完整内容。
+    /// </summary>
     private static void SaveManifest(string dir, Dictionary<string, BackupEntry> manifest)
     {
         var path = Path.Combine(dir, ManifestName);
         var json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(path, json);
+        string tmp = path + ".tmp";
+        File.WriteAllText(tmp, json, Encoding.UTF8);
+        File.Move(tmp, path, overwrite: true);
     }
 
     private sealed class BackupEntry

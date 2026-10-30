@@ -24,13 +24,19 @@ internal sealed class ClientIndexLease : IDisposable
 
     internal ClientIndexSession Session { get; }
 
-    /// <summary>全部已解析路径。会话期间只解析一次。</summary>
+    /// <summary>
+    /// 全部已解析路径。会话期间只解析一次。
+    ///
+    /// 只包含「客户端索引里已存在」的路径，不包含本批次刚登记、尚未落盘的
+    /// 新路径（<see cref="PatchSession.Pending"/>）。需要读取新路径内容的场景
+    /// 请用 <see cref="ReadFile"/> / <see cref="FileExists"/>，它们会先查叠加层。
+    /// </summary>
     public IEnumerable<(string Path, FileRecord Record)> Records
     {
         get
         {
             ThrowIfDisposed();
-            return Session.Records;
+            return Owner.GetClientRecords(Session);
         }
     }
 

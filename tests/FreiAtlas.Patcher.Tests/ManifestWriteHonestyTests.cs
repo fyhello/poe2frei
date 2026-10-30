@@ -36,25 +36,37 @@ public sealed class ManifestWriteHonestyTests
     }
 
     /// <summary>
-    /// 能返回失败状态的 4 个调用方必须在清单写入失败时如实返回失败。
-    /// 这里用源码校验，因为构造真实的磁盘只读环境跨平台不稳定。
+    /// 每一处 SaveManifest 调用都必须检查返回值（或以 bool 形式返回给上层）。
+    ///
+    /// 直接写成语句 <c>SaveManifest(...);</c> 等于把「清单没写成功」这一事实丢掉：
+    /// 用户会在界面上看到快照已创建 / 已删除，重启后却恢复原状。
+    /// 这里按行校验，不锁定具体调用点数量 —— 重构增减调用点不应让这条约束失效。
     /// </summary>
     [Fact]
-    public void 可返回失败的调用方必须检查SaveManifest返回值()
+    public void 每一处SaveManifest调用都必须检查返回值()
     {
         string source = FindSourceFile("PatchBackupManager.cs");
-        string text = File.ReadAllText(source);
+        string[] lines = File.ReadAllLines(source);
 
-        // 这 4 处必须用 if (!SaveManifest(...)) 形式检查
-        string[] mustCheck =
-        [
-            "if (!SaveManifest(info, list))",
-            "if (!SaveManifest(info, remaining))"
-        ];
+        int callSites = 0;
+        var uncheckedSites = new List<string>();
 
-        int checkedCount = mustCheck.Sum(p => CountOccurrences(text, p));
-        Assert.True(checkedCount >= 4,
-            $"应至少有 4 处检查 SaveManifest 返回值，实际 {checkedCount} 处");
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i];
+            if (!line.Contains("SaveManifest(info", StringComparison.Ordinal)) continue;
+            if (line.Contains("private bool SaveManifest", StringComparison.Ordinal)) continue;
+
+            callSites++;
+            bool isChecked = line.Contains("!SaveManifest(info", StringComparison.Ordinal)
+                             || line.Contains("return SaveManifest(info", StringComparison.Ordinal);
+            if (!isChecked) uncheckedSites.Add($"第 {i + 1} 行：{line.Trim()}");
+        }
+
+        Assert.True(callSites >= 4, $"SaveManifest 调用点过少（{callSites}），可能未覆盖全部入口");
+        Assert.True(
+            uncheckedSites.Count == 0,
+            "存在未检查返回值的 SaveManifest 调用：\n" + string.Join("\n", uncheckedSites));
     }
 
     [Fact]
@@ -87,17 +99,6 @@ public sealed class ManifestWriteHonestyTests
 
             Assert.False(bare, $"第 {i + 1} 行存在裸 catch：{lines[i].Trim()}");
         }
-    }
-
-    private static int CountOccurrences(string text, string pattern)
-    {
-        int count = 0, idx = 0;
-        while ((idx = text.IndexOf(pattern, idx, StringComparison.Ordinal)) >= 0)
-        {
-            count++;
-            idx += pattern.Length;
-        }
-        return count;
     }
 
     private static string FindSourceFile(string fileName)

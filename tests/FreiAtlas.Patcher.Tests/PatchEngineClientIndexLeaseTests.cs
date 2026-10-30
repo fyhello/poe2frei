@@ -54,6 +54,7 @@ public sealed class PatchEngineClientIndexLeaseTests
     }
 
     [Fact]
+    [Trait("Category", "RequiresGameClient")]
     public void 真实客户端_租约复用同一会话且归还后可释放()
     {
         if (!Directory.Exists(RealGameDir)) return;
@@ -87,6 +88,45 @@ public sealed class PatchEngineClientIndexLeaseTests
     }
 
     [Fact]
+    [Trait("Category", "RequiresGameClient")]
+    public void 路径缓存可跨索引会话复用()
+    {
+        if (!Directory.Exists(RealGameDir)) return;
+
+        var info = GameInstallDetector.EvaluateDirectory(RealGameDir);
+        if (!info.IsValid) return;
+
+        var engine = new PatchEngine();
+        try
+        {
+            using (var first = engine.AcquireClientIndex(info))
+            {
+                Assert.NotNull(first);
+                var firstRecord = first!.Records.FirstOrDefault();
+                Assert.False(string.IsNullOrEmpty(firstRecord.Path));
+            }
+
+            Assert.True(engine.ClientPathCacheCount > 0, "首次路径枚举应建立缓存");
+            engine.ReleaseClientIndex();
+
+            using (var second = engine.AcquireClientIndex(info))
+            {
+                Assert.NotNull(second);
+                var records = second!.Records.Take(1).ToList();
+
+                Assert.Single(records);
+                Assert.False(string.IsNullOrEmpty(records[0].Path));
+                Assert.False(second.Session.PathsParsed, "命中路径缓存时不应重新 ParsePaths");
+            }
+        }
+        finally
+        {
+            try { engine.ReleaseClientIndex(); } catch { }
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "RequiresGameClient")]
     public void 有租约时禁止释放索引()
     {
         if (!Directory.Exists(RealGameDir)) return;

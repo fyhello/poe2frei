@@ -79,12 +79,12 @@ public sealed class PatchEngineLookupTests
         Assert.True(start > 0, "未找到 ReadGameFilesMatching 方法");
 
         // 该方法内应保留完整路径枚举（谓词匹配无法走哈希单点索引）。
-        // P2-3 起 GGPK/Bundles2 都通过共享会话的 Records 枚举。
+        // P2-3 起 GGPK/Bundles2 都通过共享会话的路径缓存枚举。
         string rest = text[start..];
         int nextMethod = rest.IndexOf("\n    public ", 10, StringComparison.Ordinal);
         string body = nextMethod > 0 ? rest[..nextMethod] : rest;
 
-        Assert.Contains("clientIndex.Records", body, StringComparison.Ordinal);
+        Assert.Contains("GetClientRecords(clientIndex)", body, StringComparison.Ordinal);
     }
 
     private static string FindSourceFile(string fileName)

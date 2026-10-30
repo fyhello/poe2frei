@@ -97,6 +97,15 @@ public sealed class PatchBackupManager
     private readonly string _backupDir;
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 
+    /// <summary>
+    /// 清单是否已被判定为损坏。
+    ///
+    /// 一旦置位，本实例拒绝任何 SaveManifest 写入 —— 否则后续的「官方底包
+    /// 初始化」会用一条新记录覆盖掉损坏的清单，把用户全部手动/自动快照永久抹掉。
+    /// 只有用户手动处理掉损坏文件、重启程序后才会恢复。
+    /// </summary>
+    private bool _manifestCorrupt;
+
     // 本工具自身写入的补丁 bundle 目录前缀。
     //
     // 恢复纯净时只允许删除这些目录：它们由本工具创建，删除不会影响其他软件。
@@ -242,11 +251,11 @@ public sealed class PatchBackupManager
         if (!IsAvailable) return false;
 
         string isolatedPath = GetBackupFilePath(info);
-        if (File.Exists(isolatedPath)) return true;
+        if (IsBackupFileUsable(isolatedPath)) return true;
 
         // 兜底检查旧版共用备份
         string legacyPath = Path.Combine(_backupDir, info.Mode == GameMode.GGPK ? "ggpk_index.bin.bak" : "bundles2_index.bin.bak");
-        return File.Exists(legacyPath);
+        return IsBackupFileUsable(legacyPath);
     }
 
     /// <summary>
@@ -255,10 +264,6 @@ public sealed class PatchBackupManager
     public static (bool IsLocked, string? LockReason) CheckResourceLock(GameModeInfo info)
     {
         if (!info.IsValid) return (false, null);
-
-        // 本进程自己持有索引时，「能否独占打开」必然失败 —— 那不是外部占用。
-        // 跳过预检，真被外部占用时后续写入会以 IOException 暴露出来。
-        if (PatchEngine.ClientIndexHeld) return (false, null);
 
         string targetFile = info.Mode == GameMode.GGPK
             ? PatchEngine.GetGgpkPath(info)
@@ -271,9 +276,28 @@ public sealed class PatchBackupManager
             using var stream = new FileStream(targetFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
             return (false, null);
         }
-        catch (IOException ex)
+        catch (IOException)
         {
-            return (true, $"资源文件正被其他进程占用：{ex.Message}（请先完全退出游戏、Steam 或后台下载更新器）");
+            // 独占打开失败有两种可能：
+            //   1. 外部进程独占（Steam 更新 / 杀软扫描）—— 真占用；
+            //   2. 本进程自己以 FileShare.ReadWrite 持有索引句柄 —— 不是占用。
+            // 用共享模式再探一次即可区分：能打开说明没有外部独占者。
+            // 不能只看「本引擎是否持有索引」就跳过检测 —— 那会让批量期间
+            // 外部占用完全检不出来，只能等写盘时抛 IOException。
+            try
+            {
+                using var shared = new FileStream(
+                    targetFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                return (false, null);
+            }
+            catch (IOException ex)
+            {
+                return (true, $"资源文件正被其他进程占用：{ex.Message}（请先完全退出游戏、Steam 或后台下载更新器）");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return (true, $"无读写权限访问资源文件：{ex.Message}（请尝试以管理员身份运行）");
+            }
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -360,16 +384,25 @@ public sealed class PatchBackupManager
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // 清单损坏或不可读时返回空列表，由下方的官方底包初始化逻辑重建。
-                // 不抛异常是为了让界面仍能进入补丁页（否则整个模块会打不开）。
+                // 清单损坏时绝不能再走下方的 official 初始化：
+                // 那会构造一条官方记录并 SaveManifest，用一条新记录覆盖掉
+                // 损坏的清单，把用户全部手动/自动快照永久抹掉。
+                // 宁可本次界面无快照，也不能销毁历史记录。
+                _manifestCorrupt = true;
+                LastManifestError =
+                    $"读取快照清单失败（{manifestPath}）：{ex.Message}。" +
+                    "为保护历史快照，本次不写入任何清单，也不重建官方底包。" +
+                    "请先备份并手动检查该文件。";
+                PreserveCorruptManifest(manifestPath);
+                return [];
             }
         }
 
         // 确保官方底包 clean_official 存在并初始化
-        var official = list.FirstOrDefault(s => s.Id == "clean_official" || s.Type == PatchSnapshotType.Official);
-        string officialBinPath = Path.Combine(GetSnapshotsDirectory(info), "clean_official.bin");
+        var official = list.FirstOrDefault(s => s.Id == OfficialSnapshotId || s.Type == PatchSnapshotType.Official);
+        string officialBinPath = Path.Combine(GetSnapshotsDirectory(info), $"{OfficialSnapshotId}.bin");
 
         if (official == null)
         {
@@ -382,7 +415,7 @@ public sealed class PatchBackupManager
                     if (!File.Exists(officialBinPath)) File.Copy(legacyBak, officialBinPath, overwrite: false);
                     official = new PatchSnapshotInfo
                     {
-                        Id = "clean_official",
+                        Id = OfficialSnapshotId,
                         Type = PatchSnapshotType.Official,
                         Name = "🌟 官方出厂纯净底包",
                         Description = "首次未打补丁时的官方纯净原始索引，永久锁定不可覆盖",
@@ -430,6 +463,87 @@ public sealed class PatchBackupManager
         string tmp = path + ".tmp";
         File.WriteAllBytes(tmp, bytes);
         File.Move(tmp, path, overwrite: true);
+        WriteBackupMetadata(path, bytes);
+    }
+
+    /// <summary>
+    /// 为备份文件写一份长度/摘要元数据。
+    ///
+    /// 备份文件是一次性整份写入的，但 File.Copy / WriteAllBytes 中途失败会留下
+    /// 截断文件，而还原流程只看「文件存在」。元数据让读取方能校验完整性；
+    /// 早期版本创建的备份没有元数据，退回只判存在。
+    /// </summary>
+    private static void WriteBackupMetadata(string path, byte[] bytes)
+    {
+        try
+        {
+            string metaPath = path + ".meta.json";
+            var meta = new BackupFileMetadata
+            {
+                Length = bytes.Length,
+                Sha256 = Convert.ToHexString(SHA256.HashData(bytes))
+            };
+            string json = JsonSerializer.Serialize(meta, JsonOpts);
+            string tmp = metaPath + ".tmp";
+            File.WriteAllText(tmp, json, Encoding.UTF8);
+            File.Move(tmp, metaPath, overwrite: true);
+        }
+        catch (Exception ex) when (IsFileSystemFailure(ex))
+        {
+            // 元数据写失败不影响备份本体，下次校验退回「只判存在」。
+        }
+    }
+
+    /// <summary>
+    /// 备份文件是否可用于还原。
+    ///
+    /// 只看 File.Exists 不够：拷贝或写入被中断会留下截断文件，
+    /// 还原时会被当成完整索引写回客户端。有元数据时按长度校验；
+    /// 早期备份没有元数据，只能退回「存在且非空」。
+    /// </summary>
+    private bool IsBackupFileUsable(string path)
+    {
+        var file = new FileInfo(path);
+        if (!file.Exists || file.Length == 0) return false;
+
+        string metaPath = path + ".meta.json";
+        if (!File.Exists(metaPath)) return true;
+
+        try
+        {
+            var meta = JsonSerializer.Deserialize<BackupFileMetadata>(
+                File.ReadAllText(metaPath, Encoding.UTF8));
+            if (meta is null || meta.Length <= 0) return true;
+            return file.Length == meta.Length;
+        }
+        catch (Exception ex) when (IsFileSystemFailure(ex))
+        {
+            // 元数据损坏不应让备份不可用：无从证明它坏了，按可用处理。
+            return true;
+        }
+    }
+
+    private sealed class BackupFileMetadata
+    {
+        public long Length { get; set; }
+        public string Sha256 { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// 把损坏的清单另存一份取证副本。只复制不移动：
+    /// 原文件必须留在原处，否则下一次调用会把它当成「从未有过清单」而重新初始化。
+    /// </summary>
+    private static void PreserveCorruptManifest(string manifestPath)
+    {
+        try
+        {
+            string copy = manifestPath + ".corrupt-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            if (!File.Exists(copy)) File.Copy(manifestPath, copy, overwrite: false);
+        }
+        catch (Exception ex) when (IsFileSystemFailure(ex))
+        {
+            // 取证副本写不出来不影响主判定：原文件仍在原处，写回依然被禁止。
+        }
     }
 
     /// <summary>
@@ -442,6 +556,15 @@ public sealed class PatchBackupManager
     /// <returns>写入成功返回 true。</returns>
     private bool SaveManifest(GameModeInfo info, List<PatchSnapshotInfo> list)
     {
+        // 清单一旦判定损坏，禁止任何写回：继续写只会把剩余记录一起毁掉。
+        if (_manifestCorrupt)
+        {
+            LastManifestError =
+                $"快照清单已损坏并被保护，拒绝写入以免覆盖历史快照（{GetManifestPath(info)}）。" +
+                "请先备份并手动检查该文件后重启程序。";
+            return false;
+        }
+
         try
         {
             var manifestPath = GetManifestPath(info);
@@ -466,25 +589,17 @@ public sealed class PatchBackupManager
     /// </summary>
     private static byte[]? ExtractCurrentClientIndexBytes(GameModeInfo info)
     {
-        if (info.Mode == GameMode.GGPK)
-        {
-            var ggpkPath = PatchEngine.GetGgpkPath(info);
-            if (!File.Exists(ggpkPath)) return null;
-
-            using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-            if (ggpk.Root.TryFindNode("Bundles2/_.index.bin", out var node) && node is LibGGPK3.Records.FileRecord record)
-            {
-                return record.Read();
-            }
-            return null;
-        }
-        else if (info.Mode == GameMode.Bundles2)
+        // Bundles2 直接读索引文件：这里只需要原始字节，解析索引既慢又会在
+        // 客户端/测试夹具的索引不完整时抛异常。GGPK 必须从包内节点取，走统一会话。
+        if (info.Mode == GameMode.Bundles2)
         {
             var indexPath = PatchEngine.GetBundlesIndexPath(info);
             if (!File.Exists(indexPath)) return null;
             return File.ReadAllBytes(indexPath);
         }
-        return null;
+
+        using var session = ClientIndexSession.Open(info);
+        return session?.ReadIndexBytes();
     }
 
     /// <summary>
@@ -526,7 +641,7 @@ public sealed class PatchBackupManager
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + "_" + Guid.NewGuid().ToString("N")[..4];
             string snapId = type switch
             {
-                PatchSnapshotType.Official => "clean_official",
+                PatchSnapshotType.Official => OfficialSnapshotId,
                 PatchSnapshotType.Auto => $"snap_auto_{timestamp}",
                 _ => $"snap_manual_{timestamp}"
             };
@@ -796,7 +911,7 @@ public sealed class PatchBackupManager
     /// </summary>
     public bool DeleteSnapshot(GameModeInfo info, string snapshotId, out string message)
     {
-        if (snapshotId == "clean_official")
+        if (snapshotId == OfficialSnapshotId)
         {
             message = "🌟 官方出厂纯净底包受永久保护，禁止删除！";
             return false;
@@ -822,16 +937,8 @@ public sealed class PatchBackupManager
             return false;
         }
 
-        list.Remove(target);
-        if (!SaveManifest(info, list))
-        {
-            message = LastManifestError ?? "写入快照清单失败，删除未生效。";
-            return false;
-        }
-
-        // 清单条目已移除，但磁盘文件可能因占用 / 权限 / 磁盘错误删不掉。
-        // 早期这里吞掉异常后照样报「已删除」，用户以为空间已释放、快照已消失，
-        // 实际 .bin（每份约 115 MB）仍留在磁盘上。改为如实报告。
+        // 先删磁盘文件、再改清单：反过来做的话，删除失败会留下
+        // 「清单里没有、文件仍占盘」的孤儿，且没有任何入口能重试。
         var undeleted = new List<string>();
         try
         {
@@ -851,9 +958,16 @@ public sealed class PatchBackupManager
         if (undeleted.Count > 0)
         {
             message =
-                $"快照【{target.Name}】的清单条目已删除，但 {undeleted.Count} 个磁盘文件未能删除，" +
-                $"仍占用磁盘空间：{string.Join("；", undeleted)}。\n" +
-                "请关闭可能占用该文件的程序后手动删除。";
+                $"快照【{target.Name}】的 {undeleted.Count} 个磁盘文件未能删除（仍占用磁盘空间）：" +
+                $"{string.Join("；", undeleted)}。\n" +
+                "清单条目已保留，关闭占用该文件的程序后可再次删除。";
+            return false;
+        }
+
+        list.Remove(target);
+        if (!SaveManifest(info, list))
+        {
+            message = LastManifestError ?? "写入快照清单失败，删除未生效（文件已删除，可重试）。";
             return false;
         }
 
@@ -918,7 +1032,11 @@ public sealed class PatchBackupManager
     /// <summary>
     /// 确保存在纯净官方原版备份（具备纯净性防污染检测）
     /// </summary>
-    public bool EnsureBackup(GameModeInfo info, Action<string>? logger = null, bool allowDirtyBaseline = false)
+    public bool EnsureBackup(
+        GameModeInfo info,
+        Action<string>? logger = null,
+        bool allowDirtyBaseline = false,
+        bool replaceExisting = false)
     {
         if (!IsAvailable)
         {
@@ -927,7 +1045,7 @@ public sealed class PatchBackupManager
         }
 
         var backupPath = GetBackupFilePath(info);
-        if (File.Exists(backupPath))
+        if (IsBackupFileUsable(backupPath) && !replaceExisting)
         {
             // 备份文件存在即视为可用。版本号只用于「提示」，不作为删除依据：
             //   1. 早期版本创建的底包没有记录版本号，无法判断新旧；
@@ -971,84 +1089,92 @@ public sealed class PatchBackupManager
                     return false;
                 }
 
-                using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                if (ggpk.Root.TryFindNode("Bundles2/_.index.bin", out var node) && node is LibGGPK3.Records.FileRecord record)
+                // 复用统一的只读会话：索引与包内节点都由 ClientIndexSession 负责，
+                // 备份逻辑不再各自 new BundledGGPK。
+                using var session = ClientIndexSession.Open(info);
+                if (session?.Index is null)
                 {
-                    var dirtyPrefixes = DetectPatchPrefixesInIndex(ggpk.Index);
-                    if (dirtyPrefixes.Count > 0)
+                    logger?.Invoke("无法打开客户端索引。");
+                    return false;
+                }
+
+                var dirtyPrefixes = DetectPatchPrefixesInIndex(session.Index);
+                if (dirtyPrefixes.Count > 0)
+                {
+                    if (!allowDirtyBaseline)
                     {
-                        if (!allowDirtyBaseline)
-                        {
-                            logger?.Invoke("检测到客户端 index 中已包含补丁 Bundle 记录，判定为非纯净客户端，拒绝将其存为纯净备份。");
-                            return false;
-                        }
-
-                        logger?.Invoke($"已按用户确认，以当前状态建立基线。检测到的补丁前缀：{string.Join("、", dirtyPrefixes)}");
-                    }
-
-                    var indexBytes = record.Read();
-                    WriteFileAtomic(backupPath, indexBytes);
-                    logger?.Invoke($"已成功生成纯净索引备份（{indexBytes.Length / (1024.0 * 1024.0):F2} MB）");
-
-                    // 同步固化为 official 快照。必须复用已读到的索引：GGPK 句柄仍由
-                    // 上面的 using 持有，让 CreateSnapshot 自行打开同一文件会失败。
-                    var snapResult = CreateSnapshot(
-                        info, PatchSnapshotType.Official,
-                        "🌟 官方出厂纯净底包",
-                        "首次未打补丁时的官方纯净原始索引，永久锁定不可覆盖",
-                        null, [], logger, indexBytes, dirtyPrefixes);
-                    if (!snapResult.Success)
-                    {
-                        logger?.Invoke($"底包文件已生成，但快照登记失败：{snapResult.Message}");
+                        logger?.Invoke("检测到客户端 index 中已包含补丁 Bundle 记录，判定为非纯净客户端，拒绝将其存为纯净备份。");
                         return false;
                     }
-                    return true;
+
+                    logger?.Invoke($"已按用户确认，以当前状态建立基线。检测到的补丁前缀：{string.Join("、", dirtyPrefixes)}");
                 }
-                return false;
+
+                var indexBytes = session.ReadIndexBytes();
+                if (indexBytes is null || indexBytes.Length == 0)
+                {
+                    logger?.Invoke("无法从客户端中读取 Bundles2/_.index.bin。");
+                    return false;
+                }
+
+                WriteFileAtomic(backupPath, indexBytes);
+                logger?.Invoke($"已成功生成纯净索引备份（{indexBytes.Length / (1024.0 * 1024.0):F2} MB）");
+
+                // 同步固化为 official 快照。复用已读到的索引：会话仍持有 GGPK 句柄，
+                // 让 CreateSnapshot 自行打开同一文件会失败。
+                var snapResult = CreateSnapshot(
+                    info, PatchSnapshotType.Official,
+                    "🌟 官方出厂纯净底包",
+                    "首次未打补丁时的官方纯净原始索引，永久锁定不可覆盖",
+                    null, [], logger, indexBytes, dirtyPrefixes);
+                if (!snapResult.Success)
+                {
+                    logger?.Invoke($"底包文件已生成，但快照登记失败：{snapResult.Message}");
+                    return false;
+                }
+                return true;
             }
             else if (info.Mode == GameMode.Bundles2)
             {
-                var bundlesDir = PatchEngine.GetBundlesDirectory(info);
                 var indexPath = PatchEngine.GetBundlesIndexPath(info);
                 if (!File.Exists(indexPath)) return false;
 
-                var driveFactory = new DriveBundleFactory(bundlesDir);
-                try
+                using var session = ClientIndexSession.Open(info);
+                if (session?.Index is null)
                 {
-                    using var index = new LibBundle3.Index(indexPath, parsePaths: false, driveFactory);
-                    var dirtyPrefixes = DetectPatchPrefixesInIndex(index);
-                    if (dirtyPrefixes.Count > 0)
+                    logger?.Invoke("无法打开客户端索引。");
+                    return false;
+                }
+
+                var dirtyPrefixes = DetectPatchPrefixesInIndex(session.Index);
+                if (dirtyPrefixes.Count > 0)
+                {
+                    if (!allowDirtyBaseline)
                     {
-                        if (!allowDirtyBaseline)
-                        {
-                            logger?.Invoke("检测到客户端 index 中已包含补丁 Bundle 记录，判定为非纯净客户端，拒绝将其存为纯净备份。");
-                            return false;
-                        }
-
-                        logger?.Invoke($"已按用户确认，以当前状态建立基线。检测到的补丁前缀：{string.Join("、", dirtyPrefixes)}");
-                    }
-
-                    File.Copy(indexPath, backupPath, overwrite: false);
-                    logger?.Invoke($"已成功生成纯净索引备份（{new FileInfo(backupPath).Length / (1024.0 * 1024.0):F2} MB）");
-
-                    // 复用已读到的索引，避免在 index 句柄未释放时再次打开同一文件
-                    var snapBytes = File.ReadAllBytes(backupPath);
-                    var snapResult = CreateSnapshot(
-                        info, PatchSnapshotType.Official,
-                        "🌟 官方出厂纯净底包",
-                        "首次未打补丁时的官方纯净原始索引，永久锁定不可覆盖",
-                        null, [], logger, snapBytes, dirtyPrefixes);
-                    if (!snapResult.Success)
-                    {
-                        logger?.Invoke($"底包文件已生成，但快照登记失败：{snapResult.Message}");
+                        logger?.Invoke("检测到客户端 index 中已包含补丁 Bundle 记录，判定为非纯净客户端，拒绝将其存为纯净备份。");
                         return false;
                     }
-                    return true;
+
+                    logger?.Invoke($"已按用户确认，以当前状态建立基线。检测到的补丁前缀：{string.Join("、", dirtyPrefixes)}");
                 }
-                finally
+
+                // 一次性读入并原子写盘。File.Copy 中途失败会留下截断的 .bak，
+                // 而 HasBackup 只看文件是否存在，后续还原会读到坏索引。
+                var snapBytes = File.ReadAllBytes(indexPath);
+                WriteFileAtomic(backupPath, snapBytes);
+                logger?.Invoke($"已成功生成纯净索引备份（{snapBytes.Length / (1024.0 * 1024.0):F2} MB）");
+
+                var snapResult = CreateSnapshot(
+                    info, PatchSnapshotType.Official,
+                    "🌟 官方出厂纯净底包",
+                    "首次未打补丁时的官方纯净原始索引，永久锁定不可覆盖",
+                    null, [], logger, snapBytes, dirtyPrefixes);
+                if (!snapResult.Success)
                 {
-                    (driveFactory as IDisposable)?.Dispose();
+                    logger?.Invoke($"底包文件已生成，但快照登记失败：{snapResult.Message}");
+                    return false;
                 }
+                return true;
             }
         }
         catch (Exception ex)
@@ -1114,7 +1240,6 @@ public sealed class PatchBackupManager
     }
 
     /// <summary>
-    /// <summary>
     /// 把快照的索引指纹刷新为当前客户端的指纹。
     ///
     /// 用途：泥人 / 血条这类「还原点固定复用」的模块，在同一版本内反复换档位时
@@ -1147,6 +1272,7 @@ public sealed class PatchBackupManager
         }
     }
 
+    /// <summary>
     /// 判断某个快照之后是否又有其他补丁写入过客户端。
     ///
     /// 依据索引指纹：快照记录创建时刻的索引指纹，当前客户端索引指纹与它不同，
@@ -1207,9 +1333,6 @@ public sealed class PatchBackupManager
         };
     }
 
-    /// <summary>
-    /// 计算当前客户端索引指纹。读取失败时返回空串，调用方应视为「无法判定」而非「版本已变」。
-    /// </summary>
     private static readonly object _fingerprintCacheLock = new();
     private static string _fingerprintCacheKey = string.Empty;
     private static string _fingerprintCacheValue = string.Empty;
@@ -1355,35 +1478,16 @@ public sealed class PatchBackupManager
 
         try
         {
-            if (info.Mode == GameMode.GGPK)
-            {
-                var ggpkPath = PatchEngine.GetGgpkPath(info);
-                if (!File.Exists(ggpkPath)) return false;
-                using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                return IsCleanIndex(ggpk.Index);
-            }
-            if (info.Mode == GameMode.Bundles2)
-            {
-                var bundlesDir = PatchEngine.GetBundlesDirectory(info);
-                var indexPath = PatchEngine.GetBundlesIndexPath(info);
-                if (!File.Exists(indexPath)) return false;
-                var driveFactory = new DriveBundleFactory(bundlesDir);
-                try
-                {
-                    using var index = new LibBundle3.Index(indexPath, parsePaths: false, driveFactory);
-                    return IsCleanIndex(index);
-                }
-                finally
-                {
-                    (driveFactory as IDisposable)?.Dispose();
-                }
-            }
+            if (!File.Exists(PatchEngine.GetClientIndexPath(info))) return false;
+
+            // 与 DetectPatchPrefixes 共用同一条只读会话，不再各自 new BundledGGPK/Index。
+            using var session = ClientIndexSession.Open(info);
+            return session?.Index is not null && IsCleanIndex(session.Index);
         }
         catch
         {
             return false;
         }
-        return false;
     }
 
     /// <summary>
@@ -1423,46 +1527,29 @@ public sealed class PatchBackupManager
     /// <summary>
     /// 检测当前客户端索引中已存在的补丁 bundle 前缀（自身与第三方）。
     /// 用于向用户说明「是谁改动了客户端」，不能只给一个布尔值。
+    ///
+    /// 返回 null 表示「无法判定」（索引缺失或读取失败），与「确认没有补丁」的
+    /// 空列表严格区分 —— 旧实现把两者都返回 []，调用方会把读取失败当成客户端纯净。
     /// </summary>
-    public IReadOnlyList<string> DetectPatchPrefixes(GameModeInfo info)
+    public IReadOnlyList<string>? DetectPatchPrefixes(GameModeInfo info)
     {
-        if (!IsAvailable || !info.IsValid) return [];
+        if (!IsAvailable || !info.IsValid) return null;
 
         try
         {
-            if (info.Mode == GameMode.GGPK)
-            {
-                var ggpkPath = PatchEngine.GetGgpkPath(info);
-                if (!File.Exists(ggpkPath)) return [];
-                using var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                return DetectPatchPrefixesInIndex(ggpk.Index);
-            }
+            if (!File.Exists(PatchEngine.GetClientIndexPath(info))) return null;
 
-            if (info.Mode == GameMode.Bundles2)
-            {
-                var bundlesDir = PatchEngine.GetBundlesDirectory(info);
-                var indexPath = PatchEngine.GetBundlesIndexPath(info);
-                if (!File.Exists(indexPath)) return [];
-
-                var driveFactory = new DriveBundleFactory(bundlesDir);
-                try
-                {
-                    using var index = new LibBundle3.Index(indexPath, parsePaths: false, driveFactory);
-                    return DetectPatchPrefixesInIndex(index);
-                }
-                finally
-                {
-                    (driveFactory as IDisposable)?.Dispose();
-                }
-            }
+            // 统一走 ClientIndexSession，与 CanBuildCleanBackup 共用同一条只读路径。
+            using var session = ClientIndexSession.Open(info);
+            if (session?.Index is null) return null;
+            return DetectPatchPrefixesInIndex(session.Index);
         }
         catch
         {
-            // 探测失败不阻断调用方：返回空表示「无法判定」，
-            // 由调用方结合 IsCleanIndex 的严格结果决定是否继续。
+            // 探测失败必须表达为「不可判定」而不是「纯净」：
+            // 误判为纯净会把来源不明的索引固化成官方底包。
+            return null;
         }
-
-        return [];
     }
 
     /// <summary>
@@ -1504,20 +1591,13 @@ public sealed class PatchBackupManager
             if (official is not null)
             {
                 logger?.Invoke($"检测到游戏版本变化（{official.GameVersion} → {current}），旧纯净底包已失效，开始重建。");
-                DeleteSnapshotInternal(info, official.Id, out _);
-                var remaining = GetSnapshots(info).Where(s => s.Type != PatchSnapshotType.Official).ToList();
-                if (!SaveManifest(info, remaining))
-                {
-                    logger?.Invoke(LastManifestError ?? "写入快照清单失败，旧底包未清理。");
-                    return false;
-                }
             }
 
-            // 只有确认能重建时才清除旧文件
-            string backupPath = GetBackupFilePath(info);
-            if (File.Exists(backupPath)) File.Delete(backupPath);
-
-            return EnsureBackup(info, logger);
+            // 先重建、成功后才替换：旧底包在新底包落盘并校验通过之前保持原样。
+            // 反过来做（先删后建）一旦重建失败（版本读不到 / 磁盘满 / 文件被占用），
+            // 用户会彻底失去唯一的还原点。
+            // EnsureBackup 内部会以 Official 快照 id 覆盖登记，无需另行删除旧条目。
+            return EnsureBackup(info, logger, allowDirtyBaseline: false, replaceExisting: true);
         }
         catch (Exception ex)
         {
@@ -1533,8 +1613,7 @@ public sealed class PatchBackupManager
     /// 那些补丁的 bundle 记录一并固化进去。检测到的前缀会写入快照元数据，
     /// 恢复前据此校验对应目录是否仍然存在。
     ///
-    /// 先删后建是安全的：本方法只在「基线缺失」或「基线版本不符」时被调用，
-    /// 版本不符的旧基线本身无法用于还原，删掉不会损失可用数据。
+    /// 新基线落盘并校验通过后才会覆盖旧条目，重建失败时旧基线保持原样。
     /// </summary>
     public bool RebuildBaselineAsIs(GameModeInfo info, Action<string>? logger = null)
     {
@@ -1542,22 +1621,7 @@ public sealed class PatchBackupManager
 
         try
         {
-            var official = GetSnapshots(info).FirstOrDefault(s => s.Type == PatchSnapshotType.Official);
-            if (official is not null)
-            {
-                DeleteSnapshotInternal(info, official.Id, out _);
-                var remaining = GetSnapshots(info).Where(s => s.Type != PatchSnapshotType.Official).ToList();
-                if (!SaveManifest(info, remaining))
-                {
-                    logger?.Invoke(LastManifestError ?? "写入快照清单失败，旧基线未清理。");
-                    return false;
-                }
-            }
-
-            string backupPath = GetBackupFilePath(info);
-            if (File.Exists(backupPath)) File.Delete(backupPath);
-
-            return EnsureBackup(info, logger, allowDirtyBaseline: true);
+            return EnsureBackup(info, logger, allowDirtyBaseline: true, replaceExisting: true);
         }
         catch (Exception ex)
         {
@@ -1704,21 +1768,21 @@ public sealed class PatchBackupManager
         }
 
         // 优先尝试从快照系统中还原 clean_official
-        var res = RestoreSnapshot(info, "clean_official", out _, logger);
+        var res = RestoreSnapshot(info, OfficialSnapshotId, out _, logger);
         if (res.Success) return res;
 
         // 兜底走历史单文件还原
         var backupPath = GetBackupFilePath(info);
-        if (!File.Exists(backupPath))
+        if (!IsBackupFileUsable(backupPath))
         {
             string legacyPath = Path.Combine(_backupDir, info.Mode == GameMode.GGPK ? "ggpk_index.bin.bak" : "bundles2_index.bin.bak");
-            if (File.Exists(legacyPath))
+            if (IsBackupFileUsable(legacyPath))
             {
                 backupPath = legacyPath;
             }
             else
             {
-                return new BackupRestoreResult(false, $"找不到纯净备份文件（目标位置: {backupPath}）。若从未在纯净状态下启动过本软件，请先通过官方平台验证游戏文件。");
+                return new BackupRestoreResult(false, $"找不到纯净备份文件（目标位置: {backupPath}）。若备份已损坏或从未在纯净状态下启动过本软件，请先通过官方平台验证游戏文件。");
             }
         }
 
