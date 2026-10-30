@@ -159,6 +159,8 @@ public sealed class PatcherFacade
         }
 
         progress?.Invoke("正在检查客户端状态并准备恢复纯净原版备份...");
+        // 整体替换索引前先让引擎缓存失效，避免后续读取拿到回滚前的旧索引。
+        _engine.ReleaseClientIndex();
         var res = _backupManager.Restore(info, progress);
         progress?.Invoke(res.Message);
         return res;
@@ -342,6 +344,8 @@ public sealed class PatcherFacade
         }
 
         progress?.Invoke("正在检查客户端状态并恢复指定版本快照...");
+        // 整体替换索引前先让引擎缓存失效，避免后续读取拿到回滚前的旧索引。
+        _engine.ReleaseClientIndex();
         var res = _backupManager.RestoreSnapshot(info, snapshotId, out restoredSettingsJson, progress);
         progress?.Invoke(res.Message);
         return res;

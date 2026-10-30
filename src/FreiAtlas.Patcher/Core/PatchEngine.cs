@@ -55,21 +55,98 @@ public sealed class PatchEngine
     // 物理写入前必须释放（Windows 下 GGPK 句柄独占文件），写入后按需重建。
     private ClientIndexSession? _clientIndex;
     private string? _clientIndexKey;
+    private int _clientIndexLeaseCount;
+
+    /// <summary>当前仍被模块借用的索引会话数量（仅用于诊断与测试）。</summary>
+    internal int ClientIndexLeaseCount => _clientIndexLeaseCount;
 
     /// <summary>
     /// 释放共享索引会话。
     ///
     /// Windows 下 GGPK 句柄会独占文件，写盘前不释放会导致 Replace 抛 IOException。
+    /// 有模块仍持有借用凭证时必须先归还，否则写盘会关闭正在使用的会话。
     /// </summary>
     public void ReleaseClientIndex()
     {
         lock (_fileLock)
         {
+            if (_clientIndexLeaseCount > 0)
+            {
+                throw new InvalidOperationException(
+                    $"客户端索引仍有 {_clientIndexLeaseCount} 个借用凭证未归还，不能在借用期间写盘或释放。");
+            }
+
             _clientIndex?.Dispose();
             _clientIndex = null;
             _clientIndexKey = null;
             ClientIndexHeld = false;
         }
+    }
+
+    /// <summary>
+    /// 借出共享索引会话。调用方必须用 <c>using</c> 归还，且必须在写盘前释放。
+    /// </summary>
+    internal ClientIndexLease? AcquireClientIndex(GameModeInfo info)
+    {
+        lock (_fileLock)
+        {
+            var session = GetOrOpenClientIndex(info);
+            if (session is null) return null;
+
+            _clientIndexLeaseCount++;
+            return new ClientIndexLease(this, session);
+        }
+    }
+
+    /// <summary>归还一个索引借用凭证。</summary>
+    internal void ReturnClientIndex()
+    {
+        lock (_fileLock)
+        {
+            if (_clientIndexLeaseCount > 0)
+            {
+                _clientIndexLeaseCount--;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 读取客户端文件：批量会话叠加层优先，其次才是磁盘索引。
+    /// </summary>
+    internal byte[]? ReadClientFile(ClientIndexSession session, string path)
+    {
+        lock (_fileLock)
+        {
+            return ReadWithOverlay(_session, path, session.ReadFile);
+        }
+    }
+
+    /// <summary>判断客户端文件是否存在；叠加层中的新内容也视为存在。</summary>
+    internal bool FileExistsInClient(ClientIndexSession session, string path)
+    {
+        lock (_fileLock)
+        {
+            return ExistsWithOverlay(_session, path, session.FileExists);
+        }
+    }
+
+    internal static byte[]? ReadWithOverlay(
+        PatchSession? session,
+        string path,
+        Func<string, byte[]?> readFromDisk)
+    {
+        var clean = path.Replace('\\', '/').TrimStart('/');
+        var staged = session?.TryGet(clean);
+        return staged ?? readFromDisk(clean);
+    }
+
+    internal static bool ExistsWithOverlay(
+        PatchSession? session,
+        string path,
+        Func<string, bool> existsOnDisk)
+    {
+        var clean = path.Replace('\\', '/').TrimStart('/');
+        return session?.TryGet(clean) is not null || existsOnDisk(clean);
     }
 
     private ClientIndexSession? GetOrOpenClientIndex(GameModeInfo info)
@@ -83,6 +160,14 @@ public sealed class PatchEngine
             : "missing";
 
         string key = $"{info.Mode}|{info.GameDirectory}|{fileStamp}";
+
+        // 借用期间必须返回同一个会话：中途换索引会让借用方读到不一致的视图。
+        // 索引文件 stamp 变化会等到最后一个借用归还后的下一次获取再处理。
+        if (_clientIndex is not null && _clientIndexLeaseCount > 0)
+        {
+            return _clientIndex;
+        }
+
         if (_clientIndex is not null &&
             string.Equals(_clientIndexKey, key, StringComparison.OrdinalIgnoreCase))
         {
@@ -215,30 +300,15 @@ public sealed class PatchEngine
                 }
                 else if (info.Mode == GameMode.Bundles2)
                 {
-                    var bundlesDir = GetBundlesDirectory(info);
-                    var indexPath = Path.Combine(bundlesDir, "_.index.bin");
-                    if (!File.Exists(indexPath)) return result;
+                    // 与 GGPK 分支一致：复用引擎共享会话，避免每次读取都重建索引。
+                    var clientIndex = GetOrOpenClientIndex(info);
+                    if (clientIndex is null) return result;
 
-                    var driveFactory = new DriveBundleFactory(bundlesDir);
-                    try
+                    foreach (var vPath in virtualPaths)
                     {
-                        using var index = new LibBundle3.Index(indexPath, parsePaths: false, driveFactory);
-                        index.ParsePaths();
-
-                        foreach (var vPath in virtualPaths)
-                        {
-                            var cleanPath = vPath.Replace('\\', '/').TrimStart('/');
-
-                            // 同 GGPK 分支：TryGetFile 已忽略大小写，无需线性兜底。
-                            if (index.TryGetFile(cleanPath, out var file) && file != null)
-                            {
-                                result[cleanPath] = file.Read().ToArray();
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        (driveFactory as IDisposable)?.Dispose();
+                        var cleanPath = vPath.Replace('\\', '/').TrimStart('/');
+                        var data = clientIndex.ReadFile(cleanPath);
+                        if (data is not null) result[cleanPath] = data;
                     }
                 }
             }
@@ -295,29 +365,16 @@ public sealed class PatchEngine
                 }
                 else if (info.Mode == GameMode.Bundles2)
                 {
-                    var bundlesDir = GetBundlesDirectory(info);
-                    var indexPath = Path.Combine(bundlesDir, "_.index.bin");
-                    if (!File.Exists(indexPath)) return result;
+                    // 与 GGPK 分支一致：复用引擎共享会话，路径树整个会话只解析一次。
+                    var clientIndex = GetOrOpenClientIndex(info);
+                    if (clientIndex is null) return result;
 
-                    var driveFactory = new DriveBundleFactory(bundlesDir);
-                    try
+                    clientIndex.EnsurePathsParsed();
+                    foreach (var (path, record) in clientIndex.Records)
                     {
-                        using var index = new LibBundle3.Index(indexPath, parsePaths: false, driveFactory);
-                        index.ParsePaths();
-
-                        var matched = index.Files.Values
-                            .Where(f => !string.IsNullOrEmpty(f.Path) && predicate(f.Path))
-                            .ToList();
-
-                        foreach (var f in matched)
-                        {
-                            if (session?.TryGet(f.Path!) is not null) continue;
-                            result[f.Path!] = f.Read().ToArray();
-                        }
-                    }
-                    finally
-                    {
-                        (driveFactory as IDisposable)?.Dispose();
+                        if (!predicate(path)) continue;
+                        if (session?.TryGet(path) is not null) continue;
+                        result[path] = record.Read().ToArray();
                     }
                 }
             }
@@ -549,7 +606,9 @@ public sealed class PatchEngine
                 List<(string VirtualPath, byte[] Data)> validFiles;
                 using (var ggpk = new BundledGGPK(ggpkPath, parsePathsInIndex: false))
                 {
-                    ggpk.Index.ParsePaths();
+                    // 不调用 ParsePaths：FilterExisting 走 TryGetFile(NameHash)，
+                    // AddFileRecordPlaceholder 与 Index.Replace 也只依赖 _Files / NameHash。
+                    // 写盘路径解析 426 万条路径属于纯浪费，每次约 8-10 秒。
 
                     // 只注入当前客户端真实存在的路径。向索引写入不存在的条目会让游戏
                     // 加载时找不到对应资源，是启动异常的直接来源。
@@ -606,8 +665,7 @@ public sealed class PatchEngine
                 {
                     using (var index = new LibBundle3.Index(indexPath, parsePaths: false, driveFactory))
                     {
-                        index.ParsePaths();
-
+                        // 同 GGPK 分支：写盘链路只使用 NameHash / _Files，不需要 ParsePaths。
                         // 只注入当前客户端真实存在的路径
                         validFiles = FilterExisting(index, fileList, allowedNewPaths);
                         if (validFiles.Count == 0)
@@ -713,7 +771,7 @@ public sealed class PatchEngine
             try
             {
                 using var index = new LibBundle3.Index(indexPath, parsePaths: false, factory);
-                index.ParsePaths();
+                // CompareAll 只按路径精确比对（TryGetFile），不需要路径树。
                 return CompareAll(index, expected);
             }
             finally

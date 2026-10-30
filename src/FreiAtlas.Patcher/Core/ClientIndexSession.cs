@@ -25,6 +25,9 @@ internal sealed class ClientIndexSession : IDisposable
     private readonly Dictionary<BundleRecord, Bundle> _openBundles = [];
     private bool _pathsParsed;
 
+    /// <summary>会话是否已经释放。释放后再读取会明确报错，而不是访问已关闭的句柄。</summary>
+    internal bool IsDisposed { get; private set; }
+
     private ClientIndexSession(
         BundledGGPK? ggpk,
         FileStream? ggpkStream,
@@ -47,6 +50,7 @@ internal sealed class ClientIndexSession : IDisposable
     /// </summary>
     public void EnsurePathsParsed()
     {
+        ThrowIfDisposed();
         if (_pathsParsed) return;
 
         _ggpk?.Index.ParsePaths();
@@ -76,6 +80,7 @@ internal sealed class ClientIndexSession : IDisposable
     /// <summary>按路径读取文件内容；不存在时返回 null。</summary>
     public byte[]? ReadFile(string path)
     {
+        ThrowIfDisposed();
         var clean = path.Replace('\\', '/').TrimStart('/');
         var index = _ggpk?.Index ?? _index;
         if (index is null) return null;
@@ -99,6 +104,7 @@ internal sealed class ClientIndexSession : IDisposable
     /// <summary>检查指定路径是否存在于索引中。</summary>
     public bool FileExists(string path)
     {
+        ThrowIfDisposed();
         var clean = path.Replace('\\', '/').TrimStart('/');
         var index = _ggpk?.Index ?? _index;
         return index is not null && index.TryGetFile(clean, out var record) && record is not null;
@@ -138,8 +144,19 @@ internal sealed class ClientIndexSession : IDisposable
         return new ClientIndexSession(null, null, index, factory, parsePaths);
     }
 
+    private void ThrowIfDisposed()
+    {
+        if (IsDisposed)
+        {
+            throw new ObjectDisposedException(nameof(ClientIndexSession));
+        }
+    }
+
     public void Dispose()
     {
+        if (IsDisposed) return;
+        IsDisposed = true;
+
         foreach (var bundle in _openBundles.Values)
         {
             bundle?.Dispose();

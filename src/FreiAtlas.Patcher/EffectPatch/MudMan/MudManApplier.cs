@@ -164,7 +164,7 @@ public sealed class MudManApplier
 
             // 2. 换档位前必须先回滚到还原点。
             //
-            // 关键：BuildPlan 从「当前客户端索引」读取内容（ClientIndexSession.Open），
+            // 关键：BuildPlan 从「当前客户端索引」读取内容（借用引擎索引会话），
             // 不是从还原点读。若不先回滚，从高档位切低档位时读到的是已被高档位
             // 改过的索引 —— 低档位规则只覆盖它自己关心的文件，高档位写入的
             // 3.2 万张灰贴图与文本清理全部滞留在索引里，降档形同虚设。
@@ -173,6 +173,9 @@ public sealed class MudManApplier
 
             if (needRollback)
             {
+                // 回滚会替换整个客户端索引；先让引擎缓存的索引会话失效，
+                // 否则 BuildPlan 会继续读回滚前的旧索引。
+                _engine.ReleaseClientIndex();
                 progress?.Invoke($"检测到已应用档位 {currentState.Tier}，切换前先回滚到还原点...");
                 var rollback = _backupManager.RestoreSnapshot(info, snapshotId, out _, progress);
                 if (!rollback.Success)
@@ -414,6 +417,8 @@ public sealed class MudManApplier
                     return false;
                 }
 
+                // 整体回滚索引前必须先释放引擎缓存的索引会话。
+                _engine.ReleaseClientIndex();
                 progress?.Invoke("正在还原到泥人还原点...");
                 var snap = _backupManager.RestoreSnapshot(info, point.Id, out var snapMessage, progress);
 
@@ -432,6 +437,7 @@ public sealed class MudManApplier
 
             // 没有泥人还原点（旧版本应用过，或还原点被手动删除）：
             // 退回到版本校验过的官方底包还原。
+            _engine.ReleaseClientIndex();
             progress?.Invoke("正在还原到补丁前的索引...");
             var result = _backupManager.Restore(info, progress);
 
@@ -479,25 +485,18 @@ public sealed class MudManApplier
             .ToList();
 
         progress?.Invoke("正在读取客户端索引...");
-        var session = ClientIndexSession.Open(info);
+        using var session = _engine.AcquireClientIndex(info);
         if (session is null)
         {
             failures.Add("未能打开客户端索引。");
             return [];
         }
 
-        try
-        {
-            return BuildPlanCore(session, compiled, withTextures, progress, failures);
-        }
-        finally
-        {
-            session.Dispose();
-        }
+        return BuildPlanCore(session, compiled, withTextures, progress, failures);
     }
 
     private static List<FilePlan> BuildPlanCore(
-        ClientIndexSession session,
+        ClientIndexLease session,
         List<(EffectPatchRule Rule, Regex? PathRegex)> compiled,
         bool withTextures,
         Action<string>? progress,

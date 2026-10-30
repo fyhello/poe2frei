@@ -83,7 +83,7 @@ public sealed class MtxPatchApplier
             // 在独立会话作用域内完成数据计算、提取与原件读取
             // ----------------------------------------------------
             progress?.Invoke("正在连接游戏客户端索引...");
-            using (var session = ClientIndexSession.Open(info))
+            using (var session = _engine.AcquireClientIndex(info))
             {
                 if (session is null)
                 {
@@ -486,7 +486,7 @@ public sealed class MtxPatchApplier
     /// 全局防具时装对全职业全底子的长后缀覆盖算法。
     /// </summary>
     private static void ApplyArmourSet(
-        ClientIndexSession session,
+        ClientIndexLease session,
         MtxEntry armourEntry,
         Dictionary<string, byte[]> plannedFiles)
     {
@@ -587,7 +587,7 @@ public sealed class MtxPatchApplier
     /// 注入背饰、翅膀和周身光效至选定的职业模型 .ao 文件。
     /// </summary>
     private static void ApplyCharacterAttachments(
-        ClientIndexSession session,
+        ClientIndexLease session,
         List<MtxEntry> entries,
         string selectedClassCode,
         Func<string, byte[]?> readBaseBytes,
@@ -739,62 +739,50 @@ public sealed class MtxPatchApplier
     {
         var files = new List<(string VirtualPath, byte[] Data)>(restoredFiles.Count);
 
-        ClientIndexSession? session = null;
-        try
-        {
-            session = ClientIndexSession.Open(info);
+        var sharedPaths = restoredFiles
+            .Select(x => x.VirtualPath.Replace('\\', '/').Trim().TrimStart('/'))
+            .Where(SharedFileRestore.IsSharedFile)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var currentFiles = sharedPaths.Count == 0
+            ? new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase)
+            : _engine.ReadGameFiles(info, sharedPaths);
 
-            foreach (var (rawPath, originalBytes) in restoredFiles)
+        foreach (var (rawPath, originalBytes) in restoredFiles)
+        {
+            string path = rawPath.Replace('\\', '/').Trim().TrimStart('/');
+
+            if (!SharedFileRestore.IsSharedFile(path))
             {
-                string path = rawPath.Replace('\\', '/').Trim().TrimStart('/');
-
-                if (!SharedFileRestore.IsSharedFile(path) || session is null)
-                {
-                    files.Add((path, originalBytes));
-                    continue;
-                }
-
-                byte[]? currentBytes;
-                try
-                {
-                    currentBytes = session.ReadFile(path);
-                }
-                catch
-                {
-                    files.Add((path, originalBytes));
-                    continue;
-                }
-
-                if (currentBytes is null || currentBytes.Length == 0)
-                {
-                    files.Add((path, originalBytes));
-                    continue;
-                }
-
-                if (!SharedFileRestore.TryRestoreSharedFile(
-                        currentBytes,
-                        path,
-                        SharedFileRestore.DodgeRollLine,
-                        out var cleanedBytes,
-                        out var restoreError))
-                {
-                    progress?.Invoke($"{Path.GetFileName(path)} 定点还原失败，回退为整文件还原：{restoreError}");
-                    files.Add((path, originalBytes));
-                    continue;
-                }
-
-                if (cleanedBytes is null)
-                {
-                    // 当前内容已无本模块注入痕迹，无需写入
-                    continue;
-                }
-
-                files.Add((path, cleanedBytes));
+                files.Add((path, originalBytes));
+                continue;
             }
-        }
-        finally
-        {
-            session?.Dispose();
+
+            if (!currentFiles.TryGetValue(path, out var currentBytes) || currentBytes.Length == 0)
+            {
+                files.Add((path, originalBytes));
+                continue;
+            }
+
+            if (!SharedFileRestore.TryRestoreSharedFile(
+                    currentBytes,
+                    path,
+                    SharedFileRestore.DodgeRollLine,
+                    out var cleanedBytes,
+                    out var restoreError))
+            {
+                progress?.Invoke($"{Path.GetFileName(path)} 定点还原失败，回退为整文件还原：{restoreError}");
+                files.Add((path, originalBytes));
+                continue;
+            }
+
+            if (cleanedBytes is null)
+            {
+                // 当前内容已无本模块注入痕迹，无需写入
+                continue;
+            }
+
+            files.Add((path, cleanedBytes));
         }
 
         return files;

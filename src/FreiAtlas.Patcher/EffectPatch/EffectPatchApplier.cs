@@ -267,28 +267,25 @@ public sealed class EffectPatchApplier
         var files = new List<(string VirtualPath, byte[] Data)>(originals.Count);
         int surgicalCount = 0;
 
-        using var session = ClientIndexSession.Open(info);
+        var sharedPaths = originals
+            .Where(x => SharedFileRestore.IsSharedFile(x.VirtualPath))
+            .Select(x => x.VirtualPath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var currentFiles = sharedPaths.Count == 0
+            ? new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase)
+            : _engine.ReadGameFiles(info, sharedPaths);
 
         foreach (var (path, originalBytes) in originals)
         {
-            if (!SharedFileRestore.IsSharedFile(path) || session is null)
+            if (!SharedFileRestore.IsSharedFile(path))
             {
                 files.Add((path, originalBytes));
                 continue;
             }
 
-            byte[]? currentBytes;
-            try
-            {
-                currentBytes = session.ReadFile(path);
-            }
-            catch
-            {
-                files.Add((path, originalBytes));
-                continue;
-            }
-
-            if (currentBytes is null || currentBytes.Length == 0)
+            var cleanPath = path.Replace('\\', '/').TrimStart('/');
+            if (!currentFiles.TryGetValue(cleanPath, out var currentBytes) || currentBytes.Length == 0)
             {
                 files.Add((path, originalBytes));
                 continue;
@@ -514,31 +511,22 @@ public sealed class EffectPatchApplier
 
         progress?.Invoke("正在读取客户端索引...");
 
-        // 索引只打开一次：路径枚举、内容读取、后续写入都复用它。
-        // 之前按 300 个一批调用 ReadGameFiles，每批都会重新打开索引并 ParsePaths
-        // （实测 426 万条路径解析一次约 19 秒），4 万个贴图会因此多花几十分钟。
-        var session = ClientIndexSession.Open(info);
+        // 借用引擎共享索引：路径枚举、内容读取复用同一会话，避免重复 ParsePaths。
+        using var session = _engine.AcquireClientIndex(info);
         if (session is null)
         {
             failures.Add("未能打开客户端索引。");
             return [];
         }
 
-        try
-        {
-            return BuildPlanCore(session, compiled, progress, failures);
-        }
-        finally
-        {
-            session.Dispose();
-        }
+        return BuildPlanCore(session, compiled, progress, failures);
     }
 
     /// <summary>
     /// 在已打开的索引会话上完成规划。
     /// </summary>
     private static List<FilePlan> BuildPlanCore(
-        ClientIndexSession session,
+        ClientIndexLease session,
         List<(EffectPatchRule Rule, Regex? PathRegex)> compiled,
         Action<string>? progress,
         List<string> failures)

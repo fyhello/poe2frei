@@ -8,7 +8,7 @@ namespace FreiAtlas.Patcher.EffectPatch.HealthBar;
 /// 头顶血条补丁的应用与还原。
 ///
 /// 与泥人共用同一套底层能力：
-///   · <see cref="ClientIndexSession"/> 单次打开索引，避免反复 ParsePaths；
+///   · <see cref="ClientIndexLease"/> 借用引擎索引会话，避免反复 ParsePaths；
 ///   · <see cref="PatchBackupManager"/> 建还原点，还原用索引级回滚（秒级）；
 ///   · <see cref="EffectSyntaxValidator"/> 写入前校验语法。
 ///
@@ -143,39 +143,12 @@ public sealed class HealthBarApplier
             // 用户之后打过任何其他补丁，索引指纹就变了，快照被判为 Stale，
             // 还原被永久拒绝。逐文件备份只记录这几十个文件的原件，
             // 与其他补丁互不干扰，也不受索引整体变化影响。
-            var originals = new Dictionary<string, byte[]>(plan.Count, StringComparer.OrdinalIgnoreCase);
-
-            using (var session = ClientIndexSession.Open(info))
-            {
-                if (session is null)
-                {
-                    message = "未能打开客户端索引，无法备份原始文件。";
-                    return false;
-                }
-
-                foreach (var item in plan)
-                {
-                    byte[]? current;
-                    try
-                    {
-                        current = session.ReadFile(item.VirtualPath);
-                    }
-                    catch (Exception ex)
-                    {
-                        message = $"读取原始文件失败（{item.VirtualPath}）：{ex.Message}";
-                        return false;
-                    }
-
-                    if (current is null || current.Length == 0)
-                    {
-                        // 读不到原件就无法还原，宁可不写，避免留下无法回退的改动。
-                        message = $"原始文件读不到内容（{item.VirtualPath}），已中止。";
-                        return false;
-                    }
-
-                    originals[item.VirtualPath] = current;
-                }
-            }
+            // BuildPlan 已读到并校验过每个文件的原始字节，这里直接复用，
+            // 不再第二次打开索引；Originals 为空的情况已在 BuildPlan 中拦截。
+            var originals = plan.ToDictionary(
+                p => p.VirtualPath,
+                p => p.OriginalBytes,
+                StringComparer.OrdinalIgnoreCase);
 
             PatchFileBackup.SaveOriginals(
                 BackupGroup,
@@ -258,6 +231,10 @@ public sealed class HealthBarApplier
     private sealed class FilePlan
     {
         public required string VirtualPath { get; init; }
+
+        /// <summary>规划阶段读到的原始字节，用于写入前建立逐文件备份。</summary>
+        public required byte[] OriginalBytes { get; init; }
+
         public required byte[] NewBytes { get; init; }
     }
 
@@ -275,7 +252,7 @@ public sealed class HealthBarApplier
         failures = [];
         var plan = new List<FilePlan>();
 
-        using var session = ClientIndexSession.Open(info);
+        using var session = _engine.AcquireClientIndex(info);
         if (session is null)
         {
             failures.Add("无法打开客户端索引");
@@ -353,6 +330,7 @@ public sealed class HealthBarApplier
             plan.Add(new FilePlan
             {
                 VirtualPath = path,
+                OriginalBytes = bytes,
                 NewBytes = EffectTextCodec.Encode(working, encoding)
             });
         }
