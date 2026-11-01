@@ -65,22 +65,22 @@ public static class DatTextPatcher
         var assembly = typeof(DatTextPatcher).Assembly;
 
         // 1. 优先加载嵌入的 Gzip 资源
-        using (var stream = assembly.GetManifestResourceStream("FreiAtlas.Patcher.Resources.dat_translations.json.gz"))
+        using (var stream = assembly.GetManifestResourceStream("FreiAtlas.Patcher.Resources.dat_translations.json.br"))
         {
             if (stream != null)
             {
-                var jsonBytes = GzipUtil.DecompressToBytes(stream, 64 * 1024 * 1024);
+                var jsonBytes = CompressedResource.DecompressToBytes(stream, 64 * 1024 * 1024);
                 _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(jsonBytes, _jsonOptions) ?? new();
                 return _cachedCatalog;
             }
         }
 
-        // 2. 回退到输出目录中的 dat_translations.json.gz
-        string fallbackGz = Path.Combine(AppContext.BaseDirectory, "Resources", "dat_translations.json.gz");
+        // 2. 回退到输出目录中的 dat_translations.json.br
+        string fallbackGz = Path.Combine(AppContext.BaseDirectory, "Resources", "dat_translations.json.br");
         if (File.Exists(fallbackGz))
         {
             using var fs = File.OpenRead(fallbackGz);
-            var jsonBytes = GzipUtil.DecompressToBytes(fs, 64 * 1024 * 1024);
+            var jsonBytes = CompressedResource.DecompressToBytes(fs, 64 * 1024 * 1024);
             _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(jsonBytes, _jsonOptions) ?? new();
             return _cachedCatalog;
         }
@@ -94,7 +94,7 @@ public static class DatTextPatcher
             return _cachedCatalog;
         }
 
-        throw new FileNotFoundException("未找到嵌入的 dat_translations.json.gz 官方简中全量翻译资源。");
+        throw new FileNotFoundException("未找到嵌入的 dat_translations.json.br 官方简中全量翻译资源。");
     }
 
     /// <summary>

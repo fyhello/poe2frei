@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- 只复制 pdb，不复制引用的 .xml 文档：运行时不需要，发布包可省约 0.2 MB。 -->
+    <AllowedReferenceRelatedFileExtensions>.pdb</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -66,32 +68,30 @@
 
   <ItemGroup>
     <!-- 子目录资源必须显式列出并指定 LogicalName：
-         通配符 Resources\*.gz 与子目录同名扩展名会争抢同一文件，导致其中一条被静默丢弃。 -->
-    <EmbeddedResource Include="Resources\*.json;Resources\*.gz" Exclude="Resources\iconpatch\**;Resources\mudman\**;Resources\mtx\**;Resources\colormod\**" />
+         通配符 Resources\*.br 与子目录同名扩展名会争抢同一文件，导致其中一条被静默丢弃。 -->
+    <EmbeddedResource Include="Resources\*.json;Resources\*.br" Exclude="Resources\iconpatch\**;Resources\mudman\**;Resources\mtx\**;Resources\colormod\**" />
     <EmbeddedResource Include="Resources\iconpatch\icons.dat">
       <LogicalName>FreiAtlas.Patcher.Resources.iconpatch.icons.dat</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Resources\iconpatch\icons.index.json">
       <LogicalName>FreiAtlas.Patcher.Resources.iconpatch.icons.index.json</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="Resources\iconpatch\icons.sheet.webp">
-      <LogicalName>FreiAtlas.Patcher.Resources.iconpatch.icons.sheet.webp</LogicalName>
-    </EmbeddedResource>
-    <!-- 泥人贴图表：38,798 条精确路径，gzip 后约 0.58 MB。
+
+    <!-- 泥人贴图表：38,798 条精确路径，Brotli 后约 0.55 MB。
          子目录资源必须指定 LogicalName，否则资源名会被压平成难以定位的形式。 -->
-    <EmbeddedResource Include="Resources\mudman\graytables.gz">
-      <LogicalName>FreiAtlas.Patcher.Resources.mudman.graytables.gz</LogicalName>
+    <EmbeddedResource Include="Resources\mudman\graytables.br">
+      <LogicalName>FreiAtlas.Patcher.Resources.mudman.graytables.br</LogicalName>
     </EmbeddedResource>
     <!-- PoE 2 商城外观 (MTX) 数据库、翻译词典与鼠标指针位图 -->
-    <EmbeddedResource Include="Resources\mtx\poe2_mtx.json.gz">
-      <LogicalName>FreiAtlas.Patcher.Resources.mtx.poe2_mtx.json.gz</LogicalName>
+    <EmbeddedResource Include="Resources\mtx\poe2_mtx.json.br">
+      <LogicalName>FreiAtlas.Patcher.Resources.mtx.poe2_mtx.json.br</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="Resources\mtx\translations.json.gz">
-      <LogicalName>FreiAtlas.Patcher.Resources.mtx.translations.json.gz</LogicalName>
+    <EmbeddedResource Include="Resources\mtx\translations.json.br">
+      <LogicalName>FreiAtlas.Patcher.Resources.mtx.translations.json.br</LogicalName>
     </EmbeddedResource>
     <!-- 词缀染色默认表：481 条颜色 / 8 条样式 -->
-    <EmbeddedResource Include="Resources\colormod\defaults.json.gz">
-      <LogicalName>FreiAtlas.Patcher.Resources.colormod.defaults.json.gz</LogicalName>
+    <EmbeddedResource Include="Resources\colormod\defaults.json.br">
+      <LogicalName>FreiAtlas.Patcher.Resources.colormod.defaults.json.br</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Resources\mtx\cursors\**\*.bmp" />
   </ItemGroup>

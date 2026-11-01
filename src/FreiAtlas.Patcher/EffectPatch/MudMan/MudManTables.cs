@@ -20,7 +20,7 @@ namespace FreiAtlas.Patcher.EffectPatch.MudMan;
 /// </summary>
 public static class MudManTables
 {
-    private const string ResourceName = "FreiAtlas.Patcher.Resources.mudman.graytables.gz";
+    private const string ResourceName = "FreiAtlas.Patcher.Resources.mudman.graytables.br";
     private const string Magic = "MUDMAN1";
 
     private static readonly Lazy<Tables> Loaded = new(Load, LazyThreadSafetyMode.ExecutionAndPublication);
@@ -84,7 +84,7 @@ public static class MudManTables
                 return Tables.Fail($"内嵌资源缺失：{ResourceName}");
             }
 
-            using var reader = new StringReader(GzipUtil.DecompressToString(stream, 32 * 1024 * 1024));
+            using var reader = new StringReader(CompressedResource.DecompressToString(stream, 32 * 1024 * 1024));
 
             var magic = reader.ReadLine();
             if (magic != Magic)

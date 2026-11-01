@@ -14,7 +14,7 @@ namespace FreiAtlas.Patcher.MtxPatch;
 /// </summary>
 public sealed class MtxDatabase
 {
-    private const string ResourceName = "FreiAtlas.Patcher.Resources.mtx.poe2_mtx.json.gz";
+    private const string ResourceName = "FreiAtlas.Patcher.Resources.mtx.poe2_mtx.json.br";
 
     /// <summary>
     /// 内嵌数据库加载失败时记录原因。
@@ -121,7 +121,7 @@ public sealed class MtxDatabase
             throw new FileNotFoundException($"嵌入资源未找到: {ResourceName}");
         }
 
-        var jsonBytes = GzipUtil.DecompressToBytes(stream, 16 * 1024 * 1024);
+        var jsonBytes = CompressedResource.DecompressToBytes(stream, 16 * 1024 * 1024);
         using var doc = JsonDocument.Parse(jsonBytes);
 
         foreach (var prop in doc.RootElement.EnumerateObject())

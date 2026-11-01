@@ -4,12 +4,14 @@ $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Add-Type -AssemblyName System.IO.Compression
 
-function Write-GzJson($obj, $path) {
+# 资源统一用 Brotli 存储：同样的 JSON 比 gzip 小 20%~30%，运行时由
+# CompressedResource 按魔数自动识别，历史 gzip 资源仍可读取。
+function Write-BrJson($obj, $path) {
     $json = $obj | ConvertTo-Json -Depth 10 -Compress
     $bytes = [Text.Encoding]::UTF8.GetBytes($json)
     $ms = New-Object IO.MemoryStream
-    $gz = New-Object IO.Compression.GZipStream($ms, [IO.Compression.CompressionMode]::Compress)
-    $gz.Write($bytes, 0, $bytes.Length); $gz.Dispose()
+    $br = New-Object IO.Compression.BrotliStream($ms, [IO.Compression.CompressionLevel]::SmallestSize, $true)
+    $br.Write($bytes, 0, $bytes.Length); $br.Dispose()
     New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
     [IO.File]::WriteAllBytes($path, $ms.ToArray())
     $ms.Dispose()
@@ -30,7 +32,7 @@ foreach ($line in $lines) {
 }
 Write-Output "ColorMod 提取: 颜色 $($colors.Count)  样式 $($styles.Count)"
 if ($colors.Count -eq 0 -or $styles.Count -eq 0) {
-    throw '未从 ColorModDefaults.cs 提取到数据；源码表已迁移到 Resources\colormod\defaults.json.gz，禁止重跑本脚本覆盖资源。'
+    throw '未从 ColorModDefaults.cs 提取到数据；源码表已迁移到 Resources\colormod\defaults.json.br，禁止重跑本脚本覆盖资源。'
 }
 
 $colorArr = @()
@@ -38,7 +40,7 @@ foreach ($k in $colors.Keys) { $colorArr += [ordered]@{ id = $k; rgb = $colors[$
 $styleArr = @()
 foreach ($k in $styles.Keys) { $styleArr += [ordered]@{ id = $k; style = $styles[$k] } }
 
-Write-GzJson @{ version = 1; colors = $colorArr; styles = $styleArr } (Join-Path $root 'src\FreiAtlas.Patcher\Resources\colormod\defaults.json.gz')
+Write-BrJson @{ version = 1; colors = $colorArr; styles = $styleArr } (Join-Path $root 'src\FreiAtlas.Patcher\Resources\colormod\defaults.json.br')
 
 # ---------- MtxTranslation ----------
 $mtxPath = Join-Path $root 'src\FreiAtlas.Patcher\MtxPatch\MtxTranslationDictionary.cs'
@@ -51,7 +53,7 @@ foreach ($line in $mlines) {
 }
 Write-Output "Mtx 提取: exact $($exact.Count)  phrases $($phrases.Count)"
 if ($exact.Count -eq 0 -or $phrases.Count -eq 0) {
-    throw '未从 MtxTranslationDictionary.cs 提取到数据；源码表已迁移到 Resources\mtx\translations.json.gz，禁止重跑本脚本覆盖资源。'
+    throw '未从 MtxTranslationDictionary.cs 提取到数据；源码表已迁移到 Resources\mtx\translations.json.br，禁止重跑本脚本覆盖资源。'
 }
 
 $exactArr = @()
@@ -59,7 +61,7 @@ foreach ($k in $exact.Keys) { $exactArr += [ordered]@{ en = $k; zh = $exact[$k] 
 $phraseArr = @()
 for ($i = 0; $i -lt $phrases.Count; $i++) { $phraseArr += [ordered]@{ index = $i; pattern = $phrases[$i][0]; zh = $phrases[$i][1] } }
 
-Write-GzJson @{ version = 1; exact = $exactArr; phrases = $phraseArr } (Join-Path $root 'src\FreiAtlas.Patcher\Resources\mtx\translations.json.gz')
+Write-BrJson @{ version = 1; exact = $exactArr; phrases = $phraseArr } (Join-Path $root 'src\FreiAtlas.Patcher\Resources\mtx\translations.json.br')
 
 # ---------- 与黄金快照比对 ----------
 $td = Join-Path $root 'tests\FreiAtlas.Patcher.Tests\TestData'

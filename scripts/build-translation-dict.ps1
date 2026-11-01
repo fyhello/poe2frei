@@ -237,16 +237,26 @@ if (-not $NoCopy) {
     Write-Step '同步到资源目录'
 
     $resourceDir = Join-Path $repoRoot 'src\FreiAtlas.Patcher\Resources'
-    $resourcePath = Join-Path $resourceDir 'dat_translations.json.gz'
+    # 资源统一 Brotli 存储（比 gzip 小约 30%）；python 侧仍产出 gzip，这里转一次再落地。
+    $resourcePath = Join-Path $resourceDir 'dat_translations.json.br'
     New-Item -ItemType Directory -Path $resourceDir -Force | Out-Null
 
-    if ([IO.Path]::GetFullPath($Output) -ne [IO.Path]::GetFullPath($resourcePath)) {
-        Copy-Item -LiteralPath $Output -Destination $resourcePath -Force
-        Write-Host "已复制到 $resourcePath"
+    $data = [IO.File]::ReadAllBytes($Output)
+    if ($data.Length -ge 2 -and $data[0] -eq 0x1F -and $data[1] -eq 0x8B) {
+        $in = [IO.MemoryStream]::new([byte[]]$data)
+        $gz = [IO.Compression.GZipStream]::new($in, [IO.Compression.CompressionMode]::Decompress)
+        $raw = [IO.MemoryStream]::new()
+        $gz.CopyTo($raw); $gz.Dispose(); $in.Dispose()
+        $out = [IO.MemoryStream]::new()
+        $br = [IO.Compression.BrotliStream]::new($out, [IO.Compression.CompressionLevel]::SmallestSize, $true)
+        $br.Write($raw.ToArray(), 0, [int]$raw.Length); $br.Dispose()
+        [IO.File]::WriteAllBytes($resourcePath, $out.ToArray())
+        $raw.Dispose(); $out.Dispose()
     }
     else {
-        Write-Host '输出路径即资源路径，无需复制'
+        Copy-Item -LiteralPath $Output -Destination $resourcePath -Force
     }
+    Write-Host "已写入 $resourcePath"
 }
 
 Write-Step '完成'

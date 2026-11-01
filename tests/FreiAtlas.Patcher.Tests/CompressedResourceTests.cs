@@ -7,10 +7,10 @@ namespace FreiAtlas.Patcher.Tests;
 /// <summary>
 /// GZip 解压上限的契约。
 ///
-/// 全模块的嵌入资源都走 GzipUtil；如果没有上限，一份损坏或被替换的资源
+/// 全模块的嵌入资源都走 CompressedResource；如果没有上限，一份损坏或被替换的资源
 /// 就能让解压把进程内存吃满。
 /// </summary>
-public sealed class GzipUtilTests
+public sealed class CompressedResourceTests
 {
     [Fact]
     public void DecompressToBytes_正常数据可还原()
@@ -19,7 +19,7 @@ public sealed class GzipUtilTests
 
         using var compressed = Compress(payload);
 
-        Assert.Equal(payload, GzipUtil.DecompressToBytes(compressed, 64 * 1024));
+        Assert.Equal(payload, CompressedResource.DecompressToBytes(compressed, 64 * 1024));
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class GzipUtilTests
         using var compressed = Compress(payload);
 
         var ex = Assert.Throws<InvalidDataException>(
-            () => GzipUtil.DecompressToBytes(compressed, 1024));
+            () => CompressedResource.DecompressToBytes(compressed, 1024));
 
         Assert.Contains("1024", ex.Message, StringComparison.Ordinal);
     }
@@ -41,7 +41,7 @@ public sealed class GzipUtilTests
     {
         using var compressed = Compress(Encoding.UTF8.GetBytes("中文内容"));
 
-        Assert.Equal("中文内容", GzipUtil.DecompressToString(compressed, 1024));
+        Assert.Equal("中文内容", CompressedResource.DecompressToString(compressed, 1024));
     }
 
     private static MemoryStream Compress(byte[] data)

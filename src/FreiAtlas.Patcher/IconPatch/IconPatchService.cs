@@ -23,7 +23,6 @@ internal static class IconPatchAssets
 {
     private const string BinResource = "FreiAtlas.Patcher.Resources.iconpatch.icons.dat";
     private const string IndexResource = "FreiAtlas.Patcher.Resources.iconpatch.icons.index.json";
-    private const string SheetResource = "FreiAtlas.Patcher.Resources.iconpatch.icons.sheet.webp";
 
     private static readonly object Gate = new();
     private static byte[]? _blob;
@@ -84,15 +83,6 @@ internal static class IconPatchAssets
         return _blob.AsSpan(item.Offset, item.Size).ToArray();
     }
 
-    /// <summary>读取雪碧图字节，供前端展示缩略图。</summary>
-    public static byte[]? ReadSpriteSheet()
-    {
-        using var stream = OpenResource(SheetResource);
-        if (stream is null) return null;
-        using var buffer = new MemoryStream();
-        stream.CopyTo(buffer);
-        return buffer.ToArray();
-    }
 
     private static void EnsureLoaded()
     {
@@ -127,7 +117,7 @@ internal static class IconPatchAssets
 
                 // 图标图集是内嵌资源：限制解压后大小，防止资源被替换/损坏时无界分配。
                 // 实测解压后约 16.7 MB，上限留一倍余量。
-                _blob = GzipUtil.DecompressToBytes(binStream, 32 * 1024 * 1024);
+                _blob = CompressedResource.DecompressToBytes(binStream, 32 * 1024 * 1024);
                 _index = document;
             }
             catch (Exception ex)
@@ -166,8 +156,6 @@ public sealed class IconPatchService
 
     public static IconSpriteInfo SpriteInfo => IconPatchAssets.SpriteInfo;
 
-    /// <summary>雪碧图原始字节。WebView2 只能读文件系统，由宿主导出到 Web 目录。</summary>
-    public static byte[]? SpriteSheetBytes => IconPatchAssets.ReadSpriteSheet();
 
     /// <summary>
     /// 读取客户端索引，逐条校验内置图标的虚拟路径是否存在。

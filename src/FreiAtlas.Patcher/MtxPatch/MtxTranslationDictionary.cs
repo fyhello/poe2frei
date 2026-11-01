@@ -8,11 +8,11 @@ namespace FreiAtlas.Patcher.MtxPatch;
 /// <summary>
 /// PoE 2 商城外观 (MTX) 中英对照词典与本地化翻译器。
 /// 提供针对 843 款商城外观特效的自然中文命名映射与词根拆解。
-/// 词典正文存放在内嵌资源 mtx/translations.json.gz，首次访问时惰性加载。
+/// 词典正文存放在内嵌资源 mtx/translations.json.br，首次访问时惰性加载。
 /// </summary>
 public static class MtxTranslationDictionary
 {
-    private const string ResourceName = "FreiAtlas.Patcher.Resources.mtx.translations.json.gz";
+    private const string ResourceName = "FreiAtlas.Patcher.Resources.mtx.translations.json.br";
 
     private static readonly JsonSerializerOptions ResourceJsonOptions = new()
     {
@@ -39,7 +39,7 @@ public static class MtxTranslationDictionary
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException($"内嵌翻译词典资源缺失：{ResourceName}");
 
-        var jsonBytes = GzipUtil.DecompressToBytes(stream, 16 * 1024 * 1024);
+        var jsonBytes = CompressedResource.DecompressToBytes(stream, 16 * 1024 * 1024);
         var document = JsonSerializer.Deserialize<TranslationDocument>(jsonBytes, ResourceJsonOptions)
             ?? throw new InvalidOperationException($"内嵌翻译词典资源为空：{ResourceName}");
 

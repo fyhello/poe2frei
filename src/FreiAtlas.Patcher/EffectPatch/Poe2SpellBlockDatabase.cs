@@ -18,7 +18,7 @@ namespace FreiAtlas.Patcher.EffectPatch;
 /// </summary>
 public static class Poe2SpellBlockDatabase
 {
-    private const string ResourceName = "FreiAtlas.Patcher.Resources.poe2_spell_block_db.json.gz";
+    private const string ResourceName = "FreiAtlas.Patcher.Resources.poe2_spell_block_db.json.br";
 
     /// <summary>
     /// 内嵌数据库加载失败时记录原因。
@@ -221,7 +221,7 @@ public static class Poe2SpellBlockDatabase
         using var stream = asm.GetManifestResourceStream(ResourceName)
             ?? throw new FileNotFoundException($"内嵌资源未找到：{ResourceName}");
 
-        var json = GzipUtil.DecompressToString(stream, 16 * 1024 * 1024);
+        var json = CompressedResource.DecompressToString(stream, 16 * 1024 * 1024);
 
         var root = JsonSerializer.Deserialize<RawDatabaseRoot>(json, new JsonSerializerOptions
         {

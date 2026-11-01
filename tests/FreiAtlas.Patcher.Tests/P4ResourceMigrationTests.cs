@@ -30,8 +30,8 @@ public sealed class P4ResourceMigrationTests
     public void 两套数据资源均已嵌入()
     {
         var names = typeof(MtxTranslationDictionary).Assembly.GetManifestResourceNames();
-        Assert.Contains("FreiAtlas.Patcher.Resources.colormod.defaults.json.gz", names);
-        Assert.Contains("FreiAtlas.Patcher.Resources.mtx.translations.json.gz", names);
+        Assert.Contains("FreiAtlas.Patcher.Resources.colormod.defaults.json.br", names);
+        Assert.Contains("FreiAtlas.Patcher.Resources.mtx.translations.json.br", names);
     }
 
     [Fact]

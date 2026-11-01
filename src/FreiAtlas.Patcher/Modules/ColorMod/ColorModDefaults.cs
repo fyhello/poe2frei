@@ -13,7 +13,7 @@ namespace FreiAtlas.Patcher.Modules.ColorMod;
 
 public static class ColorModDefaults
 {
-    private const string ResourceName = "FreiAtlas.Patcher.Resources.colormod.defaults.json.gz";
+    private const string ResourceName = "FreiAtlas.Patcher.Resources.colormod.defaults.json.br";
 
     private static readonly JsonSerializerOptions ResourceJsonOptions = new()
     {
@@ -374,7 +374,7 @@ public static class ColorModDefaults
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ResourceName)
             ?? throw new InvalidOperationException($"内嵌颜色表资源缺失：{ResourceName}");
 
-        var jsonBytes = GzipUtil.DecompressToBytes(stream, 8 * 1024 * 1024);
+        var jsonBytes = CompressedResource.DecompressToBytes(stream, 8 * 1024 * 1024);
         var document = JsonSerializer.Deserialize<ColorModDocument>(jsonBytes, ResourceJsonOptions)
             ?? throw new InvalidOperationException($"内嵌颜色表资源为空：{ResourceName}");
 
