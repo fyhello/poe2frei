@@ -1,6 +1,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using FreiAtlas.Patcher.Core;
 using Microsoft.Win32;
 
 namespace FreiAtlas.Patcher.Modules.Font;
@@ -71,8 +72,8 @@ public static class FontInstaller
                         return null;
                     }
 
-                    string fontPath = Path.Combine(FontsDirectory, doc.File);
-                    if (!File.Exists(fontPath)) return null;
+                    string? fontPath = ResolveFontFile(FontsDirectory, doc.File);
+                    if (fontPath is null) return null;
 
                     var aliases = doc.Aliases is { Count: > 0 } ? doc.Aliases : [doc.Family, doc.DisplayName];
                     _bundled = new BundledFont(
@@ -169,6 +170,47 @@ public static class FontInstaller
         {
             message = $"安装内置字体失败：{ex.Message}";
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 解析字体文件：优先原始文件，其次把同名的 <c>.br</c> 解压到本地缓存。
+    ///
+    /// 发布包只带 <c>FZZhunYuan.ttf.br</c>（Brotli 比 ttf 直接 deflate 再省约 15%），
+    /// 开发目录保留原始 ttf 供测试与替换。两条路径最终都返回一个可安装的真实文件。
+    /// </summary>
+    internal static string? ResolveFontFile(string fontsDirectory, string fileName)
+    {
+        string direct = Path.Combine(fontsDirectory, fileName);
+        if (File.Exists(direct)) return direct;
+
+        string compressed = direct + ".br";
+        if (!File.Exists(compressed)) return null;
+
+        try
+        {
+            string cacheDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FreiAtlas", "fonts");
+            Directory.CreateDirectory(cacheDirectory);
+            string cached = Path.Combine(cacheDirectory, fileName);
+
+            var source = new FileInfo(compressed);
+            var target = new FileInfo(cached);
+            if (target.Exists && target.Length > 0 && target.LastWriteTimeUtc >= source.LastWriteTimeUtc)
+            {
+                return cached;
+            }
+
+            using var input = File.OpenRead(compressed);
+            byte[] data = CompressedResource.DecompressToBytes(input, 64 * 1024 * 1024);
+            File.WriteAllBytes(cached, data);
+            return cached;
+        }
+        catch
+        {
+            // 解压失败按「没有内置字体」处理，由 EnsureInstalled 给出明确提示。
+            return null;
         }
     }
 

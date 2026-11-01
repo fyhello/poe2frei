@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FreiAtlas.Patcher.Modules.Font;
 
 namespace FreiAtlas.Patcher.Tests;
 
@@ -59,5 +60,40 @@ public sealed class Stage8FontInstallerTests
         string mainWindow = Read("src", "FreiAtlas.Settings", "MainWindow.xaml.cs");
         Assert.Contains("FontInstaller.EnsureInstalled", mainWindow);
         Assert.Contains("resolvedFontFamily", mainWindow);
+    }
+
+    [Fact]
+    public void 只有Brotli字体时能解压出可安装文件()
+    {
+        // 发布包只带 .ttf.br；ResolveFontFile 必须解压出真实文件，否则字体补丁不可用。
+        string sourceDir = Path.Combine(Path.GetTempPath(), "frei_font_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(sourceDir);
+        string fileName = $"TestOnly_{Guid.NewGuid():N}.ttf";
+        string? resolved = null;
+
+        try
+        {
+            byte[] payload = "FAKEFONT-PAYLOAD"u8.ToArray();
+            using (var output = File.Create(Path.Combine(sourceDir, fileName + ".br")))
+            using (var brotli = new System.IO.Compression.BrotliStream(
+                       output, System.IO.Compression.CompressionLevel.SmallestSize))
+            {
+                brotli.Write(payload);
+            }
+
+            resolved = FontInstaller.ResolveFontFile(sourceDir, fileName);
+
+            Assert.NotNull(resolved);
+            Assert.True(File.Exists(resolved));
+            Assert.Equal(payload, File.ReadAllBytes(resolved!));
+        }
+        finally
+        {
+            try { Directory.Delete(sourceDir, recursive: true); } catch { }
+            if (resolved is not null)
+            {
+                try { File.Delete(resolved); } catch { }
+            }
+        }
     }
 }

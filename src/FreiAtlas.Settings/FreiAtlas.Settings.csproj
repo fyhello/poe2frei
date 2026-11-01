@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AllowedReferenceRelatedFileExtensions>.pdb</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,8 +28,9 @@
       <Link>Web\icons.sheet.webp</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <!-- 内置字体随程序分发；字体补丁首次使用时会按需安装到当前用户字体目录。 -->
-    <Content Include="..\..\fonts\**">
+    <!-- 字体以 Brotli 形式分发（比 ttf 直接进 zip 再省约 15%）；首次安装时解压到本地缓存。
+         原始 ttf 留在仓库供开发与测试，不进入输出/发布目录。 -->
+    <Content Include="..\..\fonts\font.json;..\..\fonts\*.ttf.br;..\..\fonts\README.md">
       <Link>fonts\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
