@@ -98,7 +98,8 @@ public sealed class PatchConcurrencyGateTests
         var gate = new PatchConcurrencyGate();
         int granted = 0;
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var attempted = new CountdownEvent(16);
+        var attempted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int remaining = 16;
 
         var tasks = Enumerable.Range(0, 16).Select(_ => Task.Run(async () =>
         {
@@ -109,13 +110,10 @@ public sealed class PatchConcurrencyGateTests
                 Interlocked.Increment(ref granted);
             }
 
-            attempted.Signal();
-            // 必须等全部 16 次尝试都结束后再释放。
-            // 原先用 Task.Delay(50) 代替同步：线程池繁忙时晚启动的任务会在释放后
-            // 抢到第二个凭据，导致 granted = 2 的偶发失败。
-            attempted.Wait(TimeSpan.FromSeconds(10));
-
-            lease?.Dispose();
+            if (Interlocked.Decrement(ref remaining) == 0) attempted.SetResult();
+            // 异步等待全部尝试结束，避免占满线程池后等待超时而提前释放。
+            try { await attempted.Task.WaitAsync(TimeSpan.FromSeconds(10)); }
+            finally { lease?.Dispose(); }
         })).ToArray();
 
         ready.SetResult();

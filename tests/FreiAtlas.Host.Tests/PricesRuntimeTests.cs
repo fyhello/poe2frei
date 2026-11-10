@@ -30,7 +30,11 @@ public sealed class PricesRuntimeTests
             Assert.True(runtime.CurrentBook.TryGet("extra", "补充物品", out var fallback));
             Assert.Equal(3, fallback);
             Assert.Equal(["poe.ninja", "poe2scout"], runtime.Current.Prices.Sources.Select(source => source.Name));
-            Assert.Equal(12, handler.Uris.Count);
+            Assert.Equal(handler.Uris.Count, handler.Uris.Distinct().Count());
+            Assert.Equal(19, handler.Uris.Count(uri => uri.Host == "poe.ninja"));
+            Assert.Equal(11, handler.Uris.Count(uri => uri.AbsolutePath.EndsWith("/Currencies/ByCategory", StringComparison.Ordinal)));
+            Assert.Single(handler.Uris, uri => uri.AbsolutePath == "/poe2/Leagues");
+            Assert.Single(handler.Uris, uri => uri.AbsolutePath.EndsWith("/ReferenceCurrencies", StringComparison.Ordinal));
             Assert.All(handler.Uris, uri =>
             {
                 Assert.DoesNotContain("poe2db", uri.Host);

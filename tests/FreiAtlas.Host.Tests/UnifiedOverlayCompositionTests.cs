@@ -128,7 +128,7 @@ public sealed class UnifiedOverlayCompositionTests
         Assert.True(source.IndexOf("expeditionPanelPlugin.Build(", StringComparison.Ordinal)
             < source.IndexOf("if (SuppressOverlays(", StringComparison.Ordinal));
         Assert.Contains("expeditionPanelSurface.Render(", source, StringComparison.Ordinal);
-        Assert.Contains("panelScale: 1f", source, StringComparison.Ordinal);
+        Assert.Contains("settings.AreaMap.ExpeditionPanel.Scale", source, StringComparison.Ordinal);
         Assert.DoesNotContain(
             "expeditionPanelPlugin.Build(settings.AreaMap)",
             source,
