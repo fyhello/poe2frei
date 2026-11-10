@@ -106,16 +106,54 @@ public sealed class PatcherFacade
         "Client"
     ];
 
+    private static readonly object GameRunningGate = new();
+    private static DateTime _gameRunningCheckedAtUtc = DateTime.MinValue;
+    private static bool _gameRunningCached;
+
+    /// <summary>
+    /// 检测游戏是否在运行。
+    ///
+    /// 结果缓存 1 秒：批量与快照推送会连续调用几十次，每次都枚举 6 个进程名
+    /// 既慢又会泄漏 Process 句柄。Process 对象必须 Dispose，
+    /// 否则单次用户操作就能累积上百个未释放的句柄。
+    /// </summary>
     public static bool IsGameRunning()
     {
-        foreach (var name in PoE2ProcessNames)
+        lock (GameRunningGate)
         {
-            if (Process.GetProcessesByName(name).Length > 0)
+            if (DateTime.UtcNow - _gameRunningCheckedAtUtc < TimeSpan.FromSeconds(1))
             {
-                return true;
+                return _gameRunningCached;
             }
         }
-        return false;
+
+        bool running = false;
+        foreach (var name in PoE2ProcessNames)
+        {
+            var processes = Process.GetProcessesByName(name);
+            try
+            {
+                if (processes.Length > 0)
+                {
+                    running = true;
+                    break;
+                }
+            }
+            finally
+            {
+                foreach (var process in processes)
+                {
+                    process.Dispose();
+                }
+            }
+        }
+
+        lock (GameRunningGate)
+        {
+            _gameRunningCached = running;
+            _gameRunningCheckedAtUtc = DateTime.UtcNow;
+        }
+        return running;
     }
 
     public IReadOnlyList<FontItem> GetInstalledFonts() => FontPatchService.GetInstalledFonts();
@@ -159,6 +197,8 @@ public sealed class PatcherFacade
         }
 
         progress?.Invoke("正在检查客户端状态并准备恢复纯净原版备份...");
+        // 整体替换索引前先让引擎缓存失效，避免后续读取拿到回滚前的旧索引。
+        _engine.ReleaseClientIndex();
         var res = _backupManager.Restore(info, progress);
         progress?.Invoke(res.Message);
         return res;
@@ -183,13 +223,13 @@ public sealed class PatcherFacade
         FreiAtlas.Patcher.EffectPatch.MudMan.MudManApplier.ClearState();
         FreiAtlas.Patcher.EffectPatch.HealthBar.HealthBarApplier.ClearState();
 
-        PatchFileBackup.Clear("effect_patch");
-        PatchFileBackup.Clear("mtx_patch_v1");
+        PatchFileBackup.Clear(FreiAtlas.Patcher.EffectPatch.EffectPatchApplier.BackupGroup);
+        PatchFileBackup.Clear(FreiAtlas.Patcher.MtxPatch.MtxPatchApplier.BackupGroup);
         PatchFileBackup.Clear(FreiAtlas.Patcher.IconPatch.IconPatchService.BackupGroup);
         PatchFileBackup.Clear(FreiAtlas.Patcher.EffectPatch.SpellEffectBlocker.BackupGroup);
         // 旧版本技能屏蔽曾用独立分组存放闪电球特效，现已并入 spell_block_v2。
         // 老用户机器上可能仍有残留，一并清掉。
-        PatchFileBackup.Clear("lightning_spark");
+        PatchFileBackup.Clear(FreiAtlas.Patcher.EffectPatch.SpellEffectBlocker.LegacyLightningSparkGroup);
     }
 
     /// <summary>是否有可还原的图标备份。</summary>
@@ -342,6 +382,8 @@ public sealed class PatcherFacade
         }
 
         progress?.Invoke("正在检查客户端状态并恢复指定版本快照...");
+        // 整体替换索引前先让引擎缓存失效，避免后续读取拿到回滚前的旧索引。
+        _engine.ReleaseClientIndex();
         var res = _backupManager.RestoreSnapshot(info, snapshotId, out restoredSettingsJson, progress);
         progress?.Invoke(res.Message);
         return res;
@@ -366,12 +408,14 @@ public sealed class PatcherFacade
         string? patchActionName = null,
         string? settingsJson = null,
         List<string>? activeModules = null,
-        Action<string>? logger = null)
+        Action<string>? logger = null,
+        bool allowDirtyBaseline = false)
     {
         try
         {
-            // 确保官方底包已优先固化
-            _backupManager.EnsureBackup(info, logger);
+            // 确保官方底包已优先固化。
+            // allowDirtyBaseline 由调用方在用户明确同意「以当前状态建立基线」后传入。
+            _backupManager.EnsureBackup(info, logger, allowDirtyBaseline);
             // 记录当前自动快照
             string timeStr = DateTime.Now.ToString("MM-dd HH:mm");
             string actionText = string.IsNullOrWhiteSpace(patchActionName) ? "应用补丁" : patchActionName.Trim();
@@ -607,7 +651,8 @@ public sealed class PatcherFacade
         NamePatchKind kind,
         string? preferredDirectory = null,
         Dictionary<string, string>? customMappings = null,
-        Action<string>? progress = null)
+        Action<string>? progress = null,
+        IReadOnlySet<string>? selectedNames = null)
     {
         if (IsGameRunning())
         {
@@ -622,7 +667,7 @@ public sealed class PatcherFacade
             return false;
         }
 
-        return _nameService.ApplyNamePatch(info, kind, customMappings, progress);
+        return _nameService.ApplyNamePatch(info, kind, customMappings, progress, selectedNames);
     }
 
     public bool ApplyColorMods(
@@ -786,12 +831,42 @@ public sealed class PatcherFacade
     /// <summary>泥人名单表条目数。</summary>
     public int MudManListCount => MudManTables.ListCount;
 
-    /// <summary>应用指定泥人档位。</summary>
+    /// <summary>
+    /// 把泥人还原点的索引指纹同步到当前客户端索引。
+    ///
+    /// 批处理（applyAllEffects）里泥人之后还会写特效/技能/血条，会把索引再改一次。
+    /// 若泥人在自己收尾时立刻刷指纹，那次写入会让指纹马上作废，后续「还原泥人」
+    /// 就被判定为 Stale 而永远失败。所以批处理会让泥人跳过刷新，等整批写完后
+    /// 由调用方在这里统一刷新一次。
+    /// </summary>
+    public bool RefreshMudManFingerprint(string? preferredDirectory)
+    {
+        var info = GetGameInfo(preferredDirectory);
+        if (!info.IsValid) return false;
+
+        var point = FindMudManRestorePoint(info);
+
+        return point is not null
+               && _backupManager.RefreshSnapshotFingerprint(info, point.Id);
+    }
+
+    /// <summary>
+    /// 取最近一次泥人还原点。
+    /// 状态查询与指纹刷新必须用同一判据，否则会出现
+    /// 「界面说有还原点、刷新时却找不到」的分叉。
+    /// </summary>
+    private PatchSnapshotInfo? FindMudManRestorePoint(GameModeInfo info) =>
+        _backupManager.GetSnapshots(info)
+            .Where(s => s.Name.StartsWith(MudManApplier.RestorePointPrefix, StringComparison.Ordinal))
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefault();
+
     public bool ApplyMudManTier(
         MudManTier tier,
         string? preferredDirectory,
         Action<string>? progress,
-        out string message)
+        out string message,
+        bool refreshFingerprint = true)
     {
         message = string.Empty;
         if (IsGameRunning())
@@ -807,14 +882,15 @@ public sealed class PatcherFacade
             return false;
         }
 
-        return _mudManApplier.Apply(info, tier, progress, out message);
+        return _mudManApplier.Apply(info, tier, progress, out message, refreshFingerprint);
     }
 
     /// <summary>还原泥人改动的全部文件。</summary>
     public bool RestoreMudMan(
         string? preferredDirectory,
         Action<string>? progress,
-        out string message)
+        out string message,
+        bool force = false)
     {
         message = string.Empty;
         if (IsGameRunning())
@@ -830,7 +906,7 @@ public sealed class PatcherFacade
             return false;
         }
 
-        return _mudManApplier.Restore(info, progress, out message);
+        return _mudManApplier.Restore(info, force, progress, out message);
     }
 
     /// <summary>当前泥人是否已应用（存在可还原的备份）。</summary>
@@ -849,18 +925,14 @@ public sealed class PatcherFacade
         string? preferredDirectory = null)
     {
         var info = GetGameInfo(preferredDirectory);
-        if (!info.IsValid || _backupManager is null) return (false, null, false);
+        if (!info.IsValid) return (false, null, false);
 
-        var point = _backupManager.GetSnapshots(info)
-            .Where(s => s.Name.StartsWith(MudManApplier.RestorePointPrefix, StringComparison.Ordinal))
-            .OrderByDescending(s => s.CreatedAt)
-            .FirstOrDefault();
-
+        var point = FindMudManRestorePoint(info);
         if (point is null) return (false, null, false);
 
-        string current = PatchBackupManager.ReadGameVersion(info);
-        bool matches = !string.IsNullOrEmpty(current)
-                       && string.Equals(point.GameVersion, current, StringComparison.OrdinalIgnoreCase);
+        var currentBuild = ClientBuildStamp.Compute(info);
+        bool matches = !string.IsNullOrEmpty(point.BuildStamp) && !string.IsNullOrEmpty(currentBuild.Stamp)
+                       && string.Equals(point.BuildStamp, currentBuild.Stamp, StringComparison.OrdinalIgnoreCase);
 
         return (true, point.GameVersion, matches);
     }

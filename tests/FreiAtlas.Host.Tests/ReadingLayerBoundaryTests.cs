@@ -171,10 +171,22 @@ public sealed class ReadingLayerBoundaryTests
         params string[] forbiddenTokens)
     {
         AssertFilesDoNotContain(
-            Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
-                .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-                               && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)),
+            EnumerateSourceFiles(directory),
             forbiddenTokens);
+    }
+
+    private static IEnumerable<string> EnumerateSourceFiles(string directory)
+    {
+        foreach (var file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.TopDirectoryOnly))
+            yield return file;
+
+        foreach (var child in Directory.EnumerateDirectories(directory))
+        {
+            string name = Path.GetFileName(child);
+            if (name.Equals("bin", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("obj", StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var file in EnumerateSourceFiles(child)) yield return file;
+        }
     }
 
     private static void AssertFilesDoNotContain(

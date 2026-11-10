@@ -1,3 +1,4 @@
+using System.Text;
 using FreiAtlas.Patcher.Core;
 
 namespace FreiAtlas.Patcher.Tests;
@@ -44,6 +45,35 @@ public sealed class SnapshotVersionTests
 
         Assert.Equal(string.Empty, snapshot.IndexFingerprint);
         Assert.Equal(string.Empty, snapshot.GameVersion);
+    }
+
+    [Fact]
+    public void 日志增长后仍能从头部读到版本号()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "frei_ver_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(dir, "logs"));
+
+        try
+        {
+            var content = new StringBuilder();
+            content.AppendLine("2026/11/08 15:24:00 ***** LOG FILE OPENING *****");
+            content.AppendLine("2026/11/08 15:24:00 [INFO] User agent: PoE poe2_production/tags/0.5.5f Windows x64");
+
+            // 追加 1 MB 噪声，确保版本标签落在尾部 512 KB 窗口之外。
+            while (content.Length < 1024 * 1024)
+            {
+                content.AppendLine("2026/11/08 15:25:00 [INFO] filler line for log growth test");
+            }
+
+            File.WriteAllText(Path.Combine(dir, "logs", "LatestClient.txt"), content.ToString(), Encoding.UTF8);
+
+            var info = new GameModeInfo { IsValid = true, GameDirectory = dir, Mode = GameMode.GGPK };
+            Assert.Equal("0.5.5f", PatchBackupManager.ReadGameVersion(info));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { }
+        }
     }
 
     [Fact]

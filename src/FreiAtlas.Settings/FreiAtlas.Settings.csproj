@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AllowedReferenceRelatedFileExtensions>.pdb</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +18,23 @@
 
   <ItemGroup>
     <Content Include="Web\**" CopyToOutputDirectory="PreserveNewest" />
+
+    <!--
+      图标预览雪碧图来自 FreiAtlas.Patcher 的内嵌资源，必须同步输出到 Web 根目录。
+      前端 patcher.js 用 background-image: url(icons.sheet.webp) 直接引用它，
+      缺失时 WebView2 会 404，784 个图标预览全部显示空白。
+    -->
+    <Content Include="..\FreiAtlas.Patcher\Resources\iconpatch\icons.sheet.webp">
+      <Link>Web\icons.sheet.webp</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!-- 字体以 Brotli 形式分发（比 ttf 直接进 zip 再省约 15%）；首次安装时解压到本地缓存。
+         原始 ttf 留在仓库供开发与测试，不进入输出/发布目录。 -->
+    <Content Include="..\..\fonts\font.json;..\..\fonts\*.ttf.br;..\..\fonts\README.md">
+      <Link>fonts\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <Content Include="..\..\THIRD-PARTY-NOTICES.md">
       <Link>THIRD-PARTY-NOTICES.md</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

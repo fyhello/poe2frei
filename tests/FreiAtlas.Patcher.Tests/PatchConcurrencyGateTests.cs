@@ -98,6 +98,8 @@ public sealed class PatchConcurrencyGateTests
         var gate = new PatchConcurrencyGate();
         int granted = 0;
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var attempted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int remaining = 16;
 
         var tasks = Enumerable.Range(0, 16).Select(_ => Task.Run(async () =>
         {
@@ -106,10 +108,12 @@ public sealed class PatchConcurrencyGateTests
             if (lease is not null)
             {
                 Interlocked.Increment(ref granted);
-                // 持有到全部并发尝试结束，才能验证「同时只有一个」
-                await Task.Delay(50);
-                lease.Dispose();
             }
+
+            if (Interlocked.Decrement(ref remaining) == 0) attempted.SetResult();
+            // 异步等待全部尝试结束，避免占满线程池后等待超时而提前释放。
+            try { await attempted.Task.WaitAsync(TimeSpan.FromSeconds(10)); }
+            finally { lease?.Dispose(); }
         })).ToArray();
 
         ready.SetResult();

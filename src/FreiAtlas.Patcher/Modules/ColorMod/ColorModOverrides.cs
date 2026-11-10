@@ -62,21 +62,8 @@ public static class ColorModOverrides
         var list = new List<string>
         {
             Path.Combine(AppContext.BaseDirectory, "data", "poe2", "colormod_overrides.json"),
-            Path.Combine(AppContext.BaseDirectory, "colormod_overrides.json"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Poe2PriceGuiData", "data", "colormod_overrides.json")
+            Path.Combine(AppContext.BaseDirectory, "colormod_overrides.json")
         };
-
-        // 向上递归查找项目根目录下的 data/poe2/colormod_overrides.json (适配测试/开发运行环境)
-        var current = new DirectoryInfo(AppContext.BaseDirectory);
-        for (int i = 0; i < 6 && current != null; i++)
-        {
-            string p = Path.Combine(current.FullName, "data", "poe2", "colormod_overrides.json");
-            if (File.Exists(p) && !list.Contains(p))
-            {
-                list.Add(p);
-            }
-            current = current.Parent;
-        }
 
         string? foundPath = list.FirstOrDefault(File.Exists);
         if (foundPath == null)

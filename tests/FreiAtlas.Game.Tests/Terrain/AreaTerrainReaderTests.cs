@@ -7,7 +7,7 @@ namespace FreiAtlas.Game.Tests.Terrain;
 public sealed class AreaTerrainReaderTests
 {
     private const long AreaInstance = 0x400000;
-    private const long Terrain = AreaInstance + 0x8D0;
+    private static readonly long Terrain = AreaInstance + Poe2MemoryProfile.Current.AreaInstance.TerrainOffset;
     private const long Tiles = 0x500000;
     private const long TgtFile = 0x600000;
     private const long Walkable = 0x800000;

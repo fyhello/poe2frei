@@ -124,7 +124,7 @@ public sealed class TranslationPatchService
             string langDir = Poe2LanguageDetector.TraditionalChineseDirectory;
             if (!string.IsNullOrEmpty(info.BaseItemsPath))
             {
-                var dir = Path.GetDirectoryName(info.BaseItemsPath)?.Replace('\\', '/');
+                var dir = VirtualPath.Normalize(Path.GetDirectoryName(info.BaseItemsPath));
                 if (!string.IsNullOrEmpty(dir))
                 {
                     langDir = dir;
@@ -142,7 +142,7 @@ public sealed class TranslationPatchService
 
             // 汉化的核心是整表重写，读不到表就无从改写。
             // 若把读取异常当成「客户端没有这些表」静默跳过，用户会看到「汉化完成」但界面仍是英文。
-            var tablesReadEx = PatchEngine.LastReadException;
+            var tablesReadEx = _engine.LastReadException;
             if (tablesReadEx is not null)
             {
                 result.ErrorMessage = $"读取客户端核心数据表失败，已中止汉化注入：{tablesReadEx.Message}";
@@ -199,7 +199,7 @@ public sealed class TranslationPatchService
             bool writeSuccess = _engine.WriteGameFiles(info, filesToWrite);
             if (!writeSuccess)
             {
-                result.ErrorMessage = PatchEngine.LastWriteException?.Message ?? "写入游戏客户端补丁失败，请确认客户端未在运行且未被锁定。";
+                result.ErrorMessage = _engine.LastWriteException?.Message ?? "写入游戏客户端补丁失败，请确认客户端未在运行且未被锁定。";
                 return result;
             }
 

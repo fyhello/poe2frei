@@ -121,7 +121,11 @@ public sealed class LiveAtlasMemoryProbeTests
     public void Read_ReadsRegionKeyFromObservedNodeOffset()
     {
         var memory = ProbeMemory.CreateMinimalAtlas();
-        memory.WriteUInt32((nint)0x420000 + 0x318, 0x6276CAA0u);
+        memory.WriteUInt32((nint)0x420000 + 0x328, 0x6276CAA0u);
+        memory.WriteByte((nint)0x420000 + 0x32C, 0x04);
+        memory.WriteByte((nint)0x420000 + 0x32D, 0xA5);
+        memory.WriteByte((nint)0x420000 + 0x32E, 0x0A);
+        memory.WriteByte((nint)0x420000 + 0x339, 0x01);
         var profile = AtlasLayoutProfile.Default with
         {
             MinimumNodeClassCount = 2,
@@ -136,6 +140,9 @@ public sealed class LiveAtlasMemoryProbeTests
             candidate => candidate.Grid == new AtlasGridPos(0, 0));
 
         Assert.Equal(0x6276CAA0u, node.RegionKey);
+        Assert.Equal((byte)0x04, node.RawState);
+        Assert.Equal((byte)0x0A, node.Biome);
+        Assert.Equal((byte)0x01, node.Completion);
     }
 
     [Theory]
@@ -146,7 +153,7 @@ public sealed class LiveAtlasMemoryProbeTests
     [InlineData(0x10, 0xFF, false, false, AtlasNodeCategory.Locked)]
     [InlineData(0x05, 0x02, true, false, AtlasNodeCategory.Unlocked)]
     [InlineData(0x13, 0x00, true, true, AtlasNodeCategory.Completed)]
-    public void Read_UsesObservedNodeStatusInsteadOfLegacyByte(
+    public void Read_UsesObservedNodeStatusInsteadOfLegacyOffsetsAndPointers(
         byte status,
         byte legacyByte,
         bool accessible,
@@ -155,10 +162,12 @@ public sealed class LiveAtlasMemoryProbeTests
     {
         var memory = ProbeMemory.CreateMinimalAtlas();
         var element = (nint)0x420000;
-        // 实机链路的 model 指向 element + 0x60；旧地址包含与分类无关的字节。
-        memory.WritePointer(element + 0x120, element + 0x60);
-        memory.WriteByte(element + 0x31F, status);
-        memory.WriteByte(element + 0x32F, legacyByte);
+        // 干扰字段故意与真实状态相反，防止测试与错误的指针推断同时通过。
+        var misleadingPointer = (status & 0x01) != 0 ? element + 0x3800 : 0;
+        memory.WritePointer(element + 0x310, misleadingPointer);
+        memory.WriteInt64(element + 0x3810, (status & 0x02) != 0 ? 0L : 1L);
+        memory.WriteByte(element + 0x31F, legacyByte);
+        memory.WriteByte(element + 0x32F, status);
         var profile = AtlasLayoutProfile.Default with
         {
             MinimumNodeClassCount = 2,
@@ -172,7 +181,72 @@ public sealed class LiveAtlasMemoryProbeTests
 
         Assert.Equal(accessible, node.IsAccessible);
         Assert.Equal(completed, node.IsCompleted);
+        Assert.Equal(status, node.RawFlags);
+        Assert.Equal((status & 0x03) != 0, node.IsDiscovered);
         Assert.Equal(category, AtlasNodeCategoryClassifier.Classify(node.IsCompleted, node.IsAccessible));
+    }
+
+    [Fact]
+    public void Read_WhenStatusByteIsUnreadable_RejectsNodeAndReportsDiagnostic()
+    {
+        var memory = ProbeMemory.CreateMinimalAtlas();
+        var profile = AtlasLayoutProfile.Default with
+        {
+            MinimumNodeClassCount = 2,
+            MinimumBiomeKinds = 2,
+            MaxNodeCount = 10,
+            MaxEdgeCount = 10
+        };
+        var probe = new LiveAtlasMemoryProbe();
+        Assert.Equal(2, probe.Read(memory, profile).Nodes.Count);
+        memory.RemoveByte((nint)0x420000 + 0x32F);
+
+        var snapshot = probe.Read(memory, profile);
+
+        Assert.True(snapshot.HasAtlasCanvas);
+        Assert.Single(snapshot.Nodes);
+        Assert.DoesNotContain(snapshot.Nodes, node => node.Grid == new AtlasGridPos(0, 0));
+        Assert.Empty(snapshot.Edges);
+        Assert.Contains(probe.Diagnostics, message => message.Contains("状态字节不可读"));
+    }
+
+    [Theory]
+    [InlineData(0u, 0x00, 0x00, AtlasEdgeColor.Red)]
+    [InlineData(3u, 0x01, 0x00, AtlasEdgeColor.Green)]
+    [InlineData(4u, 0x00, 0x00, AtlasEdgeColor.Red)]
+    [InlineData(0x00030000u, 0x01, 0x00, AtlasEdgeColor.Green)]
+    [InlineData(0x00040000u, 0x00, 0x00, AtlasEdgeColor.Red)]
+    [InlineData(4u, 0x02, 0x00, AtlasEdgeColor.Red)]
+    [InlineData(3u, 0x00, 0x01, AtlasEdgeColor.Green)]
+    [InlineData(4u, 0x00, 0x03, AtlasEdgeColor.Green)]
+    public void Read_PropagatesStatusToEdgeColorsWithoutUsingConnectionIndex(
+        uint connectionIndex,
+        byte fromStatus,
+        byte toStatus,
+        AtlasEdgeColor expectedColor)
+    {
+        var memory = ProbeMemory.CreateMinimalAtlas();
+        memory.WriteByte((nint)0x420000 + 0x32F, fromStatus);
+        memory.WriteByte((nint)0x421000 + 0x32F, toStatus);
+        memory.WriteUInt32((nint)0x412000, connectionIndex);
+        var profile = AtlasLayoutProfile.Default with
+        {
+            MinimumNodeClassCount = 2,
+            MinimumBiomeKinds = 2,
+            MaxNodeCount = 10,
+            MaxEdgeCount = 10
+        };
+        var source = new AtlasProcessReader(memory, profile, new LiveAtlasMemoryProbe());
+        var provider = new AtlasUiTreeProvider(source, profile);
+
+        var snapshot = provider.Read();
+
+        Assert.Equal(2, snapshot.Nodes.Count);
+        var edge = Assert.Single(snapshot.Edges);
+        Assert.Equal(expectedColor, edge.RenderColor);
+        Assert.Equal(
+            expectedColor == AtlasEdgeColor.Green ? AtlasEdgeState.Reachable : AtlasEdgeState.Locked,
+            edge.State);
     }
 
     [Fact]
@@ -180,8 +254,7 @@ public sealed class LiveAtlasMemoryProbeTests
     {
         var memory = ProbeMemory.CreateMinimalAtlas();
         var element = (nint)0x420000;
-        memory.WritePointer(element + 0x120, element + 0x60);
-        memory.WriteByte(element + 0x32F, 0xFF);
+        memory.WriteByte(element + 0x31F, 0xFF);
         var profile = AtlasLayoutProfile.Default with
         {
             MinimumNodeClassCount = 2,
@@ -198,7 +271,7 @@ public sealed class LiveAtlasMemoryProbeTests
                      ((byte)0x03, AtlasNodeCategory.Completed)
                  })
         {
-            memory.WriteByte(element + 0x31F, status);
+            memory.WriteByte(element + 0x32F, status);
             var snapshot = probe.Read(memory, profile);
             var node = Assert.Single(snapshot.Nodes, candidate => candidate.Grid == new AtlasGridPos(0, 0));
             Assert.Equal(expected, AtlasNodeCategoryClassifier.Classify(node.IsCompleted, node.IsAccessible));
@@ -996,11 +1069,12 @@ public sealed class LiveAtlasMemoryProbeTests
             memory.WriteUInt32(node + 0x168, visible ? 0x800u : 0u);
             memory.WriteFloat(node + 0x270, 40f);
             memory.WriteFloat(node + 0x274, 40f);
-            memory.WriteInt32(node + 0x310, grid.X);
-            memory.WriteInt32(node + 0x314, grid.Y);
-            memory.WriteByte(node + 0x31E, biome);
-            memory.WriteByte(node + 0x31F, visible ? (byte)0x03 : (byte)0x00);
-            memory.WriteByte(node + 0x329, status);
+            memory.WriteInt32(node + 0x320, grid.X);
+            memory.WriteInt32(node + 0x324, grid.Y);
+            memory.WriteByte(node + 0x32E, biome);
+            memory.WriteByte(node + 0x32F, status);
+            memory.WriteByte(node + 0x339, status);
+            memory.WritePointer(node + 0x310, 0);
             memory.WritePointer(storage + 0x20, data);
             memory.WriteByte(data + 0x2BF, status);
             memory.WritePointer(node + 0x2F0, mapRow);
@@ -1046,6 +1120,9 @@ public sealed class LiveAtlasMemoryProbeTests
         public void WritePointer(nint address, nint value)
             => WriteBytes(address, BitConverter.GetBytes(value.ToInt64()));
 
+        public void WriteInt64(nint address, long value)
+            => WriteBytes(address, BitConverter.GetBytes(value));
+
         public void WriteInt32(nint address, int value)
             => WriteBytes(address, BitConverter.GetBytes(value));
 
@@ -1054,6 +1131,9 @@ public sealed class LiveAtlasMemoryProbeTests
 
         public void WriteByte(nint address, byte value)
             => _bytes[address] = value;
+
+        public void RemoveByte(nint address)
+            => _bytes.Remove(address);
 
         public void WriteFloat(nint address, float value)
             => WriteBytes(address, BitConverter.GetBytes(value));

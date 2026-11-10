@@ -192,37 +192,5 @@ public static class Poe2LanguageDetector
         return "Traditional Chinese";
     }
 
-    /// <summary>
-    /// 根据语言代码获取对应 balance 目录下的 baseitemtypes.datc64 相对路径
-    /// </summary>
-    public static string GetBaseItemsPath(string? languageCode, bool isChina = false)
-    {
-        switch ((languageCode ?? "").Trim().ToLowerInvariant().Replace('_', '-'))
-        {
-            case "sc":
-            case "zh-cn":
-            case "zh-hans":
-            case "simplified chinese":
-            case "simplified-chinese":
-                return "data/balance/simplified chinese/baseitemtypes.datc64";
 
-            case "tc":
-            case "zh-tw":
-            case "zh-hant":
-            case "traditional chinese":
-            case "traditional-chinese":
-                return "data/balance/traditional chinese/baseitemtypes.datc64";
-
-            case "en":
-            case "en-us":
-            case "en-gb":
-            case "english":
-                return "data/balance/baseitemtypes.datc64";
-
-            default:
-                return isChina
-                    ? "data/balance/simplified chinese/baseitemtypes.datc64"
-                    : "data/balance/traditional chinese/baseitemtypes.datc64";
-        }
-    }
 }

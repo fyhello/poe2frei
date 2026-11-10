@@ -25,6 +25,12 @@ public class SnapshotTests : IDisposable
         var bundlesDir = Path.Combine(_gameDir, "Bundles2");
         Directory.CreateDirectory(bundlesDir);
         File.WriteAllBytes(Path.Combine(bundlesDir, "_.index.bin"), Encoding.UTF8.GetBytes("MOCK_INDEX_BIN_DATA"));
+        File.WriteAllBytes(Path.Combine(_gameDir, "PathOfExile.exe"), [1, 2, 3]);
+
+        // 日志版本用于展示；恢复资格由上面的模拟客户端构建戳证明。
+        var logsDir = Path.Combine(_gameDir, "logs");
+        Directory.CreateDirectory(logsDir);
+        File.WriteAllText(Path.Combine(logsDir, "LatestClient.txt"), "poe2_production/tags/0.5.6");
 
         _gameInfo = new GameModeInfo
         {
@@ -79,8 +85,51 @@ public class SnapshotTests : IDisposable
 
         // 验证可正确从独立文件还原出设置
         var restoreResult = manager.RestoreSnapshot(_gameInfo, autoSnap.Id, out string? restoredJson);
-        Assert.True(restoreResult.Success);
+        Assert.True(restoreResult.Success, restoreResult.Message);
         Assert.Equal(mockSettings, restoredJson);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Snapshot_RestoreRejectsMatchingLogWhenBuildCannotBeProven(bool missingBuild)
+    {
+        var manager = new PatchBackupManager(_backupDir);
+        var created = manager.CreateSnapshot(_gameInfo, PatchSnapshotType.Manual, "测试快照", "", null, []);
+        Assert.True(created.Success, created.Message);
+        var snapshot = Assert.Single(manager.GetSnapshots(_gameInfo), s => s.Type == PatchSnapshotType.Manual);
+        string executable = Path.Combine(_gameDir, "PathOfExile.exe");
+        if (missingBuild) File.Delete(executable);
+        else File.WriteAllBytes(executable, [4, 5, 6, 7]);
+        string indexPath = Path.Combine(_gameDir, "Bundles2", "_.index.bin");
+        byte[] currentIndex = Encoding.UTF8.GetBytes("CURRENT_INDEX_MUST_BE_PRESERVED");
+        File.WriteAllBytes(indexPath, currentIndex);
+
+        var restored = manager.RestoreSnapshot(_gameInfo, snapshot.Id, out var settings);
+
+        Assert.False(restored.Success);
+        Assert.Contains("无法安全还原", restored.Message);
+        Assert.Null(settings);
+        Assert.Equal(currentIndex, File.ReadAllBytes(indexPath));
+    }
+
+    [Fact]
+    public void LegacyRestore_RejectsUnverifiableIndexWithoutWriting()
+    {
+        var manager = new PatchBackupManager(_backupDir);
+        Assert.True(manager.CreateSnapshot(_gameInfo, PatchSnapshotType.Official, "测试底包", "").Success);
+        File.Delete(Path.Combine(manager.GetSnapshotsDirectory(_gameInfo), PatchBackupManager.OfficialSnapshotId + ".bin"));
+        string backupPath = manager.GetBackupFilePath(_gameInfo);
+        Directory.CreateDirectory(Path.GetDirectoryName(backupPath)!);
+        File.WriteAllText(backupPath, "UNVERIFIABLE_OLD_INDEX");
+        string indexPath = Path.Combine(_gameDir, "Bundles2", "_.index.bin");
+        byte[] before = File.ReadAllBytes(indexPath);
+
+        var result = manager.Restore(_gameInfo);
+
+        Assert.False(result.Success);
+        Assert.Contains("历史备份无法证明", result.Message);
+        Assert.Equal(before, File.ReadAllBytes(indexPath));
     }
 
     [Fact]

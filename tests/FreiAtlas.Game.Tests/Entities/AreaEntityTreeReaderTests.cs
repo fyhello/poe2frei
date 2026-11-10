@@ -101,8 +101,9 @@ public sealed class AreaEntityTreeReaderTests
     {
         var memory = new SyntheticProcessMemory();
         var actualHead = head ?? Head;
-        memory.WritePointer(Area + 0x6F0, actualHead);
-        memory.WriteInt32(Area + 0x6F8, size);
+        var awakeOffset = Poe2MemoryProfile.Current.AreaInstance.AwakeEntitiesOffset;
+        memory.WritePointer(Area + awakeOffset, actualHead);
+        memory.WriteInt32(Area + awakeOffset + sizeof(long), size);
         if (actualHead != 0)
         {
             memory.WriteBytes(actualHead, new byte[0x30]);

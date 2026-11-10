@@ -1,0 +1,3350 @@
+{
+ "achievementitemrewards": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   40
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 6,
+  "newRows": 6
+ },
+ "achievementitems": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 229,
+  "newRows": 229
+ },
+ "achievements": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 80,
+  "newRows": 80
+ },
+ "achievementsetrewards": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   52
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 12,
+  "newRows": 12
+ },
+ "achievementsetsdisplay": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "i32"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "activeskills": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 1147,
+  "newRows": 1148
+ },
+ "acts": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 7,
+  "newRows": 7
+ },
+ "advancedcraftingbenchcustomtags": {
+  "columns": [
+   "Id",
+   "__col2"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 10,
+  "newRows": 10
+ },
+ "advancedcraftingbenchtabfiltertypes": {
+  "columns": [
+   "Id",
+   "Icon"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 12,
+  "newRows": 12
+ },
+ "advancedskillstutorial": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 33,
+  "newRows": 33
+ },
+ "afflictionrewardtypevisuals": {
+  "columns": [
+   "Id",
+   "Name"
+  ],
+  "offsets": [
+   4,
+   12
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 1,
+  "newRows": 1
+ },
+ "alternatepassiveskills": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 231,
+  "newRows": 231
+ },
+ "alternatequalitytypes": {
+  "columns": [
+   "Id",
+   "Item"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 26,
+  "newRows": 26
+ },
+ "archnemesismetarewards": {
+  "columns": [
+   "Id",
+   "ScriptArgument"
+  ],
+  "offsets": [
+   0,
+   20
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 11,
+  "newRows": 11
+ },
+ "archnemesismods": {
+  "columns": [
+   "Mod",
+   "Visual",
+   "__col4",
+   "__col5",
+   "__col6"
+  ],
+  "offsets": [
+   0,
+   24,
+   56,
+   57,
+   58
+  ],
+  "types": [
+   "foreignrow",
+   "foreignrow",
+   "bool",
+   "bool",
+   "bool"
+  ],
+  "kind": 99,
+  "coverage": 0.9611307420494699,
+  "oldRows": 283,
+  "newRows": 283
+ },
+ "ascendancy": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 37,
+  "newRows": 37
+ },
+ "atlasclasspassiveclasses": {
+  "columns": [
+   "Id",
+   "TabActive"
+  ],
+  "offsets": [
+   0,
+   36
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "atlasclasspassives": {
+  "columns": [
+   "Id",
+   "KeystoneArt"
+  ],
+  "offsets": [
+   0,
+   24
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 36,
+  "newRows": 36
+ },
+ "atlasfavouredmapslots": {
+  "columns": [
+   "SlotId",
+   "__col1"
+  ],
+  "offsets": [
+   0,
+   4
+  ],
+  "types": [
+   "i32",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 12,
+  "newRows": 12
+ },
+ "atlaspassiveskillsubtrees": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 6,
+  "newRows": 6
+ },
+ "atlasprimordialaltarchoicetypes": {
+  "columns": [
+   "Id",
+   "TopIconEater"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 3,
+  "newRows": 3
+ },
+ "atlasprimordialbossoptions": {
+  "columns": [
+   "__col0",
+   "__col1"
+  ],
+  "offsets": [
+   0,
+   4
+  ],
+  "types": [
+   "i32",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 3,
+  "newRows": 3
+ },
+ "atlasupgradesinventorylayout": {
+  "columns": [
+   "Id",
+   "__col1"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "awarddisplay": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 66,
+  "newRows": 66
+ },
+ "azmeriwoodsdusttype": {
+  "columns": [
+   "Id",
+   "Icon"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "backenderrors": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 715,
+  "newRows": 721
+ },
+ "baseitemtypes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 5496,
+  "newRows": 5496
+ },
+ "battlepassrewards": {
+  "columns": [
+   "Id",
+   "__col3"
+  ],
+  "offsets": [
+   29,
+   24
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 50,
+  "newRows": 50
+ },
+ "battlepasstracks": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 3,
+  "newRows": 3
+ },
+ "bestiaryfamilies": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "bestiarygenus": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 42,
+  "newRows": 42
+ },
+ "bestiarygroups": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 12,
+  "newRows": 12
+ },
+ "bestiaryrecipecategories": {
+  "columns": [
+   "Id",
+   "Text"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 17,
+  "newRows": 17
+ },
+ "bestiaryrecipes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 127,
+  "newRows": 127
+ },
+ "betrayalchoices": {
+  "columns": [
+   "Id",
+   "__col2"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "betrayaljobs": {
+  "columns": [
+   "Id",
+   "IconArt"
+  ],
+  "offsets": [
+   0,
+   32
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "betrayalranks": {
+  "columns": [
+   "Id",
+   "Level"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "betrayalrelationshipstate": {
+  "columns": [
+   "Id",
+   "Text"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 3,
+  "newRows": 3
+ },
+ "betrayaltargets": {
+  "columns": [
+   "Id",
+   "Art"
+  ],
+  "offsets": [
+   0,
+   56
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 18,
+  "newRows": 18
+ },
+ "betrayaltraitorrewards": {
+  "columns": [
+   "BetrayalTargetsKey",
+   "BetrayalJobsKey",
+   "BetrayalRanksKey"
+  ],
+  "offsets": [
+   16,
+   0,
+   32
+  ],
+  "types": [
+   "foreignrow",
+   "foreignrow",
+   "foreignrow"
+  ],
+  "kind": 3,
+  "coverage": 1.0,
+  "oldRows": 204,
+  "newRows": 204
+ },
+ "betrayalupgrades": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 50,
+  "newRows": 50
+ },
+ "bindablevirtualkeys": {
+  "columns": [
+   "KeyCode",
+   "Name",
+   "Id"
+  ],
+  "offsets": [
+   0,
+   4,
+   12
+  ],
+  "types": [
+   "i32",
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.7717391304347826,
+  "oldRows": 92,
+  "newRows": 92
+ },
+ "blightcraftingitems": {
+  "columns": [
+   "BaseItemType"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "foreignrow"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 13,
+  "newRows": 13
+ },
+ "blighttowers": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 31,
+  "newRows": 31
+ },
+ "breachstashtabsubstashgroup": {
+  "columns": [
+   "Id",
+   "Icon"
+  ],
+  "offsets": [
+   0,
+   24
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 7,
+  "newRows": 7
+ },
+ "brequelencounterskills": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 16,
+  "newRows": 16
+ },
+ "brequelfruitrewardtypes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "buffdefinitions": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 3218,
+  "newRows": 3218
+ },
+ "buffvisuals": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 2934,
+  "newRows": 2946
+ },
+ "byocrafting": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 52,
+  "newRows": 52
+ },
+ "charactercreationicons": {
+  "columns": [
+   "Id",
+   "Video"
+  ],
+  "offsets": [
+   0,
+   24
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 24,
+  "newRows": 24
+ },
+ "characterpaneldescriptionmodes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 15,
+  "newRows": 15
+ },
+ "characterpanelstats": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 1236,
+  "newRows": 1236
+ },
+ "characterpaneltabs": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 49,
+  "newRows": 49
+ },
+ "characters": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 12,
+  "newRows": 12
+ },
+ "characterstartstates": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 109,
+  "newRows": 109
+ },
+ "charactertextaudio": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 17983,
+  "newRows": 17983
+ },
+ "chests": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 1032,
+  "newRows": 1033
+ },
+ "clientstrings": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 9640,
+  "newRows": 9661
+ },
+ "clientstrings2": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 862,
+  "newRows": 866
+ },
+ "combatuiprompts": {
+  "columns": [
+   "Id",
+   "SoundEffect"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 8,
+  "newRows": 8
+ },
+ "commands": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 64,
+  "newRows": 64
+ },
+ "completionnotifications": {
+  "columns": [
+   "Id",
+   "UIArt"
+  ],
+  "offsets": [
+   0,
+   28
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 26,
+  "newRows": 26
+ },
+ "cosmeticspaneltab": {
+  "columns": [
+   "Id",
+   "__col4"
+  ],
+  "offsets": [
+   0,
+   48
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "costtypes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 18,
+  "newRows": 18
+ },
+ "craftingbenchoptions": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 85,
+  "newRows": 85
+ },
+ "craftingitemclasscategories": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 29,
+  "newRows": 29
+ },
+ "craftingspreetype": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 14,
+  "newRows": 14
+ },
+ "currencyexchangecategories": {
+  "columns": [
+   "Id",
+   "Name"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 55,
+  "newRows": 55
+ },
+ "currencyitems": {
+  "columns": [
+   "BaseItemType"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "foreignrow"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 1537,
+  "newRows": 1537
+ },
+ "delvecraftingmodifierdescriptions": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 80,
+  "newRows": 80
+ },
+ "delvecraftingtags": {
+  "columns": [
+   "TagsKey",
+   "ItemClass"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "foreignrow",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 16,
+  "newRows": 16
+ },
+ "delvefeatures": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 246,
+  "newRows": 246
+ },
+ "endgamemapbiomes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 13,
+  "newRows": 13
+ },
+ "endgamemapcontent": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 70,
+  "newRows": 75
+ },
+ "endgamemapobjectives": {
+  "columns": [
+   "Id",
+   "ContentIcon"
+  ],
+  "offsets": [
+   0,
+   24
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 19,
+  "newRows": 19
+ },
+ "endgamemaps": {
+  "columns": [
+   "WorldArea",
+   "__col3",
+   "MapPin",
+   "Decorations",
+   "MapContentSet",
+   "CorruptedPin",
+   "__col9",
+   "__col10",
+   "MapPinCompleted",
+   "ObjectiveDescription",
+   "__col16",
+   "__col17",
+   "__col18",
+   "__col19",
+   "__col20",
+   "__col21",
+   "__col22",
+   "__col24",
+   "__col25",
+   "__col26",
+   "__col27",
+   "__col28"
+  ],
+  "offsets": [
+   0,
+   40,
+   60,
+   76,
+   92,
+   108,
+   124,
+   128,
+   132,
+   148,
+   188,
+   192,
+   196,
+   200,
+   204,
+   208,
+   209,
+   226,
+   227,
+   235,
+   239,
+   240
+  ],
+  "types": [
+   "foreignrow",
+   "i32",
+   "foreignrow",
+   "foreignrow",
+   "foreignrow",
+   "foreignrow",
+   "i32",
+   "i32",
+   "foreignrow",
+   "foreignrow",
+   "i32",
+   "i32",
+   "f32",
+   "f32",
+   "f32",
+   "bool",
+   "bool",
+   "bool",
+   "string",
+   "f32",
+   "bool",
+   "bool"
+  ],
+  "kind": 99,
+  "coverage": 0.023121387283236993,
+  "oldRows": 173,
+  "newRows": 174
+ },
+ "endgamesplinterinfodisplay": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "essencemods": {
+  "columns": [
+   "Essence",
+   "TargetItemCategory"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "foreignrow",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 178,
+  "newRows": 178
+ },
+ "essencetargetitemcategories": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 50,
+  "newRows": 50
+ },
+ "expedition2recipes": {
+  "columns": [
+   "Id",
+   "Reward"
+  ],
+  "offsets": [
+   0,
+   44
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 322,
+  "newRows": 322
+ },
+ "expedition2shipnames": {
+  "columns": [
+   "Id",
+   "Description"
+  ],
+  "offsets": [
+   0,
+   4
+  ],
+  "types": [
+   "i32",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 1,
+  "newRows": 1
+ },
+ "expeditioncategory": {
+  "columns": [
+   "Id",
+   "Art"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "expeditiondeals": {
+  "columns": [
+   "Id",
+   "__col3"
+  ],
+  "offsets": [
+   0,
+   20
+  ],
+  "types": [
+   "i32",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 39,
+  "newRows": 39
+ },
+ "expeditionfactions": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "expeditionrelics": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 14,
+  "newRows": 14
+ },
+ "flavourtext": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 3591,
+  "newRows": 3591
+ },
+ "fragmentstashtabsubstashgroup": {
+  "columns": [
+   "Id",
+   "Art"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 14,
+  "newRows": 14
+ },
+ "gamepadbutton": {
+  "columns": [
+   "__col0",
+   "__col2"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 21,
+  "newRows": 21
+ },
+ "gamepadbuttonbindaction": {
+  "columns": [
+   "Id",
+   "Icon"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 27,
+  "newRows": 27
+ },
+ "gemeffects": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 1194,
+  "newRows": 1194
+ },
+ "gemtags": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 67,
+  "newRows": 67
+ },
+ "genericleaguerewardtypevisuals": {
+  "columns": [
+   "Type",
+   "Animation"
+  ],
+  "offsets": [
+   0,
+   32
+  ],
+  "types": [
+   "foreignrow",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 25,
+  "newRows": 25
+ },
+ "grantedeffectlabels": {
+  "columns": [
+   "Id",
+   "__col2"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "bool"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 202,
+  "newRows": 202
+ },
+ "harvestcraftfilters": {
+  "columns": [
+   "Id",
+   "BaseItem"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "harvestcraftoptions": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 69,
+  "newRows": 69
+ },
+ "heistjobs": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 9,
+  "newRows": 9
+ },
+ "heistobjectives": {
+  "columns": [
+   "BaseItemType"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "foreignrow"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 80,
+  "newRows": 80
+ },
+ "heistobjectivevaluedescriptions": {
+  "columns": [
+   "Tier"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "i32"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "hellscapepassives": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 15,
+  "newRows": 15
+ },
+ "hideoutdoodadcategory": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 1.0,
+  "oldRows": 135,
+  "newRows": 138
+ },
+ "hideoutdoodadtags": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 1.0,
+  "oldRows": 38,
+  "newRows": 38
+ },
+ "incubators": {
+  "columns": [
+   "BaseItemType"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "foreignrow"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 61,
+  "newRows": 61
+ },
+ "incursion2crafting": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 23,
+  "newRows": 23
+ },
+ "incursion2medallions": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 10,
+  "newRows": 10
+ },
+ "incursion2roomperlevel": {
+  "columns": [
+   "Id",
+   "Room"
+  ],
+  "offsets": [
+   20,
+   0
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 81,
+  "newRows": 81
+ },
+ "incursion2rooms": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 37,
+  "newRows": 37
+ },
+ "itemclasscategories": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 75,
+  "newRows": 75
+ },
+ "itemclasses": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 118,
+  "newRows": 118
+ },
+ "keywordpopups": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 1030,
+  "newRows": 1030
+ },
+ "kioskmodecharactertutorials": {
+  "columns": [
+   "Id",
+   "Character"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "leagueinfo": {
+  "columns": [
+   "PanelImage",
+   "HeaderImage"
+  ],
+  "offsets": [
+   24,
+   32
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 250,
+  "newRows": 250
+ },
+ "leaguenames": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 7,
+  "newRows": 7
+ },
+ "mapconnections": {
+  "columns": [
+   "MapPinsKey1",
+   "MapPinsKey0"
+  ],
+  "offsets": [
+   16,
+   0
+  ],
+  "types": [
+   "foreignrow",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 111,
+  "newRows": 111
+ },
+ "mappins": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 577,
+  "newRows": 577
+ },
+ "mapseries": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 20,
+  "newRows": 20
+ },
+ "mapstashspecialtypeentries": {
+  "columns": [
+   "Id",
+   "DDSFile"
+  ],
+  "offsets": [
+   0,
+   40
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 12,
+  "newRows": 12
+ },
+ "memorylinetype": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 19,
+  "newRows": 19
+ },
+ "microtransactioncategory": {
+  "columns": [
+   "Id",
+   "__col4"
+  ],
+  "offsets": [
+   0,
+   32
+  ],
+  "types": [
+   "i32",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 43,
+  "newRows": 43
+ },
+ "microtransactionskillgemeffectslottypes": {
+  "columns": [
+   "Id",
+   "__col2"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 2,
+  "newRows": 2
+ },
+ "microtransactionslot": {
+  "columns": [
+   "Id",
+   "__col11"
+  ],
+  "offsets": [
+   0,
+   74
+  ],
+  "types": [
+   "i32",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 60,
+  "newRows": 60
+ },
+ "microtransactionslotadditionaldefaultoptions": {
+  "columns": [
+   "__col1",
+   "__col3"
+  ],
+  "offsets": [
+   4,
+   16
+  ],
+  "types": [
+   "i32",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 2,
+  "newRows": 2
+ },
+ "minimapicons": {
+  "columns": [
+   "Id",
+   "__col6"
+  ],
+  "offsets": [
+   0,
+   22
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 1049,
+  "newRows": 1050
+ },
+ "mobileskillgemlayout": {
+  "columns": [
+   "Id",
+   "Inventory"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 9,
+  "newRows": 9
+ },
+ "mobileskillgemlayoutpages": {
+  "columns": [
+   "Id",
+   "Menu"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 3,
+  "newRows": 3
+ },
+ "mobiletutorial": {
+  "columns": [
+   "Id",
+   "Group"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 51,
+  "newRows": 51
+ },
+ "mods": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 16784,
+  "newRows": 16911
+ },
+ "monstercategories": {
+  "columns": [
+   "Tag",
+   "Icon"
+  ],
+  "offsets": [
+   0,
+   24
+  ],
+  "types": [
+   "foreignrow",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 6,
+  "newRows": 6
+ },
+ "monstervarieties": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 2794,
+  "newRows": 2794
+ },
+ "mtxtypes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 8275,
+  "newRows": 8409
+ },
+ "music": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 852,
+  "newRows": 857
+ },
+ "musiccategories": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 11,
+  "newRows": 11
+ },
+ "mysteryboxes": {
+  "columns": [
+   "MtxTypesKey",
+   "BK2File",
+   "BoxId",
+   "BundleId",
+   "__col4",
+   "Logo",
+   "Gradient"
+  ],
+  "offsets": [
+   0,
+   16,
+   24,
+   32,
+   40,
+   41,
+   49
+  ],
+  "types": [
+   "foreignrow",
+   "string",
+   "string",
+   "string",
+   "bool",
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 97,
+  "newRows": 97
+ },
+ "notifications": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 40,
+  "newRows": 40
+ },
+ "npcmaster": {
+  "columns": [
+   "Id",
+   "__col8"
+  ],
+  "offsets": [
+   0,
+   75
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 7,
+  "newRows": 7
+ },
+ "npcs": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 979,
+  "newRows": 981
+ },
+ "npctalk": {
+  "columns": [
+   "NPCKey",
+   "__col1",
+   "DialogueOption",
+   "Script",
+   "Category",
+   "QuestRewardOffersKey",
+   "QuestFlag2",
+   "Script2",
+   "__col13",
+   "__col14",
+   "__col17",
+   "__col20",
+   "BaseItemTypes",
+   "__col23",
+   "DialogueOption2",
+   "ConsoleQuickAction",
+   "WorldArea1",
+   "__col27",
+   "__col29",
+   "WorldArea2",
+   "__col31",
+   "QuestFlag3",
+   "__col33",
+   "__col34",
+   "__col35",
+   "__col37",
+   "__col39"
+  ],
+  "offsets": [
+   0,
+   16,
+   20,
+   76,
+   100,
+   116,
+   132,
+   164,
+   172,
+   173,
+   206,
+   242,
+   243,
+   275,
+   276,
+   284,
+   300,
+   316,
+   336,
+   340,
+   356,
+   360,
+   376,
+   377,
+   381,
+   405,
+   422
+  ],
+  "types": [
+   "foreignrow",
+   "i32",
+   "string",
+   "string",
+   "foreignrow",
+   "foreignrow",
+   "foreignrow",
+   "string",
+   "bool",
+   "bool",
+   "i32",
+   "bool",
+   "foreignrow",
+   "bool",
+   "string",
+   "foreignrow",
+   "foreignrow",
+   "i32",
+   "i32",
+   "foreignrow",
+   "i32",
+   "foreignrow",
+   "bool",
+   "i32",
+   "row",
+   "bool",
+   "bool"
+  ],
+  "kind": 99,
+  "coverage": 0.013051305130513051,
+  "oldRows": 2222,
+  "newRows": 2227
+ },
+ "npctalkdialoguetextaudio": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 12479,
+  "newRows": 12481
+ },
+ "npctextaudio": {
+  "columns": [
+   "Id",
+   "__col7"
+  ],
+  "offsets": [
+   0,
+   58
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 25155,
+  "newRows": 25452
+ },
+ "origin": {
+  "columns": [
+   "Id",
+   "Format"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 3,
+  "newRows": 3
+ },
+ "pantheonpanellayout": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 16,
+  "newRows": 16
+ },
+ "passivekeystonelist": {
+  "columns": [
+   "Passive",
+   "DisplayText"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "foreignrow",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 33,
+  "newRows": 33
+ },
+ "passiveoverridelimits": {
+  "columns": [
+   "Id",
+   "Description"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 7,
+  "newRows": 7
+ },
+ "passiveskillfiltergroups": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 12,
+  "newRows": 12
+ },
+ "passiveskillfilteroptions": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 175,
+  "newRows": 175
+ },
+ "passiveskills": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 9731,
+  "newRows": 9731
+ },
+ "passiveskillstatcategories": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 20,
+  "newRows": 20
+ },
+ "passivetreedecorators": {
+  "columns": [
+   "Id",
+   "__col5"
+  ],
+  "offsets": [
+   0,
+   36
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 11,
+  "newRows": 11
+ },
+ "playertradewhisperformats": {
+  "columns": [
+   "Id",
+   "InStash"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "bool"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "quest": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 137,
+  "newRows": 138
+ },
+ "questrewardtype": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 38,
+  "newRows": 38
+ },
+ "queststates": {
+  "columns": [
+   "Order",
+   "Quest"
+  ],
+  "offsets": [
+   16,
+   0
+  ],
+  "types": [
+   "i32",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 1489,
+  "newRows": 1491
+ },
+ "questtrackergroup": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 3,
+  "newRows": 3
+ },
+ "races": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 10,
+  "newRows": 10
+ },
+ "realms": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 34,
+  "newRows": 34
+ },
+ "relicinventorylayout": {
+  "columns": [
+   "__col0",
+   "__col1"
+  ],
+  "offsets": [
+   0,
+   4
+  ],
+  "types": [
+   "i32",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 18,
+  "newRows": 18
+ },
+ "relicitemeffectvariations": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 7,
+  "newRows": 7
+ },
+ "relicstashtabsubgroup": {
+  "columns": [
+   "Id",
+   "ButtonArt"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 9,
+  "newRows": 9
+ },
+ "ritualrunetypes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 13,
+  "newRows": 13
+ },
+ "sanctumdefenceicons": {
+  "columns": [
+   "Id",
+   "Stat"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 3,
+  "newRows": 3
+ },
+ "sanctumfloors": {
+  "columns": [
+   "Id",
+   "Title"
+  ],
+  "offsets": [
+   0,
+   24
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "sanctumpersistenteffectcategories": {
+  "columns": [
+   "Id",
+   "Frame"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 6,
+  "newRows": 6
+ },
+ "sanctumpersistenteffects": {
+  "columns": [
+   "Id",
+   "Icon"
+  ],
+  "offsets": [
+   0,
+   48
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 117,
+  "newRows": 117
+ },
+ "sanctumroomtypes": {
+  "columns": [
+   "Id",
+   "Icon"
+  ],
+  "offsets": [
+   0,
+   43
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 26,
+  "newRows": 26
+ },
+ "sanctumselectiondisplayoverride": {
+  "columns": [
+   "Id",
+   "Icon"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 22,
+  "newRows": 22
+ },
+ "shapeshiftforms": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 7,
+  "newRows": 8
+ },
+ "shoptag": {
+  "columns": [
+   "Id",
+   "CategoryArt"
+  ],
+  "offsets": [
+   0,
+   43
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 947,
+  "newRows": 949
+ },
+ "skillcraftingdata": {
+  "columns": [
+   "Id",
+   "Character"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "foreignrow"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 12,
+  "newRows": 12
+ },
+ "skillgeminfo": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 204,
+  "newRows": 204
+ },
+ "skillgemsearchterms": {
+  "columns": [
+   "Id",
+   "Name"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 34,
+  "newRows": 34
+ },
+ "skillgemsforuniquestat": {
+  "columns": [
+   "Index",
+   "__col2"
+  ],
+  "offsets": [
+   0,
+   20
+  ],
+  "types": [
+   "i32",
+   "bool"
+  ],
+  "kind": 99,
+  "coverage": 1.0,
+  "oldRows": 244,
+  "newRows": 244
+ },
+ "socketablestashtabsubgroup": {
+  "columns": [
+   "Id",
+   "Icon"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "socketnotches": {
+  "columns": [
+   "Id",
+   "RedSocketImage"
+  ],
+  "offsets": [
+   0,
+   16
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 3,
+  "newRows": 3
+ },
+ "soulcorelimits": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 4,
+  "newRows": 4
+ },
+ "soulcorestatcategories": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 30,
+  "newRows": 30
+ },
+ "soulcoretypes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 5,
+  "newRows": 5
+ },
+ "stashavailabilities": {
+  "columns": [
+   "Id",
+   "__col1"
+  ],
+  "offsets": [
+   0,
+   4
+  ],
+  "types": [
+   "i32",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 10,
+  "newRows": 10
+ },
+ "stashtabaffinities": {
+  "columns": [
+   "StashTabAffinityId"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "foreignrow"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 14,
+  "newRows": 14
+ },
+ "statistictrackingmicrotransactioncountertype": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 2,
+  "newRows": 2
+ },
+ "supportgemfamily": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 389,
+  "newRows": 389
+ },
+ "tags": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 1339,
+  "newRows": 1339
+ },
+ "tieredmicrotransactionsvisuals": {
+  "columns": [
+   "MTX",
+   "Tier",
+   "Description",
+   "DDSFile",
+   "__col4",
+   "__col5"
+  ],
+  "offsets": [
+   0,
+   16,
+   20,
+   28,
+   36,
+   40
+  ],
+  "types": [
+   "foreignrow",
+   "i32",
+   "string",
+   "string",
+   "i32",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 33,
+  "newRows": 36
+ },
+ "tips": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 81,
+  "newRows": 81
+ },
+ "uitalktext": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 98,
+  "newRows": 98
+ },
+ "ultimatumencountertypes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 7,
+  "newRows": 7
+ },
+ "ultimatummodifiers": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 122,
+  "newRows": 122
+ },
+ "ultimatumwagertypes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 21,
+  "newRows": 21
+ },
+ "uniquemageslegacy": {
+  "columns": [
+   "Name",
+   "DisplayText"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 99,
+  "coverage": 0.0,
+  "oldRows": 14,
+  "newRows": 14
+ },
+ "uniquestashtypes": {
+  "columns": [
+   "Id",
+   "Order"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "i32"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 34,
+  "newRows": 34
+ },
+ "windowcursors": {
+  "columns": [
+   "Id",
+   "CursorDefault"
+  ],
+  "offsets": [
+   0,
+   8
+  ],
+  "types": [
+   "string",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 12,
+  "newRows": 12
+ },
+ "words": {
+  "columns": [
+   "HASH32",
+   "Text"
+  ],
+  "offsets": [
+   44,
+   4
+  ],
+  "types": [
+   "u32",
+   "string"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 3246,
+  "newRows": 3246
+ },
+ "worldareas": {
+  "columns": [
+   "Id",
+   "HASH16"
+  ],
+  "offsets": [
+   0,
+   42
+  ],
+  "types": [
+   "string",
+   "u16"
+  ],
+  "kind": 2,
+  "coverage": 1.0,
+  "oldRows": 442,
+  "newRows": 448
+ },
+ "worldmaplegends": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 38,
+  "newRows": 38
+ },
+ "worldpopupicontypes": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 7,
+  "newRows": 7
+ }
+}

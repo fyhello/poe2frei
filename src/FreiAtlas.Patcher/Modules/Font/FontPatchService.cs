@@ -29,6 +29,15 @@ public sealed class FontPatchService
     private static IReadOnlyList<FontItem>? _cachedInstalledFonts;
     private static readonly object _fontsLock = new();
 
+    /// <summary>安装新字体后必须调用，否则列表里仍是安装前的枚举结果。</summary>
+    public static void InvalidateInstalledFontsCache()
+    {
+        lock (_fontsLock)
+        {
+            _cachedInstalledFonts = null;
+        }
+    }
+
     public static IReadOnlyList<FontItem> GetInstalledFonts()
     {
         if (_cachedInstalledFonts != null)
@@ -63,6 +72,14 @@ public sealed class FontPatchService
                     .OrderBy(f => f.DisplayName, StringComparer.CurrentCultureIgnoreCase);
 
                 list.AddRange(query);
+
+                // 内置字体即使尚未安装也要出现在列表里，否则用户看不到这个选项。
+                var bundled = FontInstaller.Bundled;
+                if (bundled is not null &&
+                    !list.Any(f => bundled.Aliases.Contains(f.TypefaceName, StringComparer.OrdinalIgnoreCase)))
+                {
+                    list.Insert(0, new FontItem($"{bundled.DisplayName}（内置）", bundled.Family));
+                }
 
                 if (!list.Any(f => string.Equals(f.TypefaceName, "Fontin", StringComparison.OrdinalIgnoreCase)))
                 {
@@ -257,12 +274,17 @@ public sealed class FontPatchService
 
     public FontSettingsInfo? ScanFontSettings(GameModeInfo info)
     {
+        // 批量读：ReadGameFiles 每次调用都要打开并解析整份 _.index.bin
+        //（Bundles2 下约 100~200 MB，单次 1~2 秒）。
+        // 逐个 ReadGameFile 会在最坏情况下重复解析 8 次，这是字体页卡顿的主因。
+        var batch = _engine.ReadGameFiles(info, UiSettingPaths);
+
         foreach (var path in UiSettingPaths)
         {
-            var bytes = _engine.ReadGameFile(info, path, out var actualPath);
-            if (bytes == null || bytes.Length == 0) continue;
+            var cleanPath = VirtualPath.Normalize(path);
+            if (!batch.TryGetValue(cleanPath, out var bytes) || bytes.Length == 0) continue;
 
-            var res = ParseFontSettings(bytes, actualPath);
+            var res = ParseFontSettings(bytes, cleanPath);
             if (res != null && res.Fonts.Count > 0)
             {
                 return res;
@@ -341,10 +363,14 @@ public sealed class FontPatchService
         progress?.Invoke("正在读取游戏 UI 设置文件...");
         var filesToReplace = new List<(string VirtualPath, byte[] Data)>();
 
+        // 同 ScanFontSettings：8 个路径共用一次索引解析。
+        var settingsBatch = _engine.ReadGameFiles(info, UiSettingPaths);
+
         foreach (var path in UiSettingPaths)
         {
-            var bytes = _engine.ReadGameFile(info, path, out var actualPath);
-            if (bytes == null || bytes.Length == 0) continue;
+            var cleanPath = VirtualPath.Normalize(path);
+            if (!settingsBatch.TryGetValue(cleanPath, out var bytes) || bytes.Length == 0) continue;
+            string actualPath = cleanPath;
 
             // 语言覆盖文件（繁中 / 国服 / 韩文）同样走正常的字体处理，不再写空代理。
             //
@@ -390,7 +416,7 @@ public sealed class FontPatchService
         {
             // 透出 PatchEngine 记录的根因：写入失败可能是备份不可用、路径不匹配
             // 或写入后校验不一致，只报「失败」用户无从判断该做什么。
-            progress?.Invoke($"字体补丁写入失败：{PatchEngine.LastWriteException?.Message ?? "未知原因"}");
+            progress?.Invoke($"字体补丁写入失败：{_engine.LastWriteException?.Message ?? "未知原因"}");
         }
         return success;
     }

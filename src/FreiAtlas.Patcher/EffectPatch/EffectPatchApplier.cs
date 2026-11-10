@@ -23,7 +23,7 @@ namespace FreiAtlas.Patcher.EffectPatch;
 /// </summary>
 public sealed class EffectPatchApplier
 {
-    private const string BackupGroup = "effect_patch";
+    public const string BackupGroup = "effect_patch";
 
     private static readonly string[] TargetExtensions =
         [".ot", ".aoc", ".ao", ".env", ".hlsl", ".epk", ".pet", ".trl", ".fxgraph", ".ffx"];
@@ -154,15 +154,22 @@ public sealed class EffectPatchApplier
                     backupable);
             }
 
+            // 差量还原也必须走定点移除：character.ot 等文件与 MTX 翻滚补丁共享，
+            // 直接整文件覆盖 orig.Data 会把对方的注入一起抹掉（单向静默失效）。
+            // 原实现只有 Restore 走了 BuildRestorePayload，Apply 这条路径漏了。
+            var restoredPayload = restoredFiles.Count > 0
+                ? BuildRestorePayload(info, restoredFiles, progress).Files
+                : [];
+
             var files = plan
                 .Select(p => (p.VirtualPath, p.NewBytes))
-                .Concat(restoredFiles.Select(orig => (orig.VirtualPath, orig.Data)))
+                .Concat(restoredPayload)
                 .ToList();
 
             progress?.Invoke($"写入 {files.Count} 个文件...");
             if (!_engine.WriteGameFiles(info, files))
             {
-                message = PatchEngine.LastWriteException?.Message ?? "写入失败。";
+                message = _engine.LastWriteException?.Message ?? "写入失败。";
                 return false;
             }
 
@@ -227,7 +234,7 @@ public sealed class EffectPatchApplier
             progress?.Invoke($"还原 {files.Count} 个文件...");
             if (!_engine.WriteGameFiles(info, files))
             {
-                message = PatchEngine.LastWriteException?.Message ?? "还原写入失败。";
+                message = _engine.LastWriteException?.Message ?? "还原写入失败。";
                 return false;
             }
 
@@ -260,28 +267,25 @@ public sealed class EffectPatchApplier
         var files = new List<(string VirtualPath, byte[] Data)>(originals.Count);
         int surgicalCount = 0;
 
-        using var session = ClientIndexSession.Open(info);
+        var sharedPaths = originals
+            .Where(x => SharedFileRestore.IsSharedFile(x.VirtualPath))
+            .Select(x => x.VirtualPath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var currentFiles = sharedPaths.Count == 0
+            ? new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase)
+            : _engine.ReadGameFiles(info, sharedPaths);
 
         foreach (var (path, originalBytes) in originals)
         {
-            if (!SharedFileRestore.IsSharedFile(path) || session is null)
+            if (!SharedFileRestore.IsSharedFile(path))
             {
                 files.Add((path, originalBytes));
                 continue;
             }
 
-            byte[]? currentBytes;
-            try
-            {
-                currentBytes = session.ReadFile(path);
-            }
-            catch
-            {
-                files.Add((path, originalBytes));
-                continue;
-            }
-
-            if (currentBytes is null || currentBytes.Length == 0)
+            var cleanPath = VirtualPath.Normalize(path);
+            if (!currentFiles.TryGetValue(cleanPath, out var currentBytes) || currentBytes.Length == 0)
             {
                 files.Add((path, originalBytes));
                 continue;
@@ -507,37 +511,31 @@ public sealed class EffectPatchApplier
 
         progress?.Invoke("正在读取客户端索引...");
 
-        // 索引只打开一次：路径枚举、内容读取、后续写入都复用它。
-        // 之前按 300 个一批调用 ReadGameFiles，每批都会重新打开索引并 ParsePaths
-        // （实测 426 万条路径解析一次约 19 秒），4 万个贴图会因此多花几十分钟。
-        var session = ClientIndexSession.Open(info);
+        // 借用引擎共享索引：路径枚举、内容读取复用同一会话，避免重复 ParsePaths。
+        using var session = _engine.AcquireClientIndex(info);
         if (session is null)
         {
             failures.Add("未能打开客户端索引。");
             return [];
         }
 
-        try
-        {
-            return BuildPlanCore(session, compiled, progress, failures);
-        }
-        finally
-        {
-            session.Dispose();
-        }
+        return BuildPlanCore(session, compiled, progress, failures);
     }
 
     /// <summary>
     /// 在已打开的索引会话上完成规划。
     /// </summary>
     private static List<FilePlan> BuildPlanCore(
-        ClientIndexSession session,
+        ClientIndexLease session,
         List<(EffectPatchRule Rule, Regex? PathRegex)> compiled,
         Action<string>? progress,
         List<string> failures)
     {
         // 路径正则筛选：同一个文件可能被多条规则命中，按住路径聚合。
         var pathRules = new Dictionary<string, List<EffectPatchRule>>(StringComparer.OrdinalIgnoreCase);
+        // 每条规则实际命中多少文件：规则正则失效时这里会显示 0，
+        // 否则界面只会显示「成功」，无法区分「规则没生效」与「本来就不需要改」。
+        var ruleHits = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var (path, record) in session.Records)
         {
             if (!TargetExtensions.Any(e => path.EndsWith(e, StringComparison.OrdinalIgnoreCase))) continue;
@@ -545,6 +543,7 @@ public sealed class EffectPatchApplier
             foreach (var (rule, pathRegex) in compiled)
             {
                 if (!pathRegex!.IsMatch(path)) continue;
+                ruleHits[rule.Id] = ruleHits.TryGetValue(rule.Id, out var hitCount) ? hitCount + 1 : 1;
                 if (!pathRules.TryGetValue(path, out var list))
                 {
                     list = [];
@@ -556,8 +555,14 @@ public sealed class EffectPatchApplier
 
         if (pathRules.Count == 0)
         {
+            string zeroDetail = string.Join(", ", compiled.Select(c => $"{c.Rule.Id}=0"));
+            progress?.Invoke("特效规则未匹配任何文件：" + zeroDetail);
+            failures.Add("特效规则未匹配任何文件（路径正则可能已随客户端版本失效）：" + zeroDetail);
             return [];
         }
+
+        progress?.Invoke("规则命中统计：" + string.Join(", ",
+            compiled.Select(c => $"{c.Rule.Id}={ruleHits.GetValueOrDefault(c.Rule.Id)}")));
 
         progress?.Invoke($"路径匹配到 {pathRules.Count} 个文件，正在处理...");
 
@@ -605,7 +610,45 @@ public sealed class EffectPatchApplier
                 }
 
                 byte[]? bytes;
-                if (existingBackups.TryGetValue(path, out var backedUpBytes) && backedUpBytes.Length > 0)
+                if (SharedFileRestore.IsSharedFile(path))
+                {
+                    // 共享文件（character.ot）与商城外观模块共用：MTX 会往同一文件里注入
+                    // 翻滚 AddEffectPack。若这里拿「本模块私有备份」当基底，MTX 的注入
+                    // 在基底里根本不存在，写回后就被彻底抹掉 —— 反之亦然，两边互相踩。
+                    //
+                    // 正确做法：从客户端当前内容读，先剥掉本模块自己上次注入的行，
+                    // 再在其上重新注入。这样对方模块的注入被完整保留。
+                    try
+                    {
+                        bytes = session.ReadFile(path);
+                    }
+                    catch (Exception ex)
+                    {
+                        failures.Add($"{Path.GetFileName(path)}: 读取失败 - {ex.Message}");
+                        continue;
+                    }
+
+                    if (bytes is { Length: > 0 })
+                    {
+                        try
+                        {
+                            var currentText = EffectTextCodec.Decode(
+                                bytes, EffectTextCodec.Detect(bytes, path));
+                            var stripped = SharedFileRestore.RemoveMatchingLines(
+                                currentText, SharedFileRestore.ViewDistanceLine);
+                            if (!string.Equals(stripped, currentText, StringComparison.Ordinal))
+                            {
+                                bytes = EffectTextCodec.Encode(
+                                    stripped, EffectTextCodec.Detect(bytes, path));
+                            }
+                        }
+                        catch
+                        {
+                            // 剥离失败不致命：下面按规则重新注入仍会覆盖旧视距块（规则幂等）。
+                        }
+                    }
+                }
+                else if (existingBackups.TryGetValue(path, out var backedUpBytes) && backedUpBytes.Length > 0)
                 {
                     bytes = backedUpBytes;
                 }
@@ -686,120 +729,6 @@ public sealed class EffectPatchApplier
 
 }
 
-/// <summary>
-/// 客户端索引会话：一次打开，供路径枚举与逐文件读取共用。
-///
-/// 存在的理由：索引解析（ParsePaths）在 426 万条路径的客户端上约需 19 秒。
-/// 若按批次反复开关索引，几万个文件的补丁会因此多花几十分钟，
-/// 而这些时间全部消耗在重复解析同一份索引上。
-///
-/// 生命周期：由调用方 using 释放；内部按需缓存 bundle 实例，
-/// 同一 bundle 内的多个文件共享一次解压。
-/// </summary>
-internal sealed class ClientIndexSession : IDisposable
-{
-    private readonly LibBundledGGPK3.BundledGGPK? _ggpk;
-    private readonly LibBundle3.Index? _index;
-    private readonly LibBundle3.IBundleFactory? _factory;
-    private readonly Dictionary<LibBundle3.Records.BundleRecord, LibBundle3.Bundle> _openBundles = [];
-
-    private ClientIndexSession(
-        LibBundledGGPK3.BundledGGPK? ggpk,
-        LibBundle3.Index? index,
-        LibBundle3.IBundleFactory? factory)
-    {
-        _ggpk = ggpk;
-        _index = index;
-        _factory = factory;
-    }
-
-    /// <summary>全部已解析路径与其记录的对应关系，路径统一为正斜杠。</summary>
-    public IEnumerable<(string Path, LibBundle3.Records.FileRecord Record)> Records
-    {
-        get
-        {
-            var files = _ggpk?.Index.Files ?? _index?.Files;
-            if (files is null) yield break;
-
-            foreach (var record in files.Values)
-            {
-                var p = record.Path;
-                if (string.IsNullOrEmpty(p)) continue;
-                yield return (p.Replace('\\', '/'), record);
-            }
-        }
-    }
-
-    /// <summary>按路径读取文件内容；不存在时返回 null。</summary>
-    public byte[]? ReadFile(string path)
-    {
-        var clean = path.Replace('\\', '/').TrimStart('/');
-        var index = _ggpk?.Index ?? _index;
-        if (index is null) return null;
-
-        if (!index.TryGetFile(clean, out var record) || record is null) return null;
-
-        // GGPK 模式：Index 内部自带 factory，直接无参读取即可。
-        if (_factory is null) return record.Read().ToArray();
-
-        // Bundles2 模式：同一 bundle 复用实例。
-        // bundle 内部会缓存已解压的 chunk，反复 new 会把这些缓存全部丢掉。
-        if (!_openBundles.TryGetValue(record.BundleRecord, out var bundle))
-        {
-            bundle = _factory.GetBundle(record.BundleRecord);
-            _openBundles[record.BundleRecord] = bundle;
-        }
-
-        return record.Read(bundle).ToArray();
-    }
-
-    /// <summary>检查指定路径是否存在于索引中。</summary>
-    public bool FileExists(string path)
-    {
-        var clean = path.Replace('\\', '/').TrimStart('/');
-        var index = _ggpk?.Index ?? _index;
-        return index is not null && index.TryGetFile(clean, out var record) && record is not null;
-    }
-
-    /// <summary>全部已解析的虚拟路径集合。</summary>
-    public IEnumerable<string> AllFilePaths => Records.Select(r => r.Path);
-
-    /// <summary>打开客户端索引；客户端无效或文件缺失时返回 null。</summary>
-    public static ClientIndexSession? Open(GameModeInfo info)
-    {
-        if (info.Mode == GameMode.GGPK)
-        {
-            var ggpkPath = PatchEngine.GetGgpkPath(info);
-            if (!File.Exists(ggpkPath)) return null;
-
-            var ggpk = new LibBundledGGPK3.BundledGGPK(ggpkPath, parsePathsInIndex: false);
-            ggpk.Index.ParsePaths();
-            return new ClientIndexSession(ggpk, null, null);
-        }
-
-        var bundlesDir = PatchEngine.GetBundlesDirectory(info);
-        var indexPath = PatchEngine.GetBundlesIndexPath(info);
-        if (!File.Exists(indexPath)) return null;
-
-        var factory = new DriveBundleFactory(bundlesDir);
-        var index = new LibBundle3.Index(indexPath, parsePaths: false, factory);
-        index.ParsePaths();
-        return new ClientIndexSession(null, index, factory);
-    }
-
-    public void Dispose()
-    {
-        foreach (var bundle in _openBundles.Values)
-        {
-            bundle?.Dispose();
-        }
-        _openBundles.Clear();
-
-        _index?.Dispose();
-        ( _factory as IDisposable)?.Dispose();
-        _ggpk?.Dispose();
-    }
-}
 
 /// <summary>预览中的一个文件。</summary>
 public sealed record EffectApplyFile(

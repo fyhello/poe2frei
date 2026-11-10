@@ -9,8 +9,8 @@ public sealed class Poe2MemoryProfileTests
     {
         var profile = Poe2MemoryProfile.Current;
 
-        Assert.Equal("poe2-2026.09.10-frei-live-r41", profile.ProfileId);
-        Assert.Equal(new DateOnly(2026, 9, 10), profile.VerifiedOn);
+        Assert.Equal("poe2-2026.11.09-frei-live-r42", profile.ProfileId);
+        Assert.Equal(new DateOnly(2026, 11, 9), profile.VerifiedOn);
         Assert.Contains("POE2Radar", profile.Source, StringComparison.Ordinal);
         Assert.Contains("GameHelper2", profile.Source, StringComparison.Ordinal);
         Assert.Contains("live-verified", profile.Source, StringComparison.Ordinal);
@@ -27,13 +27,13 @@ public sealed class Poe2MemoryProfileTests
         Assert.Equal(0x290, profile.InGameState.AreaInstanceOffset);
         Assert.Equal(0x2F0, profile.InGameState.UiRootOffset);
 
-        Assert.Equal(0x098, profile.AreaInstance.AreaInfoOffset);
-        Assert.Equal(0x5D0, profile.AreaInstance.LocalPlayerOffset);
-        Assert.Equal(0x6F0, profile.AreaInstance.AwakeEntitiesOffset);
-        Assert.Equal(0x700, profile.AreaInstance.SleepingEntitiesOffset);
-        Assert.Equal(0x8D0, profile.AreaInstance.TerrainOffset);
-        Assert.Equal(0x0BC, profile.AreaInstance.AreaLevelOffset);
-        Assert.Equal(0x114, profile.AreaInstance.AreaHashOffset);
+        Assert.Equal(0x0A0, profile.AreaInstance.AreaInfoOffset);
+        Assert.Equal(0x5D8, profile.AreaInstance.LocalPlayerOffset);
+        Assert.Equal(0x718, profile.AreaInstance.AwakeEntitiesOffset);
+        Assert.Equal(0x728, profile.AreaInstance.SleepingEntitiesOffset);
+        Assert.Equal(0x8F8, profile.AreaInstance.TerrainOffset);
+        Assert.Equal(0x0C4, profile.AreaInstance.AreaLevelOffset);
+        Assert.Equal(0x11C, profile.AreaInstance.AreaHashOffset);
 
         Assert.Equal(0x00, profile.StdMapNode.LeftOffset);
         Assert.Equal(0x08, profile.StdMapNode.ParentOffset);

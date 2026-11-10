@@ -194,7 +194,7 @@ public static class EffectRuleApplier
                 return content;
             }
 
-            var closeIndex = FindMatchingBrace(content, openIndex);
+            var closeIndex = EffectTextScanner.FindMatchingBrace(content, openIndex);
             if (closeIndex < 0)
             {
                 // 括号不配平，宁可不动这个文件
@@ -213,56 +213,6 @@ public static class EffectRuleApplier
         if (replacedCount == 0) return content;
         sb.Append(content, cursor, content.Length - cursor);
         return sb.ToString();
-    }
-
-    /// <summary>
-    /// 从开括号位置向后找配平的右括号，跳过字符串字面量与注释。
-    ///
-    /// 必须同时识别单引号：客户端 .ao 的 <c>animations = '[...]'</c> 用单引号
-    /// 包裹 JSON 数组，内部全是花括号。只认双引号会让字符串里的括号参与配平，
-    /// 导致这一块定位错乱。定位失败时调用方会放弃改动（不写坏文件），
-    /// 但规则会静默失效，因此这里必须正确处理。
-    /// </summary>
-    private static int FindMatchingBrace(string s, int openIndex)
-    {
-        int depth = 0;
-        bool inString = false, inLineComment = false, inBlockComment = false;
-        char stringQuote = '\0';
-
-        for (int i = openIndex; i < s.Length; i++)
-        {
-            char c = s[i];
-            char next = i + 1 < s.Length ? s[i + 1] : '\0';
-
-            if (inLineComment)
-            {
-                if (c == '\n') inLineComment = false;
-                continue;
-            }
-            if (inBlockComment)
-            {
-                if (c == '*' && next == '/') { inBlockComment = false; i++; }
-                continue;
-            }
-            if (inString)
-            {
-                if (c == '\\') { i++; continue; }
-                if (c == stringQuote) inString = false;
-                continue;
-            }
-
-            if (c == '/' && next == '/') { inLineComment = true; i++; continue; }
-            if (c == '/' && next == '*') { inBlockComment = true; i++; continue; }
-            if (c == '"' || c == '\'') { inString = true; stringQuote = c; continue; }
-
-            if (c == '{') depth++;
-            else if (c == '}')
-            {
-                depth--;
-                if (depth == 0) return i;
-            }
-        }
-        return -1;
     }
 
     /// <summary>
@@ -354,7 +304,7 @@ public static class EffectRuleApplier
                 var openIndex = m.Index + m.Length - 1;
                 if (content[openIndex] != '{') break;
 
-                var closeIndex = FindMatchingBrace(content, openIndex);
+                var closeIndex = EffectTextScanner.FindMatchingBrace(content, openIndex);
                 if (closeIndex < 0) break;   // 括号不配平，不动这个块
 
                 var blockBody = content.Substring(openIndex + 1, closeIndex - openIndex - 1);

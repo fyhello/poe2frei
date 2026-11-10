@@ -54,6 +54,9 @@ public sealed class MtxPatchApplier
         MtxPatchOptions options,
         Action<string>? progress = null)
     {
+        // 商城是整批里最慢的模块：按「规划 / 备份读取 / 写盘」分段计时。
+        var mtxSw = System.Diagnostics.Stopwatch.StartNew();
+
         if (!info.IsValid)
         {
             return MtxApplyResult.Failure(info.ErrorMessage ?? "游戏客户端路径无效。");
@@ -80,7 +83,7 @@ public sealed class MtxPatchApplier
             // 在独立会话作用域内完成数据计算、提取与原件读取
             // ----------------------------------------------------
             progress?.Invoke("正在连接游戏客户端索引...");
-            using (var session = ClientIndexSession.Open(info))
+            using (var session = _engine.AcquireClientIndex(info))
             {
                 if (session is null)
                 {
@@ -90,6 +93,34 @@ public sealed class MtxPatchApplier
                 // 辅助函数：优先读取原件备份，否则从客户端读取
                 byte[]? ReadBaseBytes(string virtualPath)
                 {
+                    // 共享文件（character.ot）：特效模块会往同一文件注入视距行。
+                    // 若拿本模块私有备份当基底，视距注入在基底里不存在，写回后就被抹掉。
+                    // 因此这里必须读客户端当前内容，只剥掉本模块自己的翻滚注入，
+                    // 保留对方的视距注入。
+                    if (SharedFileRestore.IsSharedFile(virtualPath) && session.FileExists(virtualPath))
+                    {
+                        var current = session.ReadFile(virtualPath);
+                        if (current is { Length: > 0 })
+                        {
+                            try
+                            {
+                                var enc = EffectTextCodec.Detect(current, virtualPath);
+                                var text = EffectTextCodec.Decode(current, enc);
+                                var stripped = SharedFileRestore.RemoveMatchingLines(
+                                    text, SharedFileRestore.DodgeRollLine);
+                                if (!string.Equals(stripped, text, StringComparison.Ordinal))
+                                {
+                                    return EffectTextCodec.Encode(stripped, enc);
+                                }
+                            }
+                            catch
+                            {
+                                // 剥离失败时退回当前内容：防护重复的逻辑在 InjectDodgeRollPack 里。
+                            }
+                        }
+                        return current;
+                    }
+
                     if (existingBackups.TryGetValue(virtualPath, out var backed))
                     {
                         return backed;
@@ -214,7 +245,7 @@ public sealed class MtxPatchApplier
                 // 模式 3: 205 款防具时装覆盖全职业 7 种属性底子 (ArmourSets)
                 if (!string.IsNullOrWhiteSpace(options.SelectedArmourSetName))
                 {
-                    var armourEntry = db.FindByName(options.SelectedArmourSetName);
+                    var armourEntry = db.FindByName(options.SelectedArmourSetName, options.SelectedArmourSetFolder);
                     if (armourEntry is not null && !string.IsNullOrWhiteSpace(armourEntry.ArmourSetFolder))
                     {
                         progress?.Invoke($"正在计算全局防具套装覆盖: {armourEntry.Name}...");
@@ -236,6 +267,9 @@ public sealed class MtxPatchApplier
                     ApplyDodgeRollEffects(rollEntries, ReadBaseBytes, plannedFiles);
                 }
 
+                progress?.Invoke($"[耗时] 商城规划: {mtxSw.ElapsedMilliseconds} ms");
+                mtxSw.Restart();
+
                 // 保存本次新涉及文件的首次原件备份（在 session 关闭前完成读取）
                 newBackupTargets = plannedFiles.Keys
                     .Where(p => !existingBackups.ContainsKey(p))
@@ -244,19 +278,54 @@ public sealed class MtxPatchApplier
                 if (newBackupTargets.Count > 0)
                 {
                     progress?.Invoke($"正在为 {newBackupTargets.Count} 个游戏文件建立首次原件备份...");
-                    foreach (var path in newBackupTargets)
+
+                    // 这是商城模块的主要耗时点：上万次「按路径读文件 + 解压」。
+                    // GGPK 模式下 ReadFile 不共享可变状态，可安全并行；上限 4 线程，
+                    // 避免同时解压过多 chunk 造成内存峰值。任一线程异常则回退串行。
+                    var parallelOk = true;
+                    try
                     {
-                        if (session.FileExists(path))
-                        {
-                            var data = session.ReadFile(path);
-                            if (data is not null)
+                        var bag = new System.Collections.Concurrent.ConcurrentDictionary<string, byte[]>(
+                            StringComparer.OrdinalIgnoreCase);
+                        System.Threading.Tasks.Parallel.ForEach(
+                            newBackupTargets,
+                            new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 4 },
+                            path =>
                             {
-                                freshOriginals[path] = data;
+                                if (!session.FileExists(path)) return;
+                                var data = session.ReadFile(path);
+                                if (data is not null) bag[path] = data;
+                            });
+
+                        foreach (var kv in bag) freshOriginals[kv.Key] = kv.Value;
+                    }
+                    catch (Exception parallelEx)
+                    {
+                        // 并行读取失败不影响正确性：退回逐文件串行。
+                        parallelOk = false;
+                        freshOriginals.Clear();
+                        progress?.Invoke("并行读取失败，回退串行：" + parallelEx.Message);
+                    }
+
+                    if (!parallelOk)
+                    {
+                        foreach (var path in newBackupTargets)
+                        {
+                            if (session.FileExists(path))
+                            {
+                                var data = session.ReadFile(path);
+                                if (data is not null)
+                                {
+                                    freshOriginals[path] = data;
+                                }
                             }
                         }
                     }
                 }
             } // <--- 关键：此处 session 彻底释放并 Dispose，完全解除对 Content.ggpk 的文件占用！
+
+            progress?.Invoke($"[耗时] 商城备份读取: {mtxSw.ElapsedMilliseconds} ms");
+            mtxSw.Restart();
 
             // ----------------------------------------------------
             // 备份、差量还原与最终写入闭环（独立无句柄占用阶段）
@@ -280,16 +349,22 @@ public sealed class MtxPatchApplier
             }
 
             // 规范化路径并合并写入任务：规划修改的文件 + 恢复原件的文件
+            var buildSw = System.Diagnostics.Stopwatch.StartNew();
+            var restorePayload = BuildRestorePayload(info, restoredFiles, progress);
+            long restoreMs = buildSw.ElapsedMilliseconds;
             var filesToWrite = plannedFiles
-                .Select(kv => (VirtualPath: kv.Key.Replace('\\', '/').Trim().TrimStart('/'), Data: kv.Value))
-                .Concat(BuildRestorePayload(info, restoredFiles, progress))
+                .Select(kv => (VirtualPath: VirtualPath.Normalize(kv.Key), Data: kv.Value))
+                .Concat(restorePayload)
                 .ToList();
+            progress?.Invoke($"[耗时] 商城构造写入列表: {buildSw.ElapsedMilliseconds} ms (计划 {plannedFiles.Count} 个, 恢复 {restoredFiles.Count} 个, 其中恢复读取 {restoreMs} ms)");
+            mtxSw.Restart();
 
             progress?.Invoke($"正在向游戏客户端写入 {filesToWrite.Count} 个文件 (含 {restoredFiles.Count} 个恢复原件)...");
             var writeSuccess = _engine.WriteGameFiles(info, filesToWrite);
+            progress?.Invoke($"[耗时] 商城会话暂存: {mtxSw.ElapsedMilliseconds} ms");
             if (!writeSuccess)
             {
-                var reason = PatchEngine.LastWriteException?.Message ?? "客户端索引替换未生效或校验不一致";
+                var reason = _engine.LastWriteException?.Message ?? "客户端索引替换未生效或校验不一致";
                 return MtxApplyResult.Failure($"写入游戏客户端文件失败：{reason}");
             }
 
@@ -340,7 +415,7 @@ public sealed class MtxPatchApplier
             var writeSuccess = _engine.WriteGameFiles(info, filesToWrite);
             if (!writeSuccess)
             {
-                var reason = PatchEngine.LastWriteException?.Message ?? "客户端索引替换未生效或校验不一致";
+                var reason = _engine.LastWriteException?.Message ?? "客户端索引替换未生效或校验不一致";
                 return MtxApplyResult.Failure($"写入还原数据失败：{reason}");
             }
 
@@ -411,12 +486,19 @@ public sealed class MtxPatchApplier
     /// 全局防具时装对全职业全底子的长后缀覆盖算法。
     /// </summary>
     private static void ApplyArmourSet(
-        ClientIndexSession session,
+        ClientIndexLease session,
         MtxEntry armourEntry,
         Dictionary<string, byte[]> plannedFiles)
     {
-        var folder = armourEntry.ArmourSetFolder!.Trim().Replace('\\', '/').Trim('/');
-        var allPaths = session.AllFilePaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var folder = VirtualPath.Normalize(armourEntry.ArmourSetFolder).TrimEnd('/');
+
+        // 后续只用到 .ao 路径：先过滤再收集，避免把 426 万条全量物化到 HashSet
+        //（那是数 GB 的字符串与哈希开销，实测是防具套装覆盖的主要耗时之一）。
+        var allPaths = new List<string>();
+        foreach (var (path, _) in session.Records)
+        {
+            if (path.EndsWith(".ao", StringComparison.OrdinalIgnoreCase)) allPaths.Add(path);
+        }
 
         foreach (var (root, part) in MtxDatabase.ArmourRoots)
         {
@@ -505,7 +587,7 @@ public sealed class MtxPatchApplier
     /// 注入背饰、翅膀和周身光效至选定的职业模型 .ao 文件。
     /// </summary>
     private static void ApplyCharacterAttachments(
-        ClientIndexSession session,
+        ClientIndexLease session,
         List<MtxEntry> entries,
         string selectedClassCode,
         Func<string, byte[]?> readBaseBytes,
@@ -657,62 +739,50 @@ public sealed class MtxPatchApplier
     {
         var files = new List<(string VirtualPath, byte[] Data)>(restoredFiles.Count);
 
-        ClientIndexSession? session = null;
-        try
-        {
-            session = ClientIndexSession.Open(info);
+        var sharedPaths = restoredFiles
+            .Select(x => VirtualPath.Normalize(x.VirtualPath))
+            .Where(SharedFileRestore.IsSharedFile)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var currentFiles = sharedPaths.Count == 0
+            ? new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase)
+            : _engine.ReadGameFiles(info, sharedPaths);
 
-            foreach (var (rawPath, originalBytes) in restoredFiles)
+        foreach (var (rawPath, originalBytes) in restoredFiles)
+        {
+            string path = VirtualPath.Normalize(rawPath);
+
+            if (!SharedFileRestore.IsSharedFile(path))
             {
-                string path = rawPath.Replace('\\', '/').Trim().TrimStart('/');
-
-                if (!SharedFileRestore.IsSharedFile(path) || session is null)
-                {
-                    files.Add((path, originalBytes));
-                    continue;
-                }
-
-                byte[]? currentBytes;
-                try
-                {
-                    currentBytes = session.ReadFile(path);
-                }
-                catch
-                {
-                    files.Add((path, originalBytes));
-                    continue;
-                }
-
-                if (currentBytes is null || currentBytes.Length == 0)
-                {
-                    files.Add((path, originalBytes));
-                    continue;
-                }
-
-                if (!SharedFileRestore.TryRestoreSharedFile(
-                        currentBytes,
-                        path,
-                        SharedFileRestore.DodgeRollLine,
-                        out var cleanedBytes,
-                        out var restoreError))
-                {
-                    progress?.Invoke($"{Path.GetFileName(path)} 定点还原失败，回退为整文件还原：{restoreError}");
-                    files.Add((path, originalBytes));
-                    continue;
-                }
-
-                if (cleanedBytes is null)
-                {
-                    // 当前内容已无本模块注入痕迹，无需写入
-                    continue;
-                }
-
-                files.Add((path, cleanedBytes));
+                files.Add((path, originalBytes));
+                continue;
             }
-        }
-        finally
-        {
-            session?.Dispose();
+
+            if (!currentFiles.TryGetValue(path, out var currentBytes) || currentBytes.Length == 0)
+            {
+                files.Add((path, originalBytes));
+                continue;
+            }
+
+            if (!SharedFileRestore.TryRestoreSharedFile(
+                    currentBytes,
+                    path,
+                    SharedFileRestore.DodgeRollLine,
+                    out var cleanedBytes,
+                    out var restoreError))
+            {
+                progress?.Invoke($"{Path.GetFileName(path)} 定点还原失败，回退为整文件还原：{restoreError}");
+                files.Add((path, originalBytes));
+                continue;
+            }
+
+            if (cleanedBytes is null)
+            {
+                // 当前内容已无本模块注入痕迹，无需写入
+                continue;
+            }
+
+            files.Add((path, cleanedBytes));
         }
 
         return files;

@@ -1,0 +1,4372 @@
+[
+  {
+    "index": 0,
+    "pattern": "Glimmerwood Witchdoctor",
+    "zh": "微光林地巫医"
+  },
+  {
+    "index": 1,
+    "pattern": "Incineratorapparition",
+    "zh": "焚化者幻象周身光效"
+  },
+  {
+    "index": 2,
+    "pattern": "Mantra of Destruction",
+    "zh": "破灭真言"
+  },
+  {
+    "index": 3,
+    "pattern": "Particle Accelerator",
+    "zh": "粒子对撞机"
+  },
+  {
+    "index": 4,
+    "pattern": "Window to Wraeclast",
+    "zh": "瓦尔克拉斯之窗"
+  },
+  {
+    "index": 5,
+    "pattern": "Scroll of Paintings",
+    "zh": "画卷之轴"
+  },
+  {
+    "index": 6,
+    "pattern": "Kalguuran Runesmith",
+    "zh": "卡鲁古尔符文铁匠"
+  },
+  {
+    "index": 7,
+    "pattern": "Skill Effect Bundle",
+    "zh": "技能特效包"
+  },
+  {
+    "index": 8,
+    "pattern": "Darkstarapparition",
+    "zh": "暗星幻象周身光效"
+  },
+  {
+    "index": 9,
+    "pattern": "Elemental Weakness",
+    "zh": "元素虚弱"
+  },
+  {
+    "index": 10,
+    "pattern": "Gemling Artificer",
+    "zh": "宝石巧匠"
+  },
+  {
+    "index": 11,
+    "pattern": "Quicksilver Flask",
+    "zh": "水银药剂"
+  },
+  {
+    "index": 12,
+    "pattern": "Herald of Thunder",
+    "zh": "风暴之捷"
+  },
+  {
+    "index": 13,
+    "pattern": "Poisonburst Arrow",
+    "zh": "毒爆箭"
+  },
+  {
+    "index": 14,
+    "pattern": "Dodge Roll Effect",
+    "zh": "翻滚特效"
+  },
+  {
+    "index": 15,
+    "pattern": "Helmet Attachment",
+    "zh": "头部饰品"
+  },
+  {
+    "index": 16,
+    "pattern": "Footprints Effect",
+    "zh": "足迹特效"
+  },
+  {
+    "index": 17,
+    "pattern": "Bestial Entangle",
+    "zh": "野兽纠缠"
+  },
+  {
+    "index": 18,
+    "pattern": "Whirling Assault",
+    "zh": "旋风突袭"
+  },
+  {
+    "index": 19,
+    "pattern": "Character Effect",
+    "zh": "周身光效"
+  },
+  {
+    "index": 20,
+    "pattern": "Ardent Disciple",
+    "zh": "狂热信徒"
+  },
+  {
+    "index": 21,
+    "pattern": "Thrashing Vines",
+    "zh": "抽打藤蔓"
+  },
+  {
+    "index": 22,
+    "pattern": "Vaulting Impact",
+    "zh": "腾跃重击"
+  },
+  {
+    "index": 23,
+    "pattern": "Whirlwind Lance",
+    "zh": "旋风长枪"
+  },
+  {
+    "index": 24,
+    "pattern": "Lightning Spear",
+    "zh": "闪电之矛"
+  },
+  {
+    "index": 25,
+    "pattern": "Temporal Chains",
+    "zh": "时空锁链"
+  },
+  {
+    "index": 26,
+    "pattern": "Back Attachment",
+    "zh": "背饰"
+  },
+  {
+    "index": 27,
+    "pattern": "Shapeshift Skin",
+    "zh": "变身外观"
+  },
+  {
+    "index": 28,
+    "pattern": "Arctic Crystal",
+    "zh": "极寒水晶"
+  },
+  {
+    "index": 29,
+    "pattern": "Blood and Sand",
+    "zh": "血与沙"
+  },
+  {
+    "index": 30,
+    "pattern": "Disease Vector",
+    "zh": "疾病载体"
+  },
+  {
+    "index": 31,
+    "pattern": "Flicker Strike",
+    "zh": "闪现打击"
+  },
+  {
+    "index": 32,
+    "pattern": "Rain of Arrows",
+    "zh": "箭雨"
+  },
+  {
+    "index": 33,
+    "pattern": "Whirling Slash",
+    "zh": "旋风斩"
+  },
+  {
+    "index": 34,
+    "pattern": "Lightning Bolt",
+    "zh": "闪电矢"
+  },
+  {
+    "index": 35,
+    "pattern": "Lightning Warp",
+    "zh": "闪电传送"
+  },
+  {
+    "index": 36,
+    "pattern": "Ball Lightning",
+    "zh": "闪电球"
+  },
+  {
+    "index": 37,
+    "pattern": "Primal Effects",
+    "zh": "原始特效"
+  },
+  {
+    "index": 38,
+    "pattern": "Effects Bundle",
+    "zh": "特效包"
+  },
+  {
+    "index": 39,
+    "pattern": "Well of Souls",
+    "zh": "灵魂之井"
+  },
+  {
+    "index": 40,
+    "pattern": "Midnight Pact",
+    "zh": "午夜契约"
+  },
+  {
+    "index": 41,
+    "pattern": "Ancient Dread",
+    "zh": "古老恐魔"
+  },
+  {
+    "index": 42,
+    "pattern": "Dragon Hunter",
+    "zh": "猎龙者"
+  },
+  {
+    "index": 43,
+    "pattern": "Steam-powered",
+    "zh": "蒸汽动力"
+  },
+  {
+    "index": 44,
+    "pattern": "Steam powered",
+    "zh": "蒸汽动力"
+  },
+  {
+    "index": 45,
+    "pattern": "Eye of Winter",
+    "zh": "凛冬之眼"
+  },
+  {
+    "index": 46,
+    "pattern": "Glacial Lance",
+    "zh": "冰川之枪"
+  },
+  {
+    "index": 47,
+    "pattern": "Herald of Ice",
+    "zh": "冰霜之捷"
+  },
+  {
+    "index": 48,
+    "pattern": "Orb of Storms",
+    "zh": "风暴漩涡"
+  },
+  {
+    "index": 49,
+    "pattern": "Essence Drain",
+    "zh": "灵魂吸取"
+  },
+  {
+    "index": 50,
+    "pattern": "Flash Grenade",
+    "zh": "闪光弹"
+  },
+  {
+    "index": 51,
+    "pattern": "Bone Offering",
+    "zh": "骸骨奉献"
+  },
+  {
+    "index": 52,
+    "pattern": "Pain Offering",
+    "zh": "痛苦奉献"
+  },
+  {
+    "index": 53,
+    "pattern": "Soul Offering",
+    "zh": "灵魂奉献"
+  },
+  {
+    "index": 54,
+    "pattern": "Charged Staff",
+    "zh": "充能法杖"
+  },
+  {
+    "index": 55,
+    "pattern": "Portal Effect",
+    "zh": "传送门"
+  },
+  {
+    "index": 56,
+    "pattern": "Weapon Effect",
+    "zh": "武器特效"
+  },
+  {
+    "index": 57,
+    "pattern": "Glimmersprite",
+    "zh": "微光小精灵"
+  },
+  {
+    "index": 58,
+    "pattern": "Transcendence",
+    "zh": "超然"
+  },
+  {
+    "index": 59,
+    "pattern": "Vulnerability",
+    "zh": "易伤"
+  },
+  {
+    "index": 60,
+    "pattern": "Midnightpact",
+    "zh": "午夜契约"
+  },
+  {
+    "index": 61,
+    "pattern": "Azmeri Noble",
+    "zh": "阿兹莫里贵族"
+  },
+  {
+    "index": 62,
+    "pattern": "Bone and Ash",
+    "zh": "白骨与灰烬"
+  },
+  {
+    "index": 63,
+    "pattern": "Dark Tempest",
+    "zh": "暗黑风暴"
+  },
+  {
+    "index": 64,
+    "pattern": "Lightbringer",
+    "zh": "引光者"
+  },
+  {
+    "index": 65,
+    "pattern": "Octoparasite",
+    "zh": "寄生八爪兽"
+  },
+  {
+    "index": 66,
+    "pattern": "Water Dragon",
+    "zh": "水龙"
+  },
+  {
+    "index": 67,
+    "pattern": "Gravity Well",
+    "zh": "重力井"
+  },
+  {
+    "index": 68,
+    "pattern": "Killing Palm",
+    "zh": "夺命掌"
+  },
+  {
+    "index": 69,
+    "pattern": "Snipe Effect",
+    "zh": "狙击特效"
+  },
+  {
+    "index": 70,
+    "pattern": "Toxic Domain",
+    "zh": "剧毒领域"
+  },
+  {
+    "index": 71,
+    "pattern": "Toxic Growth",
+    "zh": "剧毒滋生"
+  },
+  {
+    "index": 72,
+    "pattern": "Tempest Bell",
+    "zh": "风暴之钟"
+  },
+  {
+    "index": 73,
+    "pattern": "Mana Tempest",
+    "zh": "魔力风暴"
+  },
+  {
+    "index": 74,
+    "pattern": "Skill Effect",
+    "zh": "技能特效"
+  },
+  {
+    "index": 75,
+    "pattern": "Chronomancer",
+    "zh": "时空法师"
+  },
+  {
+    "index": 76,
+    "pattern": "Scrollshaper",
+    "zh": "卷轴塑形师"
+  },
+  {
+    "index": 77,
+    "pattern": "Cursebringer",
+    "zh": "降咒者"
+  },
+  {
+    "index": 78,
+    "pattern": "Winterdragon",
+    "zh": "寒冬巨龙"
+  },
+  {
+    "index": 79,
+    "pattern": "Nethermancer",
+    "zh": "幽冥法师"
+  },
+  {
+    "index": 80,
+    "pattern": "Arachnamagus",
+    "zh": "蛛魔术师"
+  },
+  {
+    "index": 81,
+    "pattern": "Thunderstorm",
+    "zh": "风暴雷霆"
+  },
+  {
+    "index": 82,
+    "pattern": "Cartographer",
+    "zh": "制图师"
+  },
+  {
+    "index": 83,
+    "pattern": "Bloodthirsty",
+    "zh": "嗜血"
+  },
+  {
+    "index": 84,
+    "pattern": "Personsplit",
+    "zh": "人格分裂"
+  },
+  {
+    "index": 85,
+    "pattern": "Soulstealer",
+    "zh": "摄魂者"
+  },
+  {
+    "index": 86,
+    "pattern": "Black Death",
+    "zh": "黑死病"
+  },
+  {
+    "index": 87,
+    "pattern": "Forgemaster",
+    "zh": "锻造大师"
+  },
+  {
+    "index": 88,
+    "pattern": "Heartseeker",
+    "zh": "觅心者"
+  },
+  {
+    "index": 89,
+    "pattern": "Netherflame",
+    "zh": "幽冥之火"
+  },
+  {
+    "index": 90,
+    "pattern": "Thaumaturge",
+    "zh": "奇术师"
+  },
+  {
+    "index": 91,
+    "pattern": "Thaumaturgy",
+    "zh": "奇术"
+  },
+  {
+    "index": 92,
+    "pattern": "Frost Darts",
+    "zh": "霜刃飞刀"
+  },
+  {
+    "index": 93,
+    "pattern": "Spear Throw",
+    "zh": "掷矛"
+  },
+  {
+    "index": 94,
+    "pattern": "Dark Effigy",
+    "zh": "黑暗魔像"
+  },
+  {
+    "index": 95,
+    "pattern": "Oil Barrage",
+    "zh": "燃油弹幕"
+  },
+  {
+    "index": 96,
+    "pattern": "Armour Pack",
+    "zh": "防具套装"
+  },
+  {
+    "index": 97,
+    "pattern": "Cursor Pack",
+    "zh": "鼠标指针包"
+  },
+  {
+    "index": 98,
+    "pattern": "Illusionist",
+    "zh": "幻术师"
+  },
+  {
+    "index": 99,
+    "pattern": "Spellbinder",
+    "zh": "缚法者"
+  },
+  {
+    "index": 100,
+    "pattern": "Stormcaller",
+    "zh": "唤雷者"
+  },
+  {
+    "index": 101,
+    "pattern": "Cryptkeeper",
+    "zh": "守墓人"
+  },
+  {
+    "index": 102,
+    "pattern": "Bloodsoaked",
+    "zh": "浴血"
+  },
+  {
+    "index": 103,
+    "pattern": "Stormweaver",
+    "zh": "织雷者"
+  },
+  {
+    "index": 104,
+    "pattern": "Fleshwarden",
+    "zh": "血肉守卫"
+  },
+  {
+    "index": 105,
+    "pattern": "Ghoulhunter",
+    "zh": "食尸鬼猎手"
+  },
+  {
+    "index": 106,
+    "pattern": "Witchhunter",
+    "zh": "猎巫人"
+  },
+  {
+    "index": 107,
+    "pattern": "Annihilator",
+    "zh": "歼灭者"
+  },
+  {
+    "index": 108,
+    "pattern": "Bloodreaver",
+    "zh": "饮血者"
+  },
+  {
+    "index": 109,
+    "pattern": "Ultraviolet",
+    "zh": "紫外光"
+  },
+  {
+    "index": 110,
+    "pattern": "Triceratops",
+    "zh": "三角龙"
+  },
+  {
+    "index": 111,
+    "pattern": "Archnemesis",
+    "zh": "宿敌"
+  },
+  {
+    "index": 112,
+    "pattern": "Benevolence",
+    "zh": "仁慈"
+  },
+  {
+    "index": 113,
+    "pattern": "Incinerator",
+    "zh": "焚化者"
+  },
+  {
+    "index": 114,
+    "pattern": "Executioner",
+    "zh": "刽子手"
+  },
+  {
+    "index": 115,
+    "pattern": "Chronomancy",
+    "zh": "时空秘术"
+  },
+  {
+    "index": 116,
+    "pattern": "Incarnation",
+    "zh": "化身"
+  },
+  {
+    "index": 117,
+    "pattern": "Pandemonium",
+    "zh": "万魔殿"
+  },
+  {
+    "index": 118,
+    "pattern": "Poltergeist",
+    "zh": "喧闹幽灵"
+  },
+  {
+    "index": 119,
+    "pattern": "Originators",
+    "zh": "创生者"
+  },
+  {
+    "index": 120,
+    "pattern": "Imagination",
+    "zh": "想象之界"
+  },
+  {
+    "index": 121,
+    "pattern": "Beastmaster",
+    "zh": "驯兽大师"
+  },
+  {
+    "index": 122,
+    "pattern": "Glimmerwood",
+    "zh": "微光林地"
+  },
+  {
+    "index": 123,
+    "pattern": "Witchdoctor",
+    "zh": "巫医"
+  },
+  {
+    "index": 124,
+    "pattern": "Two Tailed",
+    "zh": "双尾"
+  },
+  {
+    "index": 125,
+    "pattern": "Two-Tailed",
+    "zh": "双尾"
+  },
+  {
+    "index": 126,
+    "pattern": "Atlas Core",
+    "zh": "异界核心"
+  },
+  {
+    "index": 127,
+    "pattern": "Ethercraft",
+    "zh": "以太工匠"
+  },
+  {
+    "index": 128,
+    "pattern": "Wind Blast",
+    "zh": "烈风震荡"
+  },
+  {
+    "index": 129,
+    "pattern": "Frost Bomb",
+    "zh": "冰霜炸弹"
+  },
+  {
+    "index": 130,
+    "pattern": "Frost Wall",
+    "zh": "冰霜之墙"
+  },
+  {
+    "index": 131,
+    "pattern": "Storm Wave",
+    "zh": "风暴之潮"
+  },
+  {
+    "index": 132,
+    "pattern": "Vine Arrow",
+    "zh": "藤蔓箭"
+  },
+  {
+    "index": 133,
+    "pattern": "Bone Blast",
+    "zh": "骸骨爆裂"
+  },
+  {
+    "index": 134,
+    "pattern": "Armour Set",
+    "zh": "防具套装"
+  },
+  {
+    "index": 135,
+    "pattern": "Dodge Roll",
+    "zh": "翻滚特效"
+  },
+  {
+    "index": 136,
+    "pattern": "Footprints",
+    "zh": "足迹特效"
+  },
+  {
+    "index": 137,
+    "pattern": "Shapeshift",
+    "zh": "变身外观"
+  },
+  {
+    "index": 138,
+    "pattern": "Apparition",
+    "zh": "幻象周身光效"
+  },
+  {
+    "index": 139,
+    "pattern": "Decoration",
+    "zh": "藏身处装饰物"
+  },
+  {
+    "index": 140,
+    "pattern": "Breachlord",
+    "zh": "裂隙领主"
+  },
+  {
+    "index": 141,
+    "pattern": "Divergence",
+    "zh": "分歧"
+  },
+  {
+    "index": 142,
+    "pattern": "Suspicious",
+    "zh": "可疑的"
+  },
+  {
+    "index": 143,
+    "pattern": "Bonecaller",
+    "zh": "唤骨者"
+  },
+  {
+    "index": 144,
+    "pattern": "Dreadspire",
+    "zh": "恐惧尖塔"
+  },
+  {
+    "index": 145,
+    "pattern": "Ferrofluid",
+    "zh": "磁流体"
+  },
+  {
+    "index": 146,
+    "pattern": "Shardbound",
+    "zh": "晶缚"
+  },
+  {
+    "index": 147,
+    "pattern": "Soulkeeper",
+    "zh": "守魂者"
+  },
+  {
+    "index": 148,
+    "pattern": "Blightborn",
+    "zh": "凋落之子"
+  },
+  {
+    "index": 149,
+    "pattern": "Dreadforge",
+    "zh": "恐惧锻炉"
+  },
+  {
+    "index": 150,
+    "pattern": "Fateweaver",
+    "zh": "织命者"
+  },
+  {
+    "index": 151,
+    "pattern": "Forgeguard",
+    "zh": "锻造守卫"
+  },
+  {
+    "index": 152,
+    "pattern": "Burdenback",
+    "zh": "负重甲虫"
+  },
+  {
+    "index": 153,
+    "pattern": "Apocalypse",
+    "zh": "天启"
+  },
+  {
+    "index": 154,
+    "pattern": "Faithsworn",
+    "zh": "誓信者"
+  },
+  {
+    "index": 155,
+    "pattern": "Ghostflame",
+    "zh": "幽火"
+  },
+  {
+    "index": 156,
+    "pattern": "Harmonious",
+    "zh": "和谐"
+  },
+  {
+    "index": 157,
+    "pattern": "Phantasmal",
+    "zh": "幻影"
+  },
+  {
+    "index": 158,
+    "pattern": "Mysterious",
+    "zh": "神秘"
+  },
+  {
+    "index": 159,
+    "pattern": "Shimmering",
+    "zh": "微光"
+  },
+  {
+    "index": 160,
+    "pattern": "Underworld",
+    "zh": "冥界"
+  },
+  {
+    "index": 161,
+    "pattern": "Vindicator",
+    "zh": "护道者"
+  },
+  {
+    "index": 162,
+    "pattern": "Expedition",
+    "zh": "探险"
+  },
+  {
+    "index": 163,
+    "pattern": "Kingsmarch",
+    "zh": "国王行军"
+  },
+  {
+    "index": 164,
+    "pattern": "Crustacean",
+    "zh": "甲壳类"
+  },
+  {
+    "index": 165,
+    "pattern": "Prosperous",
+    "zh": "祥瑞"
+  },
+  {
+    "index": 166,
+    "pattern": "Candlemass",
+    "zh": "烛火弥撒"
+  },
+  {
+    "index": 167,
+    "pattern": "Challenger",
+    "zh": "挑战者"
+  },
+  {
+    "index": 168,
+    "pattern": "Guillotine",
+    "zh": "断头台"
+  },
+  {
+    "index": 169,
+    "pattern": "Primordial",
+    "zh": "原初"
+  },
+  {
+    "index": 170,
+    "pattern": "Ringmaster",
+    "zh": "马戏班主"
+  },
+  {
+    "index": 171,
+    "pattern": "Subjugator",
+    "zh": "征服者"
+  },
+  {
+    "index": 172,
+    "pattern": "Triumphant",
+    "zh": "凯旋"
+  },
+  {
+    "index": 173,
+    "pattern": "Lieutenant",
+    "zh": "副官"
+  },
+  {
+    "index": 174,
+    "pattern": "Pestilence",
+    "zh": "瘟疫"
+  },
+  {
+    "index": 175,
+    "pattern": "Magistrate",
+    "zh": "长官"
+  },
+  {
+    "index": 176,
+    "pattern": "Spellblade",
+    "zh": "符刃"
+  },
+  {
+    "index": 177,
+    "pattern": "Extinction",
+    "zh": "灭绝"
+  },
+  {
+    "index": 178,
+    "pattern": "Victorious",
+    "zh": "胜利者"
+  },
+  {
+    "index": 179,
+    "pattern": "Character",
+    "zh": "角色"
+  },
+  {
+    "index": 180,
+    "pattern": "Demonfire",
+    "zh": "恶魔之火"
+  },
+  {
+    "index": 181,
+    "pattern": "Toad King",
+    "zh": "蟾蜍王"
+  },
+  {
+    "index": 182,
+    "pattern": "Gas Arrow",
+    "zh": "毒气箭"
+  },
+  {
+    "index": 183,
+    "pattern": "Disengage",
+    "zh": "撤退"
+  },
+  {
+    "index": 184,
+    "pattern": "Bone Cage",
+    "zh": "骨牢"
+  },
+  {
+    "index": 185,
+    "pattern": "Bonestorm",
+    "zh": "骨暴"
+  },
+  {
+    "index": 186,
+    "pattern": "Jinglewei",
+    "zh": "精卫"
+  },
+  {
+    "index": 187,
+    "pattern": "Chaosborn",
+    "zh": "混沌之子"
+  },
+  {
+    "index": 188,
+    "pattern": "Darkshard",
+    "zh": "暗棱晶片"
+  },
+  {
+    "index": 189,
+    "pattern": "Deepwater",
+    "zh": "深海"
+  },
+  {
+    "index": 190,
+    "pattern": "Havenwood",
+    "zh": "圣林"
+  },
+  {
+    "index": 191,
+    "pattern": "Harlequin",
+    "zh": "小丑"
+  },
+  {
+    "index": 192,
+    "pattern": "Witchbane",
+    "zh": "猎巫者"
+  },
+  {
+    "index": 193,
+    "pattern": "Wolfhound",
+    "zh": "猎狼犬"
+  },
+  {
+    "index": 194,
+    "pattern": "Dreamfall",
+    "zh": "坠梦"
+  },
+  {
+    "index": 195,
+    "pattern": "Direblade",
+    "zh": "凶刃"
+  },
+  {
+    "index": 196,
+    "pattern": "Necrolord",
+    "zh": "亡灵领主"
+  },
+  {
+    "index": 197,
+    "pattern": "Ashcaller",
+    "zh": "唤灰者"
+  },
+  {
+    "index": 198,
+    "pattern": "Ratmother",
+    "zh": "鼠母"
+  },
+  {
+    "index": 199,
+    "pattern": "Bloodworm",
+    "zh": "血蠕虫"
+  },
+  {
+    "index": 200,
+    "pattern": "Blueflame",
+    "zh": "青焰"
+  },
+  {
+    "index": 201,
+    "pattern": "Crowstorm",
+    "zh": "鸦群风暴"
+  },
+  {
+    "index": 202,
+    "pattern": "Celestial",
+    "zh": "天界"
+  },
+  {
+    "index": 203,
+    "pattern": "Automaton",
+    "zh": "机甲"
+  },
+  {
+    "index": 204,
+    "pattern": "Darkprism",
+    "zh": "暗棱"
+  },
+  {
+    "index": 205,
+    "pattern": "Harbinger",
+    "zh": "先驱者"
+  },
+  {
+    "index": 206,
+    "pattern": "Harmonius",
+    "zh": "和谐"
+  },
+  {
+    "index": 207,
+    "pattern": "Imperator",
+    "zh": "统帅"
+  },
+  {
+    "index": 208,
+    "pattern": "Innocence",
+    "zh": "圣雄无罪"
+  },
+  {
+    "index": 209,
+    "pattern": "Judicator",
+    "zh": "审判官"
+  },
+  {
+    "index": 210,
+    "pattern": "Mageguard",
+    "zh": "法师守卫"
+  },
+  {
+    "index": 211,
+    "pattern": "Scavenger",
+    "zh": "拾荒者"
+  },
+  {
+    "index": 212,
+    "pattern": "Wasteland",
+    "zh": "废土"
+  },
+  {
+    "index": 213,
+    "pattern": "Turquoise",
+    "zh": "绿松石"
+  },
+  {
+    "index": 214,
+    "pattern": "Lightning",
+    "zh": "闪电"
+  },
+  {
+    "index": 215,
+    "pattern": "Ancestral",
+    "zh": "先祖"
+  },
+  {
+    "index": 216,
+    "pattern": "Bloodboil",
+    "zh": "沸血"
+  },
+  {
+    "index": 217,
+    "pattern": "Cataclysm",
+    "zh": "大灾变"
+  },
+  {
+    "index": 218,
+    "pattern": "Clockwork",
+    "zh": "发条"
+  },
+  {
+    "index": 219,
+    "pattern": "Corrupted",
+    "zh": "腐化"
+  },
+  {
+    "index": 220,
+    "pattern": "Feathered",
+    "zh": "羽翼"
+  },
+  {
+    "index": 221,
+    "pattern": "Forgotten",
+    "zh": "遗忘"
+  },
+  {
+    "index": 222,
+    "pattern": "Leviathan",
+    "zh": "利维坦"
+  },
+  {
+    "index": 223,
+    "pattern": "Manticore",
+    "zh": "曼提柯"
+  },
+  {
+    "index": 224,
+    "pattern": "Nightfall",
+    "zh": "暗夜降临"
+  },
+  {
+    "index": 225,
+    "pattern": "Prismatic",
+    "zh": "棱光"
+  },
+  {
+    "index": 226,
+    "pattern": "Sovereign",
+    "zh": "君主"
+  },
+  {
+    "index": 227,
+    "pattern": "Steampunk",
+    "zh": "蒸汽朋克"
+  },
+  {
+    "index": 228,
+    "pattern": "Starlight",
+    "zh": "星光"
+  },
+  {
+    "index": 229,
+    "pattern": "Tormentor",
+    "zh": "折磨者"
+  },
+  {
+    "index": 230,
+    "pattern": "Jellyfish",
+    "zh": "水母"
+  },
+  {
+    "index": 231,
+    "pattern": "Quillbook",
+    "zh": "刺针书怪"
+  },
+  {
+    "index": 232,
+    "pattern": "Quadrilla",
+    "zh": "四足兽"
+  },
+  {
+    "index": 233,
+    "pattern": "Crocolisk",
+    "zh": "巨鳄"
+  },
+  {
+    "index": 234,
+    "pattern": "Cockroach",
+    "zh": "蟑螂"
+  },
+  {
+    "index": 235,
+    "pattern": "Centipede",
+    "zh": "蜈蚣"
+  },
+  {
+    "index": 236,
+    "pattern": "Dachshund",
+    "zh": "腊肠犬"
+  },
+  {
+    "index": 237,
+    "pattern": "Metamorph",
+    "zh": "战乱变形"
+  },
+  {
+    "index": 238,
+    "pattern": "Synthesis",
+    "zh": "忆境"
+  },
+  {
+    "index": 239,
+    "pattern": "Ultimatum",
+    "zh": "最后通牒"
+  },
+  {
+    "index": 240,
+    "pattern": "Theopolis",
+    "zh": "统领之城"
+  },
+  {
+    "index": 241,
+    "pattern": "Wraeclast",
+    "zh": "瓦尔克拉斯"
+  },
+  {
+    "index": 242,
+    "pattern": "Kalguuran",
+    "zh": "卡鲁古尔"
+  },
+  {
+    "index": 243,
+    "pattern": "Sandstone",
+    "zh": "砂岩"
+  },
+  {
+    "index": 244,
+    "pattern": "Suffering",
+    "zh": "折磨"
+  },
+  {
+    "index": 245,
+    "pattern": "Fractured",
+    "zh": "破碎"
+  },
+  {
+    "index": 246,
+    "pattern": "Shattered",
+    "zh": "碎裂"
+  },
+  {
+    "index": 247,
+    "pattern": "Elemental",
+    "zh": "元素"
+  },
+  {
+    "index": 248,
+    "pattern": "Elemancer",
+    "zh": "元素师"
+  },
+  {
+    "index": 249,
+    "pattern": "Liberator",
+    "zh": "解放者"
+  },
+  {
+    "index": 250,
+    "pattern": "Mummified",
+    "zh": "木乃伊"
+  },
+  {
+    "index": 251,
+    "pattern": "Wayfinder",
+    "zh": "寻路者"
+  },
+  {
+    "index": 252,
+    "pattern": "Ascendant",
+    "zh": "升华使徒"
+  },
+  {
+    "index": 253,
+    "pattern": "Chieftain",
+    "zh": "酋长"
+  },
+  {
+    "index": 254,
+    "pattern": "Conqueror",
+    "zh": "征服者"
+  },
+  {
+    "index": 255,
+    "pattern": "Dominator",
+    "zh": "支配者"
+  },
+  {
+    "index": 256,
+    "pattern": "Resonator",
+    "zh": "共鸣器"
+  },
+  {
+    "index": 257,
+    "pattern": "Scientist",
+    "zh": "疯狂科学家"
+  },
+  {
+    "index": 258,
+    "pattern": "Paintings",
+    "zh": "壁画"
+  },
+  {
+    "index": 259,
+    "pattern": "Tentacles",
+    "zh": "触手"
+  },
+  {
+    "index": 260,
+    "pattern": "Brimstone",
+    "zh": "硫磺硫火"
+  },
+  {
+    "index": 261,
+    "pattern": "Damnation",
+    "zh": "诅咒"
+  },
+  {
+    "index": 262,
+    "pattern": "Commander",
+    "zh": "指挥官"
+  },
+  {
+    "index": 263,
+    "pattern": "Mercurial",
+    "zh": "水银"
+  },
+  {
+    "index": 264,
+    "pattern": "Artificer",
+    "zh": "工匠"
+  },
+  {
+    "index": 265,
+    "pattern": "Runesmith",
+    "zh": "符文铁匠"
+  },
+  {
+    "index": 266,
+    "pattern": "Frostbolt",
+    "zh": "冰霜弹"
+  },
+  {
+    "index": 267,
+    "pattern": "Sandfish",
+    "zh": "沙鱼"
+  },
+  {
+    "index": 268,
+    "pattern": "Redeemer",
+    "zh": "救赎者"
+  },
+  {
+    "index": 269,
+    "pattern": "Warlords",
+    "zh": "督军之"
+  },
+  {
+    "index": 270,
+    "pattern": "Lichborn",
+    "zh": "巫妖之子"
+  },
+  {
+    "index": 271,
+    "pattern": "Sunspire",
+    "zh": "太阳神殿"
+  },
+  {
+    "index": 272,
+    "pattern": "Ice Nova",
+    "zh": "冰霜新星"
+  },
+  {
+    "index": 273,
+    "pattern": "Ice Shot",
+    "zh": "冰霜射击"
+  },
+  {
+    "index": 274,
+    "pattern": "Hexblast",
+    "zh": "灭绝魔爆"
+  },
+  {
+    "index": 275,
+    "pattern": "Crossbow",
+    "zh": "十字弓"
+  },
+  {
+    "index": 276,
+    "pattern": "Backpack",
+    "zh": "背包"
+  },
+  {
+    "index": 277,
+    "pattern": "Huntsman",
+    "zh": "猎手"
+  },
+  {
+    "index": 278,
+    "pattern": "Myrmidon",
+    "zh": "密尔弥冬"
+  },
+  {
+    "index": 279,
+    "pattern": "Verisium",
+    "zh": "维利西姆"
+  },
+  {
+    "index": 280,
+    "pattern": "Crusader",
+    "zh": "十字军"
+  },
+  {
+    "index": 281,
+    "pattern": "Basilisk",
+    "zh": "蛇怪"
+  },
+  {
+    "index": 282,
+    "pattern": "Overlord",
+    "zh": "霸主"
+  },
+  {
+    "index": 283,
+    "pattern": "Ironfang",
+    "zh": "铁牙"
+  },
+  {
+    "index": 284,
+    "pattern": "Darkseer",
+    "zh": "暗视者"
+  },
+  {
+    "index": 285,
+    "pattern": "Darkwood",
+    "zh": "黑木"
+  },
+  {
+    "index": 286,
+    "pattern": "Sunprism",
+    "zh": "日棱"
+  },
+  {
+    "index": 287,
+    "pattern": "Voidgate",
+    "zh": "虚空之门"
+  },
+  {
+    "index": 288,
+    "pattern": "Balefire",
+    "zh": "厄运之火"
+  },
+  {
+    "index": 289,
+    "pattern": "Doomcrow",
+    "zh": "末日渡鸦"
+  },
+  {
+    "index": 290,
+    "pattern": "Wyrmlord",
+    "zh": "龙领主"
+  },
+  {
+    "index": 291,
+    "pattern": "Apollyon",
+    "zh": "亚巴顿"
+  },
+  {
+    "index": 292,
+    "pattern": "Colossus",
+    "zh": "巨像"
+  },
+  {
+    "index": 293,
+    "pattern": "Crucible",
+    "zh": "熔炉"
+  },
+  {
+    "index": 294,
+    "pattern": "Eldritch",
+    "zh": "异界古灵"
+  },
+  {
+    "index": 295,
+    "pattern": "Hellfire",
+    "zh": "地狱火"
+  },
+  {
+    "index": 296,
+    "pattern": "Imperial",
+    "zh": "帝国"
+  },
+  {
+    "index": 297,
+    "pattern": "Infernal",
+    "zh": "炼狱"
+  },
+  {
+    "index": 298,
+    "pattern": "Malachai",
+    "zh": "玛拉凯"
+  },
+  {
+    "index": 299,
+    "pattern": "Midnight",
+    "zh": "午夜"
+  },
+  {
+    "index": 300,
+    "pattern": "Necrotic",
+    "zh": "死灵"
+  },
+  {
+    "index": 301,
+    "pattern": "Oblivion",
+    "zh": "湮灭"
+  },
+  {
+    "index": 302,
+    "pattern": "Obsidian",
+    "zh": "黑曜石"
+  },
+  {
+    "index": 303,
+    "pattern": "Perandus",
+    "zh": "普兰德斯"
+  },
+  {
+    "index": 304,
+    "pattern": "Spectral",
+    "zh": "幽魄"
+  },
+  {
+    "index": 305,
+    "pattern": "Starfall",
+    "zh": "星陨"
+  },
+  {
+    "index": 306,
+    "pattern": "Tectonic",
+    "zh": "地壳"
+  },
+  {
+    "index": 307,
+    "pattern": "Twilight",
+    "zh": "暮光"
+  },
+  {
+    "index": 308,
+    "pattern": "Vampiric",
+    "zh": "吸血鬼"
+  },
+  {
+    "index": 309,
+    "pattern": "Armoured",
+    "zh": "重装"
+  },
+  {
+    "index": 310,
+    "pattern": "Cerulean",
+    "zh": "蔚蓝"
+  },
+  {
+    "index": 311,
+    "pattern": "Sapphire",
+    "zh": "蓝宝石"
+  },
+  {
+    "index": 312,
+    "pattern": "Ancestor",
+    "zh": "先祖"
+  },
+  {
+    "index": 313,
+    "pattern": "Hallowed",
+    "zh": "圣洁"
+  },
+  {
+    "index": 314,
+    "pattern": "Haunting",
+    "zh": "摄魂"
+  },
+  {
+    "index": 315,
+    "pattern": "Illusion",
+    "zh": "幻象"
+  },
+  {
+    "index": 316,
+    "pattern": "Immortal",
+    "zh": "不朽"
+  },
+  {
+    "index": 317,
+    "pattern": "Monolith",
+    "zh": "独石"
+  },
+  {
+    "index": 318,
+    "pattern": "Northern",
+    "zh": "北境"
+  },
+  {
+    "index": 319,
+    "pattern": "Prophecy",
+    "zh": "预言"
+  },
+  {
+    "index": 320,
+    "pattern": "Ravenous",
+    "zh": "贪婪"
+  },
+  {
+    "index": 321,
+    "pattern": "Revenant",
+    "zh": "亡魂"
+  },
+  {
+    "index": 322,
+    "pattern": "Sanguine",
+    "zh": "猩红"
+  },
+  {
+    "index": 323,
+    "pattern": "Scorpion",
+    "zh": "蝎子"
+  },
+  {
+    "index": 324,
+    "pattern": "Seafarer",
+    "zh": "航海者"
+  },
+  {
+    "index": 325,
+    "pattern": "Sentinel",
+    "zh": "守卫者"
+  },
+  {
+    "index": 326,
+    "pattern": "Skeletal",
+    "zh": "骸骨"
+  },
+  {
+    "index": 327,
+    "pattern": "Skeleton",
+    "zh": "骷髅"
+  },
+  {
+    "index": 328,
+    "pattern": "Sorcerer",
+    "zh": "术士"
+  },
+  {
+    "index": 329,
+    "pattern": "Timeless",
+    "zh": "永恒"
+  },
+  {
+    "index": 330,
+    "pattern": "Valkyrie",
+    "zh": "女武神"
+  },
+  {
+    "index": 331,
+    "pattern": "Voidborn",
+    "zh": "虚空之子"
+  },
+  {
+    "index": 332,
+    "pattern": "Wanderer",
+    "zh": "漫游者"
+  },
+  {
+    "index": 333,
+    "pattern": "Watchful",
+    "zh": "警惕"
+  },
+  {
+    "index": 334,
+    "pattern": "Gargoyle",
+    "zh": "石像鬼"
+  },
+  {
+    "index": 335,
+    "pattern": "Tortoise",
+    "zh": "巨龟"
+  },
+  {
+    "index": 336,
+    "pattern": "Elephant",
+    "zh": "巨象"
+  },
+  {
+    "index": 337,
+    "pattern": "Werewolf",
+    "zh": "狼人"
+  },
+  {
+    "index": 338,
+    "pattern": "Capuchin",
+    "zh": "卷尾猴"
+  },
+  {
+    "index": 339,
+    "pattern": "Chimeral",
+    "zh": "奇美拉"
+  },
+  {
+    "index": 340,
+    "pattern": "Predator",
+    "zh": "掠食者"
+  },
+  {
+    "index": 341,
+    "pattern": "Hedgehog",
+    "zh": "刺猬"
+  },
+  {
+    "index": 342,
+    "pattern": "Minotaur",
+    "zh": "弥诺陶洛斯"
+  },
+  {
+    "index": 343,
+    "pattern": "Oversoul",
+    "zh": "瓦尔超灵"
+  },
+  {
+    "index": 344,
+    "pattern": "Delirium",
+    "zh": "惊悸"
+  },
+  {
+    "index": 345,
+    "pattern": "Bestiary",
+    "zh": "魔物猎手"
+  },
+  {
+    "index": 346,
+    "pattern": "Maraketh",
+    "zh": "马拉克斯"
+  },
+  {
+    "index": 347,
+    "pattern": "Trarthan",
+    "zh": "特拉森"
+  },
+  {
+    "index": 348,
+    "pattern": "Colossal",
+    "zh": "庞大"
+  },
+  {
+    "index": 349,
+    "pattern": "Divinity",
+    "zh": "神性"
+  },
+  {
+    "index": 350,
+    "pattern": "Assassin",
+    "zh": "刺客"
+  },
+  {
+    "index": 351,
+    "pattern": "Guardian",
+    "zh": "守护者"
+  },
+  {
+    "index": 352,
+    "pattern": "Heritage",
+    "zh": "传承"
+  },
+  {
+    "index": 353,
+    "pattern": "Tumbling",
+    "zh": "翻滚"
+  },
+  {
+    "index": 354,
+    "pattern": "Atlantis",
+    "zh": "亚特兰蒂斯"
+  },
+  {
+    "index": 355,
+    "pattern": "Overseer",
+    "zh": "监工"
+  },
+  {
+    "index": 356,
+    "pattern": "Whirling",
+    "zh": "旋风"
+  },
+  {
+    "index": 357,
+    "pattern": "Offering",
+    "zh": "奉献"
+  },
+  {
+    "index": 358,
+    "pattern": "Paradise",
+    "zh": "乐园"
+  },
+  {
+    "index": 359,
+    "pattern": "Formosan",
+    "zh": "宝岛"
+  },
+  {
+    "index": 360,
+    "pattern": "Tranquil",
+    "zh": "宁静"
+  },
+  {
+    "index": 361,
+    "pattern": "Parasite",
+    "zh": "寄生虫"
+  },
+  {
+    "index": 362,
+    "pattern": "Champion",
+    "zh": "勇士"
+  },
+  {
+    "index": 363,
+    "pattern": "Conquest",
+    "zh": "征服"
+  },
+  {
+    "index": 364,
+    "pattern": "Empyrean",
+    "zh": "至高苍穹"
+  },
+  {
+    "index": 365,
+    "pattern": "Shifting",
+    "zh": "流转"
+  },
+  {
+    "index": 366,
+    "pattern": "Wrangler",
+    "zh": "驯兽师"
+  },
+  {
+    "index": 367,
+    "pattern": "Engineer",
+    "zh": "工程师"
+  },
+  {
+    "index": 368,
+    "pattern": "Shackled",
+    "zh": "枷锁"
+  },
+  {
+    "index": 369,
+    "pattern": "Cinnamon",
+    "zh": "肉桂"
+  },
+  {
+    "index": 370,
+    "pattern": "Hairless",
+    "zh": "无毛"
+  },
+  {
+    "index": 371,
+    "pattern": "Familiar",
+    "zh": "魔宠"
+  },
+  {
+    "index": 372,
+    "pattern": "Sulphite",
+    "zh": "亚硫酸"
+  },
+  {
+    "index": 373,
+    "pattern": "Aspirant",
+    "zh": "求知者"
+  },
+  {
+    "index": 374,
+    "pattern": "Campaign",
+    "zh": "征战"
+  },
+  {
+    "index": 375,
+    "pattern": "Crescent",
+    "zh": "新月"
+  },
+  {
+    "index": 376,
+    "pattern": "Devourer",
+    "zh": "吞噬者"
+  },
+  {
+    "index": 377,
+    "pattern": "Rustking",
+    "zh": "铁锈之王"
+  },
+  {
+    "index": 378,
+    "pattern": "Schemers",
+    "zh": "阴谋家"
+  },
+  {
+    "index": 379,
+    "pattern": "Sunstone",
+    "zh": "日长石"
+  },
+  {
+    "index": 380,
+    "pattern": "Survivor",
+    "zh": "幸存者"
+  },
+  {
+    "index": 381,
+    "pattern": "Temporal",
+    "zh": "时空"
+  },
+  {
+    "index": 382,
+    "pattern": "Tentacle",
+    "zh": "触手"
+  },
+  {
+    "index": 383,
+    "pattern": "Wildwood",
+    "zh": "荒林"
+  },
+  {
+    "index": 384,
+    "pattern": "Entangle",
+    "zh": "纠缠"
+  },
+  {
+    "index": 385,
+    "pattern": "Idescent",
+    "zh": "虹彩"
+  },
+  {
+    "index": 386,
+    "pattern": "Phrecian",
+    "zh": "弗雷西亚"
+  },
+  {
+    "index": 387,
+    "pattern": "Bleached",
+    "zh": "漂白"
+  },
+  {
+    "index": 388,
+    "pattern": "Coliseum",
+    "zh": "竞技场"
+  },
+  {
+    "index": 389,
+    "pattern": "Renegade",
+    "zh": "叛逆者"
+  },
+  {
+    "index": 390,
+    "pattern": "Intrepid",
+    "zh": "无畏"
+  },
+  {
+    "index": 391,
+    "pattern": "Enfeeble",
+    "zh": "衰弱"
+  },
+  {
+    "index": 392,
+    "pattern": "Powered",
+    "zh": "动力"
+  },
+  {
+    "index": 393,
+    "pattern": "Despair",
+    "zh": "绝望"
+  },
+  {
+    "index": 394,
+    "pattern": "Twister",
+    "zh": "龙卷风"
+  },
+  {
+    "index": 395,
+    "pattern": "touched",
+    "zh": "附魔"
+  },
+  {
+    "index": 396,
+    "pattern": "Expired",
+    "zh": "限定绝版"
+  },
+  {
+    "index": 397,
+    "pattern": "Armmour",
+    "zh": "防具套装"
+  },
+  {
+    "index": 398,
+    "pattern": "Wuzhiqi",
+    "zh": "巫支祁"
+  },
+  {
+    "index": 399,
+    "pattern": "Jingwei",
+    "zh": "精卫"
+  },
+  {
+    "index": 400,
+    "pattern": "Tencent",
+    "zh": "限定"
+  },
+  {
+    "index": 401,
+    "pattern": "Faridun",
+    "zh": "法里顿"
+  },
+  {
+    "index": 402,
+    "pattern": "Sunrise",
+    "zh": "破晓"
+  },
+  {
+    "index": 403,
+    "pattern": "Abyssal",
+    "zh": "深渊"
+  },
+  {
+    "index": 404,
+    "pattern": "Angelic",
+    "zh": "天使"
+  },
+  {
+    "index": 405,
+    "pattern": "Carnage",
+    "zh": "屠戮"
+  },
+  {
+    "index": 406,
+    "pattern": "Corsair",
+    "zh": "海盗"
+  },
+  {
+    "index": 407,
+    "pattern": "Deicide",
+    "zh": "弑神者"
+  },
+  {
+    "index": 408,
+    "pattern": "Demonic",
+    "zh": "恶魔"
+  },
+  {
+    "index": 409,
+    "pattern": "Emperor",
+    "zh": "帝皇"
+  },
+  {
+    "index": 410,
+    "pattern": "Eternal",
+    "zh": "永恒"
+  },
+  {
+    "index": 411,
+    "pattern": "Harvest",
+    "zh": "庄园"
+  },
+  {
+    "index": 412,
+    "pattern": "Lunaris",
+    "zh": "月影"
+  },
+  {
+    "index": 413,
+    "pattern": "Miracle",
+    "zh": "奇迹"
+  },
+  {
+    "index": 414,
+    "pattern": "Optimum",
+    "zh": "至尊"
+  },
+  {
+    "index": 415,
+    "pattern": "Paladin",
+    "zh": "圣骑士"
+  },
+  {
+    "index": 416,
+    "pattern": "Phantom",
+    "zh": "幻灵"
+  },
+  {
+    "index": 417,
+    "pattern": "Polaris",
+    "zh": "北极星"
+  },
+  {
+    "index": 418,
+    "pattern": "Radiant",
+    "zh": "辉煌"
+  },
+  {
+    "index": 419,
+    "pattern": "Samurai",
+    "zh": "武士"
+  },
+  {
+    "index": 420,
+    "pattern": "Scholar",
+    "zh": "学者"
+  },
+  {
+    "index": 421,
+    "pattern": "Scourge",
+    "zh": "天灾"
+  },
+  {
+    "index": 422,
+    "pattern": "Solaris",
+    "zh": "日耀"
+  },
+  {
+    "index": 423,
+    "pattern": "Spectre",
+    "zh": "幽灵"
+  },
+  {
+    "index": 424,
+    "pattern": "Stygian",
+    "zh": "冥河"
+  },
+  {
+    "index": 425,
+    "pattern": "Volcano",
+    "zh": "火山"
+  },
+  {
+    "index": 426,
+    "pattern": "Warlock",
+    "zh": "术士"
+  },
+  {
+    "index": 427,
+    "pattern": "Warrior",
+    "zh": "战士"
+  },
+  {
+    "index": 428,
+    "pattern": "Scarlet",
+    "zh": "猩红"
+  },
+  {
+    "index": 429,
+    "pattern": "Crystal",
+    "zh": "水晶"
+  },
+  {
+    "index": 430,
+    "pattern": "Emerald",
+    "zh": "祖母绿"
+  },
+  {
+    "index": 431,
+    "pattern": "Diamond",
+    "zh": "钻石"
+  },
+  {
+    "index": 432,
+    "pattern": "Acolyte",
+    "zh": "侍僧"
+  },
+  {
+    "index": 433,
+    "pattern": "Bramble",
+    "zh": "荆棘"
+  },
+  {
+    "index": 434,
+    "pattern": "Chronos",
+    "zh": "时空"
+  },
+  {
+    "index": 435,
+    "pattern": "Crimson",
+    "zh": "猩红"
+  },
+  {
+    "index": 436,
+    "pattern": "Cultist",
+    "zh": "邪教徒"
+  },
+  {
+    "index": 437,
+    "pattern": "Eclipse",
+    "zh": "日蚀"
+  },
+  {
+    "index": 438,
+    "pattern": "Forlorn",
+    "zh": "弃绝"
+  },
+  {
+    "index": 439,
+    "pattern": "Glacial",
+    "zh": "冰川"
+  },
+  {
+    "index": 440,
+    "pattern": "Gryphon",
+    "zh": "狮鹫"
+  },
+  {
+    "index": 441,
+    "pattern": "Gryffon",
+    "zh": "狮鹫"
+  },
+  {
+    "index": 442,
+    "pattern": "Haunted",
+    "zh": "幽魂"
+  },
+  {
+    "index": 443,
+    "pattern": "Leopard",
+    "zh": "花豹"
+  },
+  {
+    "index": 444,
+    "pattern": "Mermaid",
+    "zh": "美人鱼"
+  },
+  {
+    "index": 445,
+    "pattern": "Octopus",
+    "zh": "章鱼"
+  },
+  {
+    "index": 446,
+    "pattern": "Panther",
+    "zh": "黑豹"
+  },
+  {
+    "index": 447,
+    "pattern": "Pegasus",
+    "zh": "天马"
+  },
+  {
+    "index": 448,
+    "pattern": "Prophet",
+    "zh": "先知"
+  },
+  {
+    "index": 449,
+    "pattern": "Prowler",
+    "zh": "潜伏者"
+  },
+  {
+    "index": 450,
+    "pattern": "Serpent",
+    "zh": "巨蟒"
+  },
+  {
+    "index": 451,
+    "pattern": "Tempest",
+    "zh": "风暴"
+  },
+  {
+    "index": 452,
+    "pattern": "Thunder",
+    "zh": "雷霆"
+  },
+  {
+    "index": 453,
+    "pattern": "Torment",
+    "zh": "苦痛"
+  },
+  {
+    "index": 454,
+    "pattern": "Tracker",
+    "zh": "追踪者"
+  },
+  {
+    "index": 455,
+    "pattern": "Valiant",
+    "zh": "英勇"
+  },
+  {
+    "index": 456,
+    "pattern": "Verdant",
+    "zh": "青翠"
+  },
+  {
+    "index": 457,
+    "pattern": "Warborn",
+    "zh": "战生"
+  },
+  {
+    "index": 458,
+    "pattern": "Phoenix",
+    "zh": "凤凰"
+  },
+  {
+    "index": 459,
+    "pattern": "Swallow",
+    "zh": "燕子"
+  },
+  {
+    "index": 460,
+    "pattern": "Carrion",
+    "zh": "腐尸"
+  },
+  {
+    "index": 461,
+    "pattern": "Chicken",
+    "zh": "小鸡"
+  },
+  {
+    "index": 462,
+    "pattern": "Chimera",
+    "zh": "奇美拉"
+  },
+  {
+    "index": 463,
+    "pattern": "Mallard",
+    "zh": "野鸭"
+  },
+  {
+    "index": 464,
+    "pattern": "Peacock",
+    "zh": "孔雀"
+  },
+  {
+    "index": 465,
+    "pattern": "Dominus",
+    "zh": "神主"
+  },
+  {
+    "index": 466,
+    "pattern": "Sanctum",
+    "zh": "禁域圣所"
+  },
+  {
+    "index": 467,
+    "pattern": "Daresso",
+    "zh": "达瑞索"
+  },
+  {
+    "index": 468,
+    "pattern": "Premium",
+    "zh": "至尊豪华"
+  },
+  {
+    "index": 469,
+    "pattern": "Royalty",
+    "zh": "王室"
+  },
+  {
+    "index": 470,
+    "pattern": "Goddess",
+    "zh": "女神"
+  },
+  {
+    "index": 471,
+    "pattern": "Demigod",
+    "zh": "半神"
+  },
+  {
+    "index": 472,
+    "pattern": "Warlord",
+    "zh": "督军"
+  },
+  {
+    "index": 473,
+    "pattern": "Arbiter",
+    "zh": "裁决者"
+  },
+  {
+    "index": 474,
+    "pattern": "Wendigo",
+    "zh": "温迪戈"
+  },
+  {
+    "index": 475,
+    "pattern": "Council",
+    "zh": "议会"
+  },
+  {
+    "index": 476,
+    "pattern": "Harmony",
+    "zh": "和谐"
+  },
+  {
+    "index": 477,
+    "pattern": "Enraged",
+    "zh": "狂暴"
+  },
+  {
+    "index": 478,
+    "pattern": "Justice",
+    "zh": "正义"
+  },
+  {
+    "index": 479,
+    "pattern": "Rapture",
+    "zh": "狂喜"
+  },
+  {
+    "index": 480,
+    "pattern": "Dreamer",
+    "zh": "织梦者"
+  },
+  {
+    "index": 481,
+    "pattern": "Spotted",
+    "zh": "斑点"
+  },
+  {
+    "index": 482,
+    "pattern": "Nursery",
+    "zh": "温床"
+  },
+  {
+    "index": 483,
+    "pattern": "Rolling",
+    "zh": "翻滚"
+  },
+  {
+    "index": 484,
+    "pattern": "Azurite",
+    "zh": "亚硫酸蓝晶"
+  },
+  {
+    "index": 485,
+    "pattern": "Sulphur",
+    "zh": "硫磺"
+  },
+  {
+    "index": 486,
+    "pattern": "Exalted",
+    "zh": "崇高"
+  },
+  {
+    "index": 487,
+    "pattern": "Burning",
+    "zh": "燃烧"
+  },
+  {
+    "index": 488,
+    "pattern": "Arrival",
+    "zh": "降临"
+  },
+  {
+    "index": 489,
+    "pattern": "Classic",
+    "zh": "经典款"
+  },
+  {
+    "index": 490,
+    "pattern": "Disease",
+    "zh": "疫病"
+  },
+  {
+    "index": 491,
+    "pattern": "Essence",
+    "zh": "精华"
+  },
+  {
+    "index": 492,
+    "pattern": "Hallway",
+    "zh": "长廊"
+  },
+  {
+    "index": 493,
+    "pattern": "Project",
+    "zh": "工程"
+  },
+  {
+    "index": 494,
+    "pattern": "Respite",
+    "zh": "暂歇"
+  },
+  {
+    "index": 495,
+    "pattern": "Defiler",
+    "zh": "亵渎者"
+  },
+  {
+    "index": 496,
+    "pattern": "Assault",
+    "zh": "突击"
+  },
+  {
+    "index": 497,
+    "pattern": "Madness",
+    "zh": "疯狂"
+  },
+  {
+    "index": 498,
+    "pattern": "Flaming",
+    "zh": "烈焰"
+  },
+  {
+    "index": 499,
+    "pattern": "Ravager",
+    "zh": "劫掠者"
+  },
+  {
+    "index": 500,
+    "pattern": "Apostle",
+    "zh": "使徒"
+  },
+  {
+    "index": 501,
+    "pattern": "Chaotic",
+    "zh": "混乱"
+  },
+  {
+    "index": 502,
+    "pattern": "Goregon",
+    "zh": "血腥美杜莎"
+  },
+  {
+    "index": 503,
+    "pattern": "VARIENT",
+    "zh": "异色款"
+  },
+  {
+    "index": 504,
+    "pattern": "Variant",
+    "zh": "异色款"
+  },
+  {
+    "index": 505,
+    "pattern": "Unearth",
+    "zh": "尸骨掘出"
+  },
+  {
+    "index": 506,
+    "pattern": "Gryyfon",
+    "zh": "狮鹫"
+  },
+  {
+    "index": 507,
+    "pattern": "Storms",
+    "zh": "风暴"
+  },
+  {
+    "index": 508,
+    "pattern": "Molten",
+    "zh": "熔岩"
+  },
+  {
+    "index": 509,
+    "pattern": "Effect",
+    "zh": "特效"
+  },
+  {
+    "index": 510,
+    "pattern": "Tailed",
+    "zh": "尾"
+  },
+  {
+    "index": 511,
+    "pattern": "Scroll",
+    "zh": "卷轴"
+  },
+  {
+    "index": 512,
+    "pattern": "Druids",
+    "zh": "德鲁伊之"
+  },
+  {
+    "index": 513,
+    "pattern": "Armour",
+    "zh": "防具套装"
+  },
+  {
+    "index": 514,
+    "pattern": "Portal",
+    "zh": "传送门"
+  },
+  {
+    "index": 515,
+    "pattern": "Cursor",
+    "zh": "鼠标指针"
+  },
+  {
+    "index": 516,
+    "pattern": "Bundle",
+    "zh": "外观组合包"
+  },
+  {
+    "index": 517,
+    "pattern": "Chiyou",
+    "zh": "蚩尤"
+  },
+  {
+    "index": 518,
+    "pattern": "Zodiac",
+    "zh": "黄道十二宫"
+  },
+  {
+    "index": 519,
+    "pattern": "Legion",
+    "zh": "军团"
+  },
+  {
+    "index": 520,
+    "pattern": "Arcane",
+    "zh": "奥术"
+  },
+  {
+    "index": 521,
+    "pattern": "Arctic",
+    "zh": "极地"
+  },
+  {
+    "index": 522,
+    "pattern": "Azmeri",
+    "zh": "阿兹莫里"
+  },
+  {
+    "index": 523,
+    "pattern": "Cosmic",
+    "zh": "宇宙"
+  },
+  {
+    "index": 524,
+    "pattern": "Gorgon",
+    "zh": "美杜莎"
+  },
+  {
+    "index": 525,
+    "pattern": "Gothic",
+    "zh": "哥特"
+  },
+  {
+    "index": 526,
+    "pattern": "Mishap",
+    "zh": "灾厄"
+  },
+  {
+    "index": 527,
+    "pattern": "Reaper",
+    "zh": "收割者"
+  },
+  {
+    "index": 528,
+    "pattern": "Sacred",
+    "zh": "神圣"
+  },
+  {
+    "index": 529,
+    "pattern": "Seraph",
+    "zh": "六翼天使"
+  },
+  {
+    "index": 530,
+    "pattern": "Undead",
+    "zh": "不死族"
+  },
+  {
+    "index": 531,
+    "pattern": "Wraith",
+    "zh": "怨灵"
+  },
+  {
+    "index": 532,
+    "pattern": "Zenith",
+    "zh": "天顶"
+  },
+  {
+    "index": 533,
+    "pattern": "Albino",
+    "zh": "白化"
+  },
+  {
+    "index": 534,
+    "pattern": "Golden",
+    "zh": "黄金"
+  },
+  {
+    "index": 535,
+    "pattern": "Silver",
+    "zh": "白银"
+  },
+  {
+    "index": 536,
+    "pattern": "Bronze",
+    "zh": "青铜"
+  },
+  {
+    "index": 537,
+    "pattern": "Purple",
+    "zh": "紫晶"
+  },
+  {
+    "index": 538,
+    "pattern": "Orange",
+    "zh": "炽橙"
+  },
+  {
+    "index": 539,
+    "pattern": "Violet",
+    "zh": "紫罗兰"
+  },
+  {
+    "index": 540,
+    "pattern": "Aurora",
+    "zh": "极光"
+  },
+  {
+    "index": 541,
+    "pattern": "Archon",
+    "zh": "执政官"
+  },
+  {
+    "index": 542,
+    "pattern": "Blight",
+    "zh": "凋落"
+  },
+  {
+    "index": 543,
+    "pattern": "Chitin",
+    "zh": "甲壳"
+  },
+  {
+    "index": 544,
+    "pattern": "Cinder",
+    "zh": "余烬"
+  },
+  {
+    "index": 545,
+    "pattern": "Copper",
+    "zh": "黄铜"
+  },
+  {
+    "index": 546,
+    "pattern": "Famine",
+    "zh": "饥荒"
+  },
+  {
+    "index": 547,
+    "pattern": "Gilded",
+    "zh": "镀金"
+  },
+  {
+    "index": 548,
+    "pattern": "Herald",
+    "zh": "先驱"
+  },
+  {
+    "index": 549,
+    "pattern": "Hunter",
+    "zh": "猎人"
+  },
+  {
+    "index": 550,
+    "pattern": "Jungle",
+    "zh": "丛林"
+  },
+  {
+    "index": 551,
+    "pattern": "Kraken",
+    "zh": "克拉肯"
+  },
+  {
+    "index": 552,
+    "pattern": "Mirage",
+    "zh": "海市蜃楼"
+  },
+  {
+    "index": 553,
+    "pattern": "Morbid",
+    "zh": "病态"
+  },
+  {
+    "index": 554,
+    "pattern": "Mystic",
+    "zh": "神秘"
+  },
+  {
+    "index": 555,
+    "pattern": "Nebula",
+    "zh": "星云"
+  },
+  {
+    "index": 556,
+    "pattern": "Occult",
+    "zh": "秘术"
+  },
+  {
+    "index": 557,
+    "pattern": "Oracle",
+    "zh": "神谕"
+  },
+  {
+    "index": 558,
+    "pattern": "Plague",
+    "zh": "瘟疫"
+  },
+  {
+    "index": 559,
+    "pattern": "Purity",
+    "zh": "纯净"
+  },
+  {
+    "index": 560,
+    "pattern": "Ritual",
+    "zh": "祭仪"
+  },
+  {
+    "index": 561,
+    "pattern": "Shaman",
+    "zh": "萨满"
+  },
+  {
+    "index": 562,
+    "pattern": "Slayer",
+    "zh": "屠戮者"
+  },
+  {
+    "index": 563,
+    "pattern": "Smokey",
+    "zh": "灰烟"
+  },
+  {
+    "index": 564,
+    "pattern": "Spirit",
+    "zh": "英灵"
+  },
+  {
+    "index": 565,
+    "pattern": "Sylvan",
+    "zh": "林地"
+  },
+  {
+    "index": 566,
+    "pattern": "Terror",
+    "zh": "恐惧"
+  },
+  {
+    "index": 567,
+    "pattern": "Tribal",
+    "zh": "部落"
+  },
+  {
+    "index": 568,
+    "pattern": "Tyrant",
+    "zh": "暴君"
+  },
+  {
+    "index": 569,
+    "pattern": "Ursine",
+    "zh": "暴熊"
+  },
+  {
+    "index": 570,
+    "pattern": "Vortex",
+    "zh": "漩涡"
+  },
+  {
+    "index": 571,
+    "pattern": "Warden",
+    "zh": "看守者"
+  },
+  {
+    "index": 572,
+    "pattern": "Winter",
+    "zh": "寒冬"
+  },
+  {
+    "index": 573,
+    "pattern": "Zephyr",
+    "zh": "西风"
+  },
+  {
+    "index": 574,
+    "pattern": "Rabbit",
+    "zh": "玉兔"
+  },
+  {
+    "index": 575,
+    "pattern": "Spider",
+    "zh": "蜘蛛"
+  },
+  {
+    "index": 576,
+    "pattern": "Beetle",
+    "zh": "甲虫"
+  },
+  {
+    "index": 577,
+    "pattern": "Dragon",
+    "zh": "巨龙"
+  },
+  {
+    "index": 578,
+    "pattern": "Lizard",
+    "zh": "蜥蜴"
+  },
+  {
+    "index": 579,
+    "pattern": "Monkey",
+    "zh": "灵猴"
+  },
+  {
+    "index": 580,
+    "pattern": "Turtle",
+    "zh": "神龟"
+  },
+  {
+    "index": 581,
+    "pattern": "Sphynx",
+    "zh": "斯芬克斯猫"
+  },
+  {
+    "index": 582,
+    "pattern": "Raptor",
+    "zh": "迅猛龙"
+  },
+  {
+    "index": 583,
+    "pattern": "Falcon",
+    "zh": "猎鹰"
+  },
+  {
+    "index": 584,
+    "pattern": "Ferret",
+    "zh": "雪貂"
+  },
+  {
+    "index": 585,
+    "pattern": "Scarab",
+    "zh": "圣甲虫"
+  },
+  {
+    "index": 586,
+    "pattern": "Peahen",
+    "zh": "雌孔雀"
+  },
+  {
+    "index": 587,
+    "pattern": "Pukeko",
+    "zh": "青水鸡"
+  },
+  {
+    "index": 588,
+    "pattern": "Turkey",
+    "zh": "火鸡"
+  },
+  {
+    "index": 589,
+    "pattern": "Brutus",
+    "zh": "布鲁图斯"
+  },
+  {
+    "index": 590,
+    "pattern": "Kitava",
+    "zh": "奇塔弗"
+  },
+  {
+    "index": 591,
+    "pattern": "Shaper",
+    "zh": "塑界者"
+  },
+  {
+    "index": 592,
+    "pattern": "Breach",
+    "zh": "裂隙"
+  },
+  {
+    "index": 593,
+    "pattern": "Oriath",
+    "zh": "奥瑞亚"
+  },
+  {
+    "index": 594,
+    "pattern": "Mektul",
+    "zh": "梅克图尔"
+  },
+  {
+    "index": 595,
+    "pattern": "Valako",
+    "zh": "瓦拉库"
+  },
+  {
+    "index": 596,
+    "pattern": "Desert",
+    "zh": "沙漠"
+  },
+  {
+    "index": 597,
+    "pattern": "Divine",
+    "zh": "神圣"
+  },
+  {
+    "index": 598,
+    "pattern": "Knight",
+    "zh": "骑士"
+  },
+  {
+    "index": 599,
+    "pattern": "Legacy",
+    "zh": "遗泽"
+  },
+  {
+    "index": 600,
+    "pattern": "Misery",
+    "zh": "苦楚"
+  },
+  {
+    "index": 601,
+    "pattern": "Etched",
+    "zh": "蚀刻"
+  },
+  {
+    "index": 602,
+    "pattern": "Viking",
+    "zh": "维京"
+  },
+  {
+    "index": 603,
+    "pattern": "Madcap",
+    "zh": "狂想"
+  },
+  {
+    "index": 604,
+    "pattern": "Temple",
+    "zh": "神殿"
+  },
+  {
+    "index": 605,
+    "pattern": "Vulcan",
+    "zh": "重炮"
+  },
+  {
+    "index": 606,
+    "pattern": "Honour",
+    "zh": "荣耀"
+  },
+  {
+    "index": 607,
+    "pattern": "Goblin",
+    "zh": "哥布林"
+  },
+  {
+    "index": 608,
+    "pattern": "Chrome",
+    "zh": "镀铬"
+  },
+  {
+    "index": 609,
+    "pattern": "Female",
+    "zh": "雌性"
+  },
+  {
+    "index": 610,
+    "pattern": "Lucent",
+    "zh": "莹光"
+  },
+  {
+    "index": 611,
+    "pattern": "Ginger",
+    "zh": "生姜"
+  },
+  {
+    "index": 612,
+    "pattern": "Horror",
+    "zh": "惊悚"
+  },
+  {
+    "index": 613,
+    "pattern": "Astral",
+    "zh": "星界"
+  },
+  {
+    "index": 614,
+    "pattern": "Banner",
+    "zh": "战旗"
+  },
+  {
+    "index": 615,
+    "pattern": "Hedron",
+    "zh": "多面体"
+  },
+  {
+    "index": 616,
+    "pattern": "Vector",
+    "zh": "宿主"
+  },
+  {
+    "index": 617,
+    "pattern": "Prison",
+    "zh": "禁锢"
+  },
+  {
+    "index": 618,
+    "pattern": "Maiden",
+    "zh": "圣女"
+  },
+  {
+    "index": 619,
+    "pattern": "Twitch",
+    "zh": "直播限定"
+  },
+  {
+    "index": 620,
+    "pattern": "Zealot",
+    "zh": "狂热者"
+  },
+  {
+    "index": 621,
+    "pattern": "Primal",
+    "zh": "原始"
+  },
+  {
+    "index": 622,
+    "pattern": "Autumn",
+    "zh": "金秋"
+  },
+  {
+    "index": 623,
+    "pattern": "Trophy",
+    "zh": "战利品"
+  },
+  {
+    "index": 624,
+    "pattern": "Spring",
+    "zh": "新春"
+  },
+  {
+    "index": 625,
+    "pattern": "Cursed",
+    "zh": "受诅咒的"
+  },
+  {
+    "index": 626,
+    "pattern": "Pirate",
+    "zh": "海盗"
+  },
+  {
+    "index": 627,
+    "pattern": "Deadly",
+    "zh": "致命"
+  },
+  {
+    "index": 628,
+    "pattern": "Dismal",
+    "zh": "凄惨"
+  },
+  {
+    "index": 629,
+    "pattern": "Echoes",
+    "zh": "回响"
+  },
+  {
+    "index": 630,
+    "pattern": "Hunger",
+    "zh": "饥饿"
+  },
+  {
+    "index": 631,
+    "pattern": "Fallen",
+    "zh": "堕落"
+  },
+  {
+    "index": 632,
+    "pattern": "Keeper",
+    "zh": "看守者"
+  },
+  {
+    "index": 633,
+    "pattern": "Savage",
+    "zh": "野蛮"
+  },
+  {
+    "index": 634,
+    "pattern": "Xeshet",
+    "zh": "赛瑟特"
+  },
+  {
+    "index": 635,
+    "pattern": "Snipe",
+    "zh": "狙击"
+  },
+  {
+    "index": 636,
+    "pattern": "Steam",
+    "zh": "蒸汽"
+  },
+  {
+    "index": 637,
+    "pattern": "Amour",
+    "zh": "防具套装"
+  },
+  {
+    "index": 638,
+    "pattern": "Wings",
+    "zh": "背饰之翼"
+  },
+  {
+    "index": 639,
+    "pattern": "Cloak",
+    "zh": "披风"
+  },
+  {
+    "index": 640,
+    "pattern": "Stash",
+    "zh": "仓库箱"
+  },
+  {
+    "index": 641,
+    "pattern": "Jinli",
+    "zh": "锦鲤"
+  },
+  {
+    "index": 642,
+    "pattern": "Ogham",
+    "zh": "奥格姆"
+  },
+  {
+    "index": 643,
+    "pattern": "Aesir",
+    "zh": "阿萨神族"
+  },
+  {
+    "index": 644,
+    "pattern": "Delve",
+    "zh": "地心"
+  },
+  {
+    "index": 645,
+    "pattern": "Abyss",
+    "zh": "深渊"
+  },
+  {
+    "index": 646,
+    "pattern": "Angel",
+    "zh": "天使"
+  },
+  {
+    "index": 647,
+    "pattern": "Crypt",
+    "zh": "地穴"
+  },
+  {
+    "index": 648,
+    "pattern": "Demon",
+    "zh": "恶魔"
+  },
+  {
+    "index": 649,
+    "pattern": "Ghost",
+    "zh": "幽灵"
+  },
+  {
+    "index": 650,
+    "pattern": "Gloom",
+    "zh": "幽暗"
+  },
+  {
+    "index": 651,
+    "pattern": "Havoc",
+    "zh": "浩劫"
+  },
+  {
+    "index": 652,
+    "pattern": "Ignis",
+    "zh": "烈焰"
+  },
+  {
+    "index": 653,
+    "pattern": "Karui",
+    "zh": "卡鲁"
+  },
+  {
+    "index": 654,
+    "pattern": "Polar",
+    "zh": "极光"
+  },
+  {
+    "index": 655,
+    "pattern": "Rogue",
+    "zh": "盗贼"
+  },
+  {
+    "index": 656,
+    "pattern": "Siege",
+    "zh": "攻城"
+  },
+  {
+    "index": 657,
+    "pattern": "Siren",
+    "zh": "塞壬海妖"
+  },
+  {
+    "index": 658,
+    "pattern": "Titan",
+    "zh": "泰坦"
+  },
+  {
+    "index": 659,
+    "pattern": "Toxic",
+    "zh": "剧毒"
+  },
+  {
+    "index": 660,
+    "pattern": "Amber",
+    "zh": "琥珀"
+  },
+  {
+    "index": 661,
+    "pattern": "Steel",
+    "zh": "钢铁"
+  },
+  {
+    "index": 662,
+    "pattern": "Stone",
+    "zh": "巨石"
+  },
+  {
+    "index": 663,
+    "pattern": "Green",
+    "zh": "碧绿"
+  },
+  {
+    "index": 664,
+    "pattern": "White",
+    "zh": "纯白"
+  },
+  {
+    "index": 665,
+    "pattern": "Black",
+    "zh": "漆黑"
+  },
+  {
+    "index": 666,
+    "pattern": "Azure",
+    "zh": "天蓝"
+  },
+  {
+    "index": 667,
+    "pattern": "Storm",
+    "zh": "风暴"
+  },
+  {
+    "index": 668,
+    "pattern": "Light",
+    "zh": "光明"
+  },
+  {
+    "index": 669,
+    "pattern": "Frost",
+    "zh": "冰霜"
+  },
+  {
+    "index": 670,
+    "pattern": "Flame",
+    "zh": "烈焰"
+  },
+  {
+    "index": 671,
+    "pattern": "Queen",
+    "zh": "女王"
+  },
+  {
+    "index": 672,
+    "pattern": "Liege",
+    "zh": "君主"
+  },
+  {
+    "index": 673,
+    "pattern": "Blood",
+    "zh": "鲜血"
+  },
+  {
+    "index": 674,
+    "pattern": "Dagon",
+    "zh": "达贡"
+  },
+  {
+    "index": 675,
+    "pattern": "Ember",
+    "zh": "余烬"
+  },
+  {
+    "index": 676,
+    "pattern": "Exile",
+    "zh": "流亡者"
+  },
+  {
+    "index": 677,
+    "pattern": "Fiery",
+    "zh": "炽烈"
+  },
+  {
+    "index": 678,
+    "pattern": "Grave",
+    "zh": "墓穴"
+  },
+  {
+    "index": 679,
+    "pattern": "Harpy",
+    "zh": "鹰身女妖"
+  },
+  {
+    "index": 680,
+    "pattern": "Hydra",
+    "zh": "九头蛇"
+  },
+  {
+    "index": 681,
+    "pattern": "Lunar",
+    "zh": "月神"
+  },
+  {
+    "index": 682,
+    "pattern": "Magma",
+    "zh": "岩浆"
+  },
+  {
+    "index": 683,
+    "pattern": "Mecha",
+    "zh": "机甲"
+  },
+  {
+    "index": 684,
+    "pattern": "Nomad",
+    "zh": "游牧者"
+  },
+  {
+    "index": 685,
+    "pattern": "Oasis",
+    "zh": "绿洲"
+  },
+  {
+    "index": 686,
+    "pattern": "Relic",
+    "zh": "圣物"
+  },
+  {
+    "index": 687,
+    "pattern": "Runic",
+    "zh": "符文"
+  },
+  {
+    "index": 688,
+    "pattern": "Skull",
+    "zh": "头骨"
+  },
+  {
+    "index": 689,
+    "pattern": "Smoke",
+    "zh": "烟雾"
+  },
+  {
+    "index": 690,
+    "pattern": "Solar",
+    "zh": "日轮"
+  },
+  {
+    "index": 691,
+    "pattern": "Swarm",
+    "zh": "虫群"
+  },
+  {
+    "index": 692,
+    "pattern": "Thorn",
+    "zh": "荆棘"
+  },
+  {
+    "index": 693,
+    "pattern": "Vapor",
+    "zh": "水汽"
+  },
+  {
+    "index": 694,
+    "pattern": "Venom",
+    "zh": "毒液"
+  },
+  {
+    "index": 695,
+    "pattern": "Viper",
+    "zh": "毒蛇"
+  },
+  {
+    "index": 696,
+    "pattern": "Golem",
+    "zh": "魔像"
+  },
+  {
+    "index": 697,
+    "pattern": "Hound",
+    "zh": "猎犬"
+  },
+  {
+    "index": 698,
+    "pattern": "Tiger",
+    "zh": "剑齿虎"
+  },
+  {
+    "index": 699,
+    "pattern": "Raven",
+    "zh": "渡鸦"
+  },
+  {
+    "index": 700,
+    "pattern": "Eagle",
+    "zh": "巨鹰"
+  },
+  {
+    "index": 701,
+    "pattern": "Whale",
+    "zh": "巨鲸"
+  },
+  {
+    "index": 702,
+    "pattern": "Shark",
+    "zh": "巨鲨"
+  },
+  {
+    "index": 703,
+    "pattern": "Snake",
+    "zh": "灵蛇"
+  },
+  {
+    "index": 704,
+    "pattern": "Billy",
+    "zh": "公山羊"
+  },
+  {
+    "index": 705,
+    "pattern": "Cobra",
+    "zh": "眼镜蛇"
+  },
+  {
+    "index": 706,
+    "pattern": "Horse",
+    "zh": "骏马"
+  },
+  {
+    "index": 707,
+    "pattern": "Steed",
+    "zh": "战马"
+  },
+  {
+    "index": 708,
+    "pattern": "Koala",
+    "zh": "考拉"
+  },
+  {
+    "index": 709,
+    "pattern": "Lemur",
+    "zh": "狐猴"
+  },
+  {
+    "index": 710,
+    "pattern": "Hyena",
+    "zh": "鬣狗"
+  },
+  {
+    "index": 711,
+    "pattern": "Djinn",
+    "zh": "神灯精灵"
+  },
+  {
+    "index": 712,
+    "pattern": "Piety",
+    "zh": "派蒂"
+  },
+  {
+    "index": 713,
+    "pattern": "Elder",
+    "zh": "裂界者"
+  },
+  {
+    "index": 714,
+    "pattern": "Sirus",
+    "zh": "希鲁斯"
+  },
+  {
+    "index": 715,
+    "pattern": "Maven",
+    "zh": "贤主"
+  },
+  {
+    "index": 716,
+    "pattern": "Chaos",
+    "zh": "混沌"
+  },
+  {
+    "index": 717,
+    "pattern": "Heist",
+    "zh": "夺宝"
+  },
+  {
+    "index": 718,
+    "pattern": "Giant",
+    "zh": "巨型"
+  },
+  {
+    "index": 719,
+    "pattern": "Sands",
+    "zh": "黄沙"
+  },
+  {
+    "index": 720,
+    "pattern": "Guard",
+    "zh": "守卫"
+  },
+  {
+    "index": 721,
+    "pattern": "Royal",
+    "zh": "皇家"
+  },
+  {
+    "index": 722,
+    "pattern": "Druid",
+    "zh": "德鲁伊"
+  },
+  {
+    "index": 723,
+    "pattern": "Elite",
+    "zh": "精英"
+  },
+  {
+    "index": 724,
+    "pattern": "Grand",
+    "zh": "盛大"
+  },
+  {
+    "index": 725,
+    "pattern": "Water",
+    "zh": "流水"
+  },
+  {
+    "index": 726,
+    "pattern": "Faith",
+    "zh": "信仰"
+  },
+  {
+    "index": 727,
+    "pattern": "Arrow",
+    "zh": "箭矢"
+  },
+  {
+    "index": 728,
+    "pattern": "Spear",
+    "zh": "长矛"
+  },
+  {
+    "index": 729,
+    "pattern": "Skill",
+    "zh": "技能"
+  },
+  {
+    "index": 730,
+    "pattern": "Magus",
+    "zh": "魔导师"
+  },
+  {
+    "index": 731,
+    "pattern": "Ebony",
+    "zh": "乌木"
+  },
+  {
+    "index": 732,
+    "pattern": "Dread",
+    "zh": "恐惧"
+  },
+  {
+    "index": 733,
+    "pattern": "Magic",
+    "zh": "魔法"
+  },
+  {
+    "index": 734,
+    "pattern": "Child",
+    "zh": "幼崽"
+  },
+  {
+    "index": 735,
+    "pattern": "Ivory",
+    "zh": "象牙白"
+  },
+  {
+    "index": 736,
+    "pattern": "Ocean",
+    "zh": "大洋"
+  },
+  {
+    "index": 737,
+    "pattern": "Tabby",
+    "zh": "虎斑"
+  },
+  {
+    "index": 738,
+    "pattern": "Forge",
+    "zh": "锻炉"
+  },
+  {
+    "index": 739,
+    "pattern": "Shard",
+    "zh": "碎片"
+  },
+  {
+    "index": 740,
+    "pattern": "Ender",
+    "zh": "终结者"
+  },
+  {
+    "index": 741,
+    "pattern": "Orion",
+    "zh": "猎户座"
+  },
+  {
+    "index": 742,
+    "pattern": "Wilds",
+    "zh": "荒原"
+  },
+  {
+    "index": 743,
+    "pattern": "Atlas",
+    "zh": "异界"
+  },
+  {
+    "index": 744,
+    "pattern": "Beast",
+    "zh": "猛兽"
+  },
+  {
+    "index": 745,
+    "pattern": "Cruel",
+    "zh": "残酷"
+  },
+  {
+    "index": 746,
+    "pattern": "Elven",
+    "zh": "精灵"
+  },
+  {
+    "index": 747,
+    "pattern": "Eyrie",
+    "zh": "鹰巢"
+  },
+  {
+    "index": 748,
+    "pattern": "Flesh",
+    "zh": "血肉"
+  },
+  {
+    "index": 749,
+    "pattern": "Shade",
+    "zh": "暗影"
+  },
+  {
+    "index": 750,
+    "pattern": "Aldur",
+    "zh": "阿尔杜尔"
+  },
+  {
+    "index": 751,
+    "pattern": "Pitch",
+    "zh": "沥青黑"
+  },
+  {
+    "index": 752,
+    "pattern": "Promo",
+    "zh": "推广限定"
+  },
+  {
+    "index": 753,
+    "pattern": "Comet",
+    "zh": "寒冰彗星"
+  },
+  {
+    "index": 754,
+    "pattern": "Spark",
+    "zh": "电火花"
+  },
+  {
+    "index": 755,
+    "pattern": "NUDE",
+    "zh": "测试款"
+  },
+  {
+    "index": 756,
+    "pattern": "Pack",
+    "zh": "包"
+  },
+  {
+    "index": 757,
+    "pattern": "Only",
+    "zh": "专属"
+  },
+  {
+    "index": 758,
+    "pattern": "Cape",
+    "zh": "披风"
+  },
+  {
+    "index": 759,
+    "pattern": "Hell",
+    "zh": "地狱"
+  },
+  {
+    "index": 760,
+    "pattern": "Opal",
+    "zh": "欧泊"
+  },
+  {
+    "index": 761,
+    "pattern": "Pure",
+    "zh": "纯净"
+  },
+  {
+    "index": 762,
+    "pattern": "Pyre",
+    "zh": "薪火"
+  },
+  {
+    "index": 763,
+    "pattern": "Rift",
+    "zh": "裂隙"
+  },
+  {
+    "index": 764,
+    "pattern": "Vaal",
+    "zh": "瓦尔"
+  },
+  {
+    "index": 765,
+    "pattern": "Wisp",
+    "zh": "灵宿"
+  },
+  {
+    "index": 766,
+    "pattern": "Iron",
+    "zh": "黑铁"
+  },
+  {
+    "index": 767,
+    "pattern": "Gold",
+    "zh": "金光"
+  },
+  {
+    "index": 768,
+    "pattern": "Blue",
+    "zh": "湛蓝"
+  },
+  {
+    "index": 769,
+    "pattern": "Fire",
+    "zh": "烈焰"
+  },
+  {
+    "index": 770,
+    "pattern": "Dark",
+    "zh": "暗黑"
+  },
+  {
+    "index": 771,
+    "pattern": "Ruby",
+    "zh": "红宝石"
+  },
+  {
+    "index": 772,
+    "pattern": "Bone",
+    "zh": "白骨"
+  },
+  {
+    "index": 773,
+    "pattern": "Baby",
+    "zh": "幼年"
+  },
+  {
+    "index": 774,
+    "pattern": "King",
+    "zh": "国王"
+  },
+  {
+    "index": 775,
+    "pattern": "Lord",
+    "zh": "领主"
+  },
+  {
+    "index": 776,
+    "pattern": "Apex",
+    "zh": "顶峰"
+  },
+  {
+    "index": 777,
+    "pattern": "Dune",
+    "zh": "沙丘"
+  },
+  {
+    "index": 778,
+    "pattern": "Dusk",
+    "zh": "黄昏"
+  },
+  {
+    "index": 779,
+    "pattern": "Lava",
+    "zh": "熔岩"
+  },
+  {
+    "index": 780,
+    "pattern": "Lion",
+    "zh": "雄狮"
+  },
+  {
+    "index": 781,
+    "pattern": "Moon",
+    "zh": "明月"
+  },
+  {
+    "index": 782,
+    "pattern": "Onyx",
+    "zh": "玛瑙"
+  },
+  {
+    "index": 783,
+    "pattern": "Rime",
+    "zh": "白霜"
+  },
+  {
+    "index": 784,
+    "pattern": "Rune",
+    "zh": "符文"
+  },
+  {
+    "index": 785,
+    "pattern": "Rust",
+    "zh": "铁锈"
+  },
+  {
+    "index": 786,
+    "pattern": "Slag",
+    "zh": "矿渣"
+  },
+  {
+    "index": 787,
+    "pattern": "Snow",
+    "zh": "冰雪"
+  },
+  {
+    "index": 788,
+    "pattern": "Soul",
+    "zh": "灵魂"
+  },
+  {
+    "index": 789,
+    "pattern": "Void",
+    "zh": "虚空"
+  },
+  {
+    "index": 790,
+    "pattern": "Warp",
+    "zh": "扭曲"
+  },
+  {
+    "index": 791,
+    "pattern": "Wave",
+    "zh": "波涛"
+  },
+  {
+    "index": 792,
+    "pattern": "Wind",
+    "zh": "狂风"
+  },
+  {
+    "index": 793,
+    "pattern": "Wyrm",
+    "zh": "巨龙"
+  },
+  {
+    "index": 794,
+    "pattern": "Deer",
+    "zh": "灵鹿"
+  },
+  {
+    "index": 795,
+    "pattern": "Wolf",
+    "zh": "野狼"
+  },
+  {
+    "index": 796,
+    "pattern": "Bear",
+    "zh": "巨熊"
+  },
+  {
+    "index": 797,
+    "pattern": "Crow",
+    "zh": "乌鸦"
+  },
+  {
+    "index": 798,
+    "pattern": "Frog",
+    "zh": "青蛙"
+  },
+  {
+    "index": 799,
+    "pattern": "Toad",
+    "zh": "蟾蜍"
+  },
+  {
+    "index": 800,
+    "pattern": "Worm",
+    "zh": "蠕虫"
+  },
+  {
+    "index": 801,
+    "pattern": "Weta",
+    "zh": "沙虫"
+  },
+  {
+    "index": 802,
+    "pattern": "Fish",
+    "zh": "飞鱼"
+  },
+  {
+    "index": 803,
+    "pattern": "Crab",
+    "zh": "巨蟹"
+  },
+  {
+    "index": 804,
+    "pattern": "Kiwi",
+    "zh": "几维鸟"
+  },
+  {
+    "index": 805,
+    "pattern": "Duck",
+    "zh": "小鸭"
+  },
+  {
+    "index": 806,
+    "pattern": "Goat",
+    "zh": "山羊"
+  },
+  {
+    "index": 807,
+    "pattern": "Moth",
+    "zh": "飞蛾"
+  },
+  {
+    "index": 808,
+    "pattern": "Rhoa",
+    "zh": "恐鸟"
+  },
+  {
+    "index": 809,
+    "pattern": "Kaom",
+    "zh": "冈姆"
+  },
+  {
+    "index": 810,
+    "pattern": "Maji",
+    "zh": "马吉灵体"
+  },
+  {
+    "index": 811,
+    "pattern": "Core",
+    "zh": "核心"
+  },
+  {
+    "index": 812,
+    "pattern": "Rock",
+    "zh": "岩石"
+  },
+  {
+    "index": 813,
+    "pattern": "Gore",
+    "zh": "残暴血腥"
+  },
+  {
+    "index": 814,
+    "pattern": "Pact",
+    "zh": "契约"
+  },
+  {
+    "index": 815,
+    "pattern": "Back",
+    "zh": "背饰"
+  },
+  {
+    "index": 816,
+    "pattern": "Mage",
+    "zh": "法师"
+  },
+  {
+    "index": 817,
+    "pattern": "Body",
+    "zh": "躯体"
+  },
+  {
+    "index": 818,
+    "pattern": "Head",
+    "zh": "头颅"
+  },
+  {
+    "index": 819,
+    "pattern": "Hand",
+    "zh": "巨手"
+  },
+  {
+    "index": 820,
+    "pattern": "Claw",
+    "zh": "利爪"
+  },
+  {
+    "index": 821,
+    "pattern": "Land",
+    "zh": "大地"
+  },
+  {
+    "index": 822,
+    "pattern": "Clay",
+    "zh": "陶土"
+  },
+  {
+    "index": 823,
+    "pattern": "Acid",
+    "zh": "强酸"
+  },
+  {
+    "index": 824,
+    "pattern": "Bell",
+    "zh": "铜钟"
+  },
+  {
+    "index": 825,
+    "pattern": "Male",
+    "zh": "雄性"
+  },
+  {
+    "index": 826,
+    "pattern": "Frey",
+    "zh": "弗雷"
+  },
+  {
+    "index": 827,
+    "pattern": "Clan",
+    "zh": "氏族"
+  },
+  {
+    "index": 828,
+    "pattern": "Hole",
+    "zh": "黑洞"
+  },
+  {
+    "index": 829,
+    "pattern": "Cane",
+    "zh": "权杖"
+  },
+  {
+    "index": 830,
+    "pattern": "Deep",
+    "zh": "深渊"
+  },
+  {
+    "index": 831,
+    "pattern": "Inca",
+    "zh": "印加"
+  },
+  {
+    "index": 832,
+    "pattern": "Lake",
+    "zh": "沉思之湖"
+  },
+  {
+    "index": 833,
+    "pattern": "Mist",
+    "zh": "迷雾"
+  },
+  {
+    "index": 834,
+    "pattern": "Gate",
+    "zh": "大门"
+  },
+  {
+    "index": 835,
+    "pattern": "Oval",
+    "zh": "椭圆环"
+  },
+  {
+    "index": 836,
+    "pattern": "Seer",
+    "zh": "先知"
+  },
+  {
+    "index": 837,
+    "pattern": "Mace",
+    "zh": "重锤"
+  },
+  {
+    "index": 838,
+    "pattern": "Skin",
+    "zh": "外观"
+  },
+  {
+    "index": 839,
+    "pattern": "Mana",
+    "zh": "魔力"
+  },
+  {
+    "index": 840,
+    "pattern": "Wurm",
+    "zh": "地龙"
+  },
+  {
+    "index": 841,
+    "pattern": "Ooze",
+    "zh": "软泥"
+  },
+  {
+    "index": 842,
+    "pattern": "Bane",
+    "zh": "灾星"
+  },
+  {
+    "index": 843,
+    "pattern": "Lich",
+    "zh": "巫妖"
+  },
+  {
+    "index": 844,
+    "pattern": "Rawr",
+    "zh": "咆哮"
+  },
+  {
+    "index": 845,
+    "pattern": "High",
+    "zh": "高等"
+  },
+  {
+    "index": 846,
+    "pattern": "Liar",
+    "zh": "欺诈者"
+  },
+  {
+    "index": 847,
+    "pattern": "Wild",
+    "zh": "狂野"
+  },
+  {
+    "index": 848,
+    "pattern": "Snap",
+    "zh": "急冻寒霜"
+  },
+  {
+    "index": 849,
+    "pattern": "PoE",
+    "zh": "PoE"
+  },
+  {
+    "index": 850,
+    "pattern": "Orb",
+    "zh": "法球"
+  },
+  {
+    "index": 851,
+    "pattern": "Two",
+    "zh": "双"
+  },
+  {
+    "index": 852,
+    "pattern": "Pet",
+    "zh": "宠物"
+  },
+  {
+    "index": 853,
+    "pattern": "Red",
+    "zh": "赤红"
+  },
+  {
+    "index": 854,
+    "pattern": "Ice",
+    "zh": "寒冰"
+  },
+  {
+    "index": 855,
+    "pattern": "Ash",
+    "zh": "灰烬"
+  },
+  {
+    "index": 856,
+    "pattern": "Sea",
+    "zh": "海洋"
+  },
+  {
+    "index": 857,
+    "pattern": "Sun",
+    "zh": "骄阳"
+  },
+  {
+    "index": 858,
+    "pattern": "Cat",
+    "zh": "灵猫"
+  },
+  {
+    "index": 859,
+    "pattern": "Rat",
+    "zh": "鼠"
+  },
+  {
+    "index": 860,
+    "pattern": "Owl",
+    "zh": "猫头鹰"
+  },
+  {
+    "index": 861,
+    "pattern": "Bat",
+    "zh": "蝙蝠"
+  },
+  {
+    "index": 862,
+    "pattern": "Fox",
+    "zh": "灵狐"
+  },
+  {
+    "index": 863,
+    "pattern": "Dog",
+    "zh": "灵犬"
+  },
+  {
+    "index": 864,
+    "pattern": "Imp",
+    "zh": "小恶魔"
+  },
+  {
+    "index": 865,
+    "pattern": "Sin",
+    "zh": "罪恶之神"
+  },
+  {
+    "index": 866,
+    "pattern": "God",
+    "zh": "神祇"
+  },
+  {
+    "index": 867,
+    "pattern": "Fae",
+    "zh": "仙灵"
+  },
+  {
+    "index": 868,
+    "pattern": "Lin",
+    "zh": "麟"
+  },
+  {
+    "index": 869,
+    "pattern": "Web",
+    "zh": "蛛网"
+  },
+  {
+    "index": 870,
+    "pattern": "Alt",
+    "zh": "替代款"
+  },
+  {
+    "index": 871,
+    "pattern": "Jin",
+    "zh": "金"
+  },
+  {
+    "index": 872,
+    "pattern": "Arc",
+    "zh": "电弧"
+  },
+  {
+    "index": 873,
+    "pattern": "V",
+    "zh": "五型"
+  }
+]

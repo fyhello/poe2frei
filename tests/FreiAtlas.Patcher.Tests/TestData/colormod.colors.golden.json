@@ -1,0 +1,3850 @@
+[
+  {
+    "id": "%_chance_to_duplicate_dropped_currency",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "%_chance_to_duplicate_dropped_divination_cards",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "%_chance_to_duplicate_dropped_maps",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "%_chance_to_duplicate_dropped_scarabs",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_expedition2_remnants_have_at_least_x_slots",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_logbook_has_at_least_1_expedition2_remnant_with_at_least_x_slots",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "add_endurance_charge_on_skill_hit_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "add_frenzy_charge_on_kill_%_chance",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "add_frenzy_charge_on_skill_hit_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "add_power_charge_on_critical_strike_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "add_power_charge_on_kill_%_chance",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "add_power_charge_on_skill_hit_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "add_x_grasping_vines_on_hit",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "additional_maximum_all_elemental_resistances_%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "additional_maximum_all_resistances_%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "additional_maximum_block_%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "all_damage_can_freeze",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "all_damage_can_ignite",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "all_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "always_crit",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "always_freeze",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "attack_maximum_added_cold_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "attack_maximum_added_fire_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "attack_maximum_added_lightning_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "attack_maximum_added_physical_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "attack_minimum_added_cold_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "attack_minimum_added_fire_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "attack_minimum_added_lightning_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "attack_minimum_added_physical_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "attack_speed_+%_during_flask_effect",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_avoid_ignite_%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "base_bleed_duration_+%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_cannot_have_life_leeched_from",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "base_cannot_have_mana_leeched_from",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "base_chance_to_freeze_%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "base_cooldown_speed_+%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_damage_taken_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "base_maximum_chaos_damage_resistance_%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "base_maximum_cold_damage_resistance_%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "base_maximum_fire_damage_resistance_%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "base_maximum_lightning_damage_resistance_%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "base_minimum_endurance_charges",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_minimum_frenzy_charges",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_minimum_power_charges",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_number_of_crossbow_bolts",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_number_of_raging_spirits_allowed",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_number_of_skeletons_allowed",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_number_of_spectres_allowed",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "base_penetrate_elemental_resistances_%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "blight_arc_tower_additional_chains",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_arc_tower_additional_repeats",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_empowering_tower_grant_%_chance_to_deal_double_damage",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_empowering_tower_grant_cast_speed_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_empowering_tower_grant_damage_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_fireball_tower_projectiles_nova",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_imbuing_tower_grant_critical_strike_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_imbuing_tower_grant_damage_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_lightningstorm_tower_area_of_effect_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_lightningstorm_tower_storms_on_enemies",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_scout_tower_additional_minions_+",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_seismic_tower_additional_cascades_+",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_seismic_tower_cascade_range_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_seismic_tower_stun_duration_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_shocknova_tower_shock_effect_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_shocknova_tower_shock_repeats_with_area_effect_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_stonegaze_tower_cooldown_recovery_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_summoning_tower_minion_life_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_summoning_tower_minions_summoned_+",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "blight_tower_damage_per_tower_type_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "bow_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "cannot_have_life_leeched_from",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "cast_speed_+%_during_flask_effect",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_awakened_sextant",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_cleansing_currency",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_currency",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_divination_cards",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_divination_cards_currency_basic",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_divination_cards_gives_other_divination_cards",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_divination_cards_unique_jewellery",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_divine_orb",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_exalted_orb",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_grand_eldritch_ember",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_grand_eldritch_ichor",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_greater_eldritch_ember",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_greater_eldritch_ichor",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_maps",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_abyss_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_beasts_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_blight_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_breach_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_divination_cards_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_elder_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_harbinger_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_legion_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_maps_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_metamorph_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_perandus_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_shaper_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_strongbox_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_sulphite_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_torment_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_scarab_uniques_gilded",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_%_to_drop_additional_tangled_currency",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_to_gain_endurance_charge_on_block_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_to_gain_endurance_charge_on_crit_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_to_gain_endurance_charge_on_hit_%_vs_bleeding_enemy",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_to_gain_frenzy_charge_on_block_attack_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chance_to_gain_power_charge_when_block_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chaos_resistance_+_while_using_flask",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "chaos_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chaos_spell_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "chest_display_cast_random_curse",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "chest_display_caustic_clouds",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "chest_display_freeze",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "chest_display_ice_nova",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "chest_display_ignite",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "chest_drop_additional_normal_items_up_to",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "chest_drop_additional_number_of_uniques_of_drop_pool_types",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "chest_drop_additional_unique_maps",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "chest_drop_additional_unqiue_items",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "chest_item_quantity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "chest_item_quantity_+%_final_from_mod",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "chest_item_rarity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "chest_spawn_rogue_exiles",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "chill_attackers_for_4_seconds_on_block_%_chance",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "cold_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "cold_spell_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "consecrated_ground_on_death",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "corrupted_spell_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "create_enemy_meteor_daemon_on_flask_use_%_chance",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "curses_reflected_to_self",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "damage_+%_per_15_dex",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "damage_+%_per_15_int",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "damage_+%_per_15_strength",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "dexterity_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "display_altar_chaos_aura",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "display_map_has_oxygen",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "display_monster_spike_nova_on_death_text",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "drain_x_flask_charges_over_time_on_hit_for_6_seconds",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "dropped_items_are_fully_linked",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "dropped_items_have_additional_sockets",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "endurance_charge_on_kill_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "enemies_explode_for_%_life_as_physical_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "enemies_explode_on_death_by_attack_for_10%_life_as_physical_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "enemies_hitting_you_drop_burning_ground_%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "energy_shield_recovery_rate_+%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "expedition_chest_currency_drop_quantity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "expedition_chest_logbook_chance_%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "expedition_elite_%_to_drop_currency",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "expedition_elite_%_to_drop_maps",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "expedition_elite_%_to_drop_scarabs",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "expedition_elite_%_to_drop_stackeddecks",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "expedition_monsters_currency_drop_quantity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "expedition_monsters_logbook_chance_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "expedition_twinned_elites",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "explode_enemies_for_10%_life_as_physical_on_kill_chance_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "explode_enemies_for_25%_life_as_chaos_on_kill_chance_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "explode_enemies_for_500%_life_as_fire_on_kill_%_chance",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "explode_on_kill_%_chaos_damage_to_deal",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "explode_on_kill_%_fire_damage_to_deal",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "fire_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "fire_spell_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "flasks_%_chance_to_not_consume_charges",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "from_league_item_quantity_+%_permyriad",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "gain_elusive_on_crit_%_chance",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "gain_endurance_charge_per_second_if_have_been_hit_recently",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "gain_frenzy_charge_on_hitting_rare_or_unique_enemy_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "global_always_hit",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "heist_alert_level_gained_per_10_sec",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "heist_currency_alchemy_drops_as_divine_%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "heist_currency_chaos_drops_as_divine_%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "heist_lockdown_is_instant",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "heist_player_additional_maximum_resistances_%_per_25%_alert_level",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "heist_player_fire_resistance_%_per_25%_alert_level",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "heist_side_reward_room_monsters_+%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "hexproof",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "hits_ignore_enemy_monster_physical_damage_reduction_%_chance",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "immune_to_curses",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "intelligence_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "life_recovery_rate_+%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "lightning_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "lightning_spell_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_additional_charm_slots",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "local_charm_slots",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "local_critical_strike_chance",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_nearby_enemy_chaos_damage_resistance_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_nearby_enemy_cold_damage_resistance_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_nearby_enemy_elemental_damage_taken_+%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_nearby_enemy_fire_damage_resistance_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_nearby_enemy_lightning_damage_resistance_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_nearby_enemy_physical_damage_taken_+%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_socketed_attacks_additional_critical_strike_chance",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_socketed_attacks_critical_strike_multiplier_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_socketed_spells_additional_critical_strike_chance",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_display_socketed_spells_critical_strike_multiplier_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_explode_on_kill_with_crit_%_physical_damage_to_deal",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_flask_gain_X_charges_when_hit",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "local_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_maximum_added_chaos_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_maximum_added_cold_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_maximum_added_fire_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_maximum_added_lightning_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_maximum_added_physical_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_minimum_added_chaos_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_minimum_added_cold_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_minimum_added_fire_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_minimum_added_lightning_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_minimum_added_physical_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_active_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_active_skill_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_area_of_effect_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_area_of_effect_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_aura_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_aura_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_bow_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_bow_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_chaos_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_chaos_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_cold_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_cold_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_curse_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_dexterity_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_dexterity_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_duration_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_elemental_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_fire_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_fire_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_golem_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_herald_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_hex_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_intelligence_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_intelligence_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_lightning_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_lightning_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_melee_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_melee_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_minion_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_minion_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_movement_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_non_vaal_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_projectile_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_projectile_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_spell_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_strength_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_strength_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_support_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_support_gem_quality_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_trap_and_mine_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_trap_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_vaal_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "local_socketed_warcry_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "mana_%_gained_on_block",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_additional_player_maximum_resistances_%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_adds_X_extra_synthesis_mods",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_allow_shrines",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_always_has_weather",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ambush_chests",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_base_ground_desecration_damage_to_deal_per_minute",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_base_ground_fire_damage_to_deal_per_10_seconds",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_base_ground_fire_damage_to_deal_per_minute",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_beyond_rules",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_boss_additional_awakened_sextant_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_cleansing_currency_to_drop",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_boss_additional_currency_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_divination_cards_currency_basic_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_divination_cards_gives_other_divination_cards_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_divination_cards_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_divination_cards_unique_jewellery_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_divine_orb_to_drop",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_boss_additional_eldritch_exalted_orb_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_eldritch_orb_of_annulment_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_exalted_orb_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_grand_eldritch_ember_to_drop",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_boss_additional_grand_eldritch_ichor_to_drop",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_boss_additional_greater_eldritch_ember_to_drop",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_boss_additional_greater_eldritch_ichor_to_drop",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_boss_additional_maps_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_orb_of_annulment_to_drop",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_boss_additional_tangled_currency_to_drop",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_boss_area_of_effect_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_boss_attack_and_cast_speed_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_boss_damage_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_boss_damage_+%_final_from_boss_drops_guardian_map_sextant",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_boss_dropped_item_quantity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_boss_dropped_unique_items_+",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_boss_drops_additional_conqueror_map",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_boss_drops_additional_currency_items",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_boss_drops_additional_elder_guardian_map",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_boss_drops_additional_shaper_guardian_map",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_boss_is_possessed",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_boss_item_rarity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_boss_maximum_life_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_breach_rules",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_chest_item_quantity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_chest_item_rarity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_contains_cleansed_boss",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_contains_master",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_currency_divine_stack_4_permillage_chance",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_damage_+%_per_poison_stack",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_display_unique_boss_drops_X_maps",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_dropped_maps_are_corrupted_with_8_mods",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_duplicate_captured_beasts_chance_%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_elemental_weakness_curse_zones",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_enfeeble_curse_zones",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_experience_gain_+%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_ground_consecrated",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_ground_consecrated_life_regeneration_rate_per_minute_%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_ground_ice",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ground_ice_base_magnitude",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ground_lightning",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ground_lightning_base_magnitude",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ground_tar_movement_speed_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_harvest_double_lifeforce_dropped",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_humanoid_monster_potency_+%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_incursion_token_chance_+%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_invasion_monster_packs",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_is_unidentified",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_item_drop_quantity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_item_drop_rarity_+%",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_items_drop_corrupted_%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_items_drop_corrupted_in_corrupted_maps_%_chance",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monster_drop_higher_level_gear",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_monster_item_rarity_+%_final",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_monster_melee_attacks_apply_random_curses",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monster_skills_chain_X_additional_times",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_%_physical_damage_to_convert_to_chaos",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_additional_number_of_projecitles",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_ailment_threshold_+%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_always_ignite",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_are_hexproof",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_are_immune_to_curses",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_area_of_effect_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_attack_speed_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_avoid_ailments_%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_avoid_elemental_ailments_%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_avoid_ignite_%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_avoid_poison_bleed_impale_%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_cannot_be_leeched_from",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_cannot_be_stunned",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_cast_speed_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_chance_to_impale_%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_critical_strike_chance_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_critical_strike_multiplier_+",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_damage_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_drop_ground_fire_on_death_base_radius",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_have_onslaught",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_life_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_maximum_life_%_to_add_to_maximum_energy_shield",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_movement_speed_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_penetrate_elemental_resistances_%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_poison_on_hit",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_reflect_%_elemental_damage",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_reflect_%_physical_damage",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_monsters_reflect_curses",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_monsters_stun_threshold_+%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_movement_velocity_+%_per_poison_stack",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_no_refills_in_town",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_num_extra_abysses",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_num_extra_invasion_bosses",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_num_extra_strongboxes",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_number_of_additional_mods",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_number_of_magic_packs_+%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_number_of_rare_packs_+%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_pack_size_+%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_player_base_chaos_damage_taken_per_minute",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_buff_time_passed_+%_only_buff_category",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_player_create_enemy_meteor_daemon_on_flask_use_%_chance",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_blood_magic_keystone",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_chaos_inoculation_keystone",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_conductivity",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_despair",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_elemental_weakness",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_enfeeble",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_flammability",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_frostbite",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_punishment",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_silence",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_temporal_chains",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_level_X_vulnerability",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_has_random_level_X_curse_every_10_seconds",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_player_no_regeneration",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_players_additional_number_of_projectiles",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_players_and_monsters_curses_are_reflected",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_players_and_monsters_damage_taken_+%_while_stationary",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_players_and_monsters_have_resolute_technique",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_players_are_poisoned_while_moving_chaos_damage_per_second",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_players_cannot_gain_endurance_charges",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_players_cannot_gain_frenzy_charges",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_players_cannot_gain_power_charges",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_players_cannot_take_reflected_damage",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_players_gain_rampage_stacks",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_players_no_regeneration_including_es",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "map_players_resist_all_%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_possessed_monsters_drop_gilded_scarab_chance_%",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_regret_to_divine_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_ritual_additional_reward_rerolls",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_ritual_contains_divine_orbs",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_headhunter",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_kalandras_touch",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_mageblood",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_omen_chance",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_omen_dextral_annulment",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_omen_dextral_erasure",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_omen_sinistral_annulment",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_omen_sinistral_erasure",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_omen_whittling",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_perfect_chaos",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_contains_perfect_exalt",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_ritual_omen_chance_+%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_spawn_affliction_mirror",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_spawn_betrayals",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_spawn_exile_per_area_%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_spawn_extra_exiles",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_spawn_harbingers",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_spawn_perandus_chests",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_spawn_talismans",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "map_spawn_tormented_spirits",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_spawn_two_bosses",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "map_strongbox_monsters_attack_speed_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_tempest_base_ground_desecration_damage_to_deal_per_minute",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_tempest_base_ground_fire_damage_to_deal_per_minute",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_tempest_ground_ice",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_tempest_ground_lightning",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_tempest_ground_tar_movement_speed_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_temporal_chains_curse_zones",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_unique_monster_num_additional_modifiers",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_unstable_breach_enrage_x_additional_rare_monsters",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "max_endurance_charges",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "max_frenzy_charges",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "max_power_charges",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "melee_attack_number_of_spirit_strikes",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "melee_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "minion_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "modifiers_to_map_item_drop_quantity_also_apply_to_map_item_drop_rarity",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "monster_base_block_%",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "monster_casts_bleed_nova_text",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "monster_grants_no_flask_charges",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "movement_speed_+%_during_flask_effect",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "never_take_critical_strike",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "num_charm_slots",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "number_of_additional_arrows",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "number_of_additional_curses_allowed",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "number_of_additional_totems_allowed",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "number_of_endurance_charges_to_gain_every_4_seconds_while_stationary",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "physical_damage_taken_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "physical_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "physical_spell_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "power_frenzy_or_endurance_charge_on_kill_%",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "projectile_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "quality_display_base_number_of_crossbow_bolts_is_gem",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "raise_spectre_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "raise_zombie_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "random_projectile_direction",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "recover_%_of_maximum_life_on_block",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "remove_%_of_current_energy_shield_on_hit",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "remove_%_of_current_mana_on_hit",
+    "rgb": [
+      160,
+      32,
+      240
+    ]
+  },
+  {
+    "id": "remove_chill_and_freeze_on_flask_use",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "remove_ignite_and_burning_on_flask_use",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "remove_shock_on_flask_use",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "sanctum_merchant_additional_options",
+    "rgb": [
+      170,
+      158,
+      130
+    ]
+  },
+  {
+    "id": "shock_attackers_for_4_seconds_on_block_%_chance",
+    "rgb": [
+      0,
+      255,
+      127
+    ]
+  },
+  {
+    "id": "spell_additional_critical_strike_chance_permyriad",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "spell_maximum_added_cold_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "spell_maximum_added_fire_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "spell_maximum_added_lightning_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "spell_minimum_added_cold_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "spell_minimum_added_fire_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "spell_minimum_added_lightning_damage",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "spell_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "strength_skill_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "summon_skeleton_gem_level_+",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "tailwind_if_have_crit_recently",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "zombie_explode_on_kill_%_fire_damage_to_deal",
+    "rgb": [
+      231,
+      179,
+      37
+    ]
+  },
+  {
+    "id": "map_spawn_extra_torment_spirits",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "maps_with_powerful_bosses_additional_spirit_+",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_tormented_spirit_chance_+%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "map_tormented_spirit_chance_%",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  },
+  {
+    "id": "tamed_beasts_randomly_possessed_every_x_ms",
+    "rgb": [
+      227,
+      23,
+      13
+    ]
+  }
+]

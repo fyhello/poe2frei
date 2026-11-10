@@ -12,11 +12,17 @@ namespace FreiAtlas.Patcher.Core;
 /// 文件布局：uint32 行数 + 定长行区 + 8 字节 0xBB 哨兵 + 变长字符串区。
 /// 行内 string 字段是 8 字节小端偏移，相对哨兵位置。
 /// </summary>
+/// <summary>
+/// DAT 表的布局描述：行数、行宽、字符串区起点。
+///
+/// 此前 Price / Name / Rumour 三个模块各定义了一份字段完全相同的同名 record，
+/// 导致「同一张表在不同模块里是不同类型」，无法共用校验与工具方法。
+/// 统一到这里，所有 DAT 解析共用同一份布局契约。
+/// </summary>
+public readonly record struct DatLayout(int RowCount, int RowSize, int StringBase);
+
 public static class DatBinaryUtils
 {
-    /// <summary>定长行区与字符串区之间的 8 字节哨兵。</summary>
-    public static ReadOnlySpan<byte> Sentinel => [0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB];
-
     /// <summary>哨兵作为 ulong 的值，用于识别未写入的指针槽。</summary>
     public const ulong SentinelValue = 0xBBBBBBBBBBBBBBBBUL;
 
@@ -108,7 +114,7 @@ public static class DatBinaryUtils
     /// <param name="tableName">用于异常文案的表名。</param>
     /// <returns>(行数, 行尺寸, 字符串区起点)。</returns>
     /// <exception cref="ArgumentException">结构不合法时抛出，原因可直接展示给用户。</exception>
-    public static (int RowCount, int RowSize, int StringBase) DetectLayout(
+    public static DatLayout DetectLayout(
         byte[] data,
         string tableName = "数据表")
     {
@@ -137,7 +143,7 @@ public static class DatBinaryUtils
                 $"{tableName} 的行总字节数 {rowAreaBytes} 不能被行数 {rowCount} 整除。");
         }
 
-        return (rowCount, rowAreaBytes / rowCount, sentinelPos);
+        return new DatLayout(rowCount, rowAreaBytes / rowCount, sentinelPos);
     }
 
     /// <summary>

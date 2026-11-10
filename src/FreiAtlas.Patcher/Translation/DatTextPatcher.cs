@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -36,8 +37,23 @@ public static class DatTextPatcher
         [JsonPropertyName("RowSize")]
         public int RowSize { get; set; }
 
+        [JsonPropertyName("RowCount")]
+        public int RowCount { get; set; }
+
+        [JsonPropertyName("KeyColumns")]
+        public List<KeyColumnDefinition> KeyColumns { get; set; } = [];
+
         [JsonPropertyName("RowPatches")]
         public List<RowCellPatch> RowPatches { get; set; } = [];
+    }
+
+    public sealed class KeyColumnDefinition
+    {
+        [JsonPropertyName("Offset")]
+        public int Offset { get; set; }
+
+        [JsonPropertyName("Type")]
+        public string Type { get; set; } = "string";
     }
 
     public sealed class RowCellPatch
@@ -50,6 +66,10 @@ public static class DatTextPatcher
 
         [JsonPropertyName("Text")]
         public string Text { get; set; } = "";
+
+        /// <summary>稳定键哈希；存在时优先按它在当前表中定位行，不再使用 Row。</summary>
+        [JsonPropertyName("Key")]
+        public string Key { get; set; } = "";
     }
 
     private static FullDatPatchCatalog? _cachedCatalog;
@@ -65,23 +85,23 @@ public static class DatTextPatcher
         var assembly = typeof(DatTextPatcher).Assembly;
 
         // 1. 优先加载嵌入的 Gzip 资源
-        using (var stream = assembly.GetManifestResourceStream("FreiAtlas.Patcher.Resources.dat_translations.json.gz"))
+        using (var stream = assembly.GetManifestResourceStream("FreiAtlas.Patcher.Resources.dat_translations.json.br"))
         {
             if (stream != null)
             {
-                using var gz = new GZipStream(stream, CompressionMode.Decompress);
-                _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(gz, _jsonOptions) ?? new();
+                var jsonBytes = CompressedResource.DecompressToBytes(stream, 64 * 1024 * 1024);
+                _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(jsonBytes, _jsonOptions) ?? new();
                 return _cachedCatalog;
             }
         }
 
-        // 2. 回退到输出目录中的 dat_translations.json.gz
-        string fallbackGz = Path.Combine(AppContext.BaseDirectory, "Resources", "dat_translations.json.gz");
+        // 2. 回退到输出目录中的 dat_translations.json.br
+        string fallbackGz = Path.Combine(AppContext.BaseDirectory, "Resources", "dat_translations.json.br");
         if (File.Exists(fallbackGz))
         {
             using var fs = File.OpenRead(fallbackGz);
-            using var gz = new GZipStream(fs, CompressionMode.Decompress);
-            _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(gz, _jsonOptions) ?? new();
+            var jsonBytes = CompressedResource.DecompressToBytes(fs, 64 * 1024 * 1024);
+            _cachedCatalog = JsonSerializer.Deserialize<FullDatPatchCatalog>(jsonBytes, _jsonOptions) ?? new();
             return _cachedCatalog;
         }
 
@@ -94,7 +114,7 @@ public static class DatTextPatcher
             return _cachedCatalog;
         }
 
-        throw new FileNotFoundException("未找到嵌入的 dat_translations.json.gz 官方简中全量翻译资源。");
+        throw new FileNotFoundException("未找到嵌入的 dat_translations.json.br 官方简中全量翻译资源。");
     }
 
     /// <summary>
@@ -111,10 +131,12 @@ public static class DatTextPatcher
         if (rowCount <= 0) return (originalBytes, 0);
 
         int rowSize = def.RowSize;
-        int stringBase = FindMagic(originalBytes, rowCount);
+        if (rowSize < 8 || 4L + (long)rowCount * rowSize > originalBytes.Length - 8L)
+            return (originalBytes, 0);
+        int stringBase = DatBinaryUtils.FindSentinel(originalBytes, rowCount);
         if (stringBase <= 4)
         {
-            stringBase = 4 + rowCount * rowSize;
+            return (originalBytes, 0);
         }
 
         if (stringBase >= originalBytes.Length)
@@ -130,11 +152,44 @@ public static class DatTextPatcher
         if (actualRowSize != rowSize)
             return (originalBytes, 0);
 
+        // 没有稳定键时，只有行数已知且完全相等才允许按行号写入；
+        // 行数不同说明词典与当前客户端版本不一致，任何按行号写入都会串位。
+        if (def.KeyColumns.Count == 0)
+        {
+            if (def.RowCount != rowCount)
+                return (originalBytes, 0);
+        }
+
+        Dictionary<string, int>? rowByKey = null;
+        if (def.KeyColumns.Count > 0)
+        {
+            rowByKey = new Dictionary<string, int>(rowCount, StringComparer.Ordinal);
+            for (int row = 0; row < rowCount; row++)
+            {
+                string key = ComputeRowKey(originalBytes, row, rowSize, stringBase, def.KeyColumns);
+                if (key.Length == 0) continue;
+                // 重复键标记为 -1，表示该行无法唯一定位，必须跳过。
+                rowByKey[key] = rowByKey.ContainsKey(key) ? -1 : row;
+            }
+        }
+
         var replacements = new List<(int PointerPos, string NewText)>();
         foreach (var p in def.RowPatches)
         {
-            if (p.Row < 0 || p.Row >= rowCount) continue;
-            int ptrPos = 4 + p.Row * rowSize + p.Col;
+            int targetRow;
+            if (rowByKey is not null)
+            {
+                if (string.IsNullOrEmpty(p.Key) || !rowByKey.TryGetValue(p.Key, out targetRow) || targetRow < 0)
+                    continue;
+            }
+            else
+            {
+                targetRow = p.Row;
+            }
+
+            if (targetRow < 0 || targetRow >= rowCount) continue;
+            if (p.Col < 0 || p.Col > rowSize - 8) continue;
+            int ptrPos = 4 + targetRow * rowSize + p.Col;
             if (ptrPos + 8 <= stringBase)
             {
                 // 运行期槽位安全断言守卫：确保原位置高 32 位为 0 且指针指向合法字符串区
@@ -150,8 +205,52 @@ public static class DatTextPatcher
         if (replacements.Count == 0)
             return (originalBytes, 0);
 
-        byte[] patched = RewriteStringPointersAppend(originalBytes, stringBase, replacements);
+        byte[] patched = DatBinaryUtils.RewriteStringPointersAppend(originalBytes, stringBase, replacements);
         return (patched, replacements.Count);
+    }
+
+    /// <summary>
+    /// 计算一行的稳定键哈希，规则必须与 build_dictionary.py 的 compute_row_key 完全一致：
+    /// 字符串列取文本、数值列取原始字节，0x1F 分隔后 SHA-256，取前 16 字节小写十六进制。
+    /// </summary>
+    private static string ComputeRowKey(
+        byte[] data,
+        int row,
+        int rowSize,
+        int stringBase,
+        IReadOnlyList<KeyColumnDefinition> columns)
+    {
+        var parts = new string[columns.Count];
+        for (int i = 0; i < columns.Count; i++)
+        {
+            var column = columns[i];
+            if (column.Offset < 0 || column.Offset > rowSize - 8 &&
+                column.Type.Equals("string", StringComparison.OrdinalIgnoreCase)) return string.Empty;
+            int position = 4 + row * rowSize + column.Offset;
+
+            if (column.Type.Equals("string", StringComparison.OrdinalIgnoreCase))
+            {
+                parts[i] = DatBinaryUtils.ReadPointerTarget(data, position, stringBase);
+                continue;
+            }
+
+            int size = column.Type.ToLowerInvariant() switch
+            {
+                "i32" or "u32" or "f32" => 4,
+                "i16" or "u16" => 2,
+                "bool" => 1,
+                "foreignrow" => 16,
+                "row" => 8,
+                _ => 0
+            };
+            if (size == 0 || column.Offset > rowSize - size) return string.Empty;
+
+            parts[i] = Convert.ToHexString(data.AsSpan(position, size)).ToLowerInvariant();
+        }
+
+        string payload = string.Join("\u001F", parts);
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
+        return Convert.ToHexString(hash.AsSpan(0, 16)).ToLowerInvariant();
     }
 
     /// <summary>
@@ -199,7 +298,7 @@ public static class DatTextPatcher
             return (originalBytes, 0);
         }
 
-        byte[] patched = RewriteStringPointersAppend(originalBytes, layout.StringBase, replacements);
+        byte[] patched = DatBinaryUtils.RewriteStringPointersAppend(originalBytes, layout.StringBase, replacements);
         return (patched, replacements.Count);
     }
 
@@ -220,26 +319,4 @@ public static class DatTextPatcher
         return name.Substring(stripped.Length);
     }
 
-    /// <summary>
-    /// 通用字符串指针追加重写算法。
-    ///
-    /// 实现已统一到 <see cref="DatBinaryUtils.RewriteStringPointersAppend"/>：
-    /// 此前该算法在 5 个模块各有一份副本，行尺寸校验、去重、对齐的实现
-    /// 逐渐分叉，导致同一类缺陷要在多处分别修。
-    /// 这里保留签名以兼容现有调用方，实际委托给公共实现。
-    /// </summary>
-    public static byte[] RewriteStringPointersAppend(
-        byte[] data,
-        int stringBase,
-        IEnumerable<(int PointerPos, string NewText)> replacements)
-        => DatBinaryUtils.RewriteStringPointersAppend(data, stringBase, replacements);
-
-    /// <summary>
-    /// 查找 DAT 表中的哨兵边界，可指定 rowCount 校验行对齐。
-    /// </summary>
-    public static int FindMagic(byte[] data, int rowCount = 0) =>
-        DatBinaryUtils.FindSentinel(data, rowCount);
-
-    public static string ReadUtf16LeZ(byte[] data, int start) =>
-        DatBinaryUtils.ReadUtf16LeZTrimmed(data, start);
 }

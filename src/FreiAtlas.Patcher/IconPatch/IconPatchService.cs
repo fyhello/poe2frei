@@ -23,7 +23,6 @@ internal static class IconPatchAssets
 {
     private const string BinResource = "FreiAtlas.Patcher.Resources.iconpatch.icons.dat";
     private const string IndexResource = "FreiAtlas.Patcher.Resources.iconpatch.icons.index.json";
-    private const string SheetResource = "FreiAtlas.Patcher.Resources.iconpatch.icons.sheet.webp";
 
     private static readonly object Gate = new();
     private static byte[]? _blob;
@@ -84,15 +83,6 @@ internal static class IconPatchAssets
         return _blob.AsSpan(item.Offset, item.Size).ToArray();
     }
 
-    /// <summary>读取雪碧图字节，供前端展示缩略图。</summary>
-    public static byte[]? ReadSpriteSheet()
-    {
-        using var stream = OpenResource(SheetResource);
-        if (stream is null) return null;
-        using var buffer = new MemoryStream();
-        stream.CopyTo(buffer);
-        return buffer.ToArray();
-    }
 
     private static void EnsureLoaded()
     {
@@ -125,11 +115,9 @@ internal static class IconPatchAssets
                     return;
                 }
 
-                using var gzip = new GZipStream(binStream, CompressionMode.Decompress);
-                using var blobBuffer = new MemoryStream();
-                gzip.CopyTo(blobBuffer);
-
-                _blob = blobBuffer.ToArray();
+                // 图标图集是内嵌资源：限制解压后大小，防止资源被替换/损坏时无界分配。
+                // 实测解压后约 16.7 MB，上限留一倍余量。
+                _blob = CompressedResource.DecompressToBytes(binStream, 32 * 1024 * 1024);
                 _index = document;
             }
             catch (Exception ex)
@@ -168,8 +156,6 @@ public sealed class IconPatchService
 
     public static IconSpriteInfo SpriteInfo => IconPatchAssets.SpriteInfo;
 
-    /// <summary>雪碧图原始字节。WebView2 只能读文件系统，由宿主导出到 Web 目录。</summary>
-    public static byte[]? SpriteSheetBytes => IconPatchAssets.ReadSpriteSheet();
 
     /// <summary>
     /// 读取客户端索引，逐条校验内置图标的虚拟路径是否存在。
@@ -203,10 +189,10 @@ public sealed class IconPatchService
         try
         {
             progress?.Invoke("正在打开客户端索引...");
-            using var probe = ClientIndexProbe.Open(info);
+            using var probe = OpenProbe(info);
             foreach (var item in items)
             {
-                var file = probe.Find(item.Path);
+                var file = probe.GetFileSize(item.Path);
                 if (file is null)
                 {
                     skipped++;
@@ -234,19 +220,6 @@ public sealed class IconPatchService
         progress?.Invoke($"比对完成：可用 {result.Count} 个，跳过 {skipped} 个。");
         return new IconPatchScanResult(result, skipped, null);
     }
-
-    /// <summary>
-    /// 把指定路径的图标写入客户端。
-    ///
-    /// 传入的路径会再次对照客户端索引校验：即使前端提交了失效路径，也不会被写进索引，
-    /// 避免向游戏注入无效条目导致启动异常。
-    /// </summary>
-    public bool Apply(
-        GameModeInfo info,
-        IReadOnlyList<string> paths,
-        Action<string>? progress,
-        out string message)
-        => Apply(info, paths, previousPaths: null, progress, out message);
 
     /// <summary>
     /// 应用图标替换，并把「上次选过、这次取消」的图标还原成官方原版。
@@ -294,6 +267,8 @@ public sealed class IconPatchService
         var files = new List<(string VirtualPath, byte[] Data)>(paths.Count + removed.Count);
         var missing = new List<string>();
         int restoredCount = 0;
+        // 待写入成功后清理的备份条目（见下方 RemoveOriginals 的说明）
+        List<string> restoredPathsForCleanup = [];
 
         progress?.Invoke(removed.Count > 0
             ? $"准备写入 {paths.Count} 个图标，还原 {removed.Count} 个已取消的图标..."
@@ -321,17 +296,16 @@ public sealed class IconPatchService
                 }
             }
 
-            if (restoredPaths.Count > 0)
-            {
-                // 还原成功后从备份移除，避免下次重复处理与磁盘残留。
-                PatchFileBackup.RemoveOriginals(BackupGroup, restoredPaths);
-            }
+            // 注意：这里【不能】立刻移除备份。
+            // 必须等下面 WriteGameFiles 真正落盘成功后再删，
+            // 否则写入失败时原版图标已被物理删除，用户永久失去原件。
+            restoredPathsForCleanup = restoredPaths;
         }
 
         try
         {
             progress?.Invoke("正在打开客户端索引并校验图标路径...");
-            using var probe = ClientIndexProbe.Open(info);
+            using var probe = OpenProbe(info);
             foreach (var path in paths)
             {
                 if (!items.TryGetValue(path, out var item))
@@ -339,7 +313,7 @@ public sealed class IconPatchService
                     missing.Add(path);
                     continue;
                 }
-                if (probe.Find(path) is null)
+                if (probe.GetFileSize(path) is null)
                 {
                     missing.Add(path);
                     continue;
@@ -386,8 +360,14 @@ public sealed class IconPatchService
         bool ok = _engine.WriteGameFiles(info, files);
         if (!ok)
         {
-            message = PatchEngine.LastWriteException?.Message ?? "写入失败。";
+            message = _engine.LastWriteException?.Message ?? "写入失败。";
             return false;
+        }
+
+        // 写入已成功落盘，此时才能安全移除已还原项的备份记录。
+        if (restoredPathsForCleanup.Count > 0)
+        {
+            PatchFileBackup.RemoveOriginals(BackupGroup, restoredPathsForCleanup);
         }
 
         progress?.Invoke($"已写入 {files.Count} 个图标。");
@@ -416,10 +396,10 @@ public sealed class IconPatchService
 
         try
         {
-            using var probe = ClientIndexProbe.Open(info);
+            using var probe = OpenProbe(info);
             foreach (var path in targetPaths)
             {
-                var bytes = probe.Read(path);
+                var bytes = probe.ReadFile(path);
                 if (bytes is not null && bytes.Length > 0)
                 {
                     originals[path] = bytes;
@@ -479,7 +459,7 @@ public sealed class IconPatchService
 
         if (!_engine.WriteGameFiles(info, files))
         {
-            message = PatchEngine.LastWriteException?.Message ?? "还原图标失败。";
+            message = _engine.LastWriteException?.Message ?? "还原图标失败。";
             return IconPatchRestoreResult.Failure(message);
         }
 
@@ -490,86 +470,37 @@ public sealed class IconPatchService
     }
 
     /// <summary>是否有可还原的图标备份。</summary>
-    public static bool HasBackup() => PatchFileBackup.LoadOriginals(BackupGroup).Count > 0;
-
-    /// <summary>已备份的图标数量。</summary>
-    public static int BackupCount() => PatchFileBackup.LoadOriginals(BackupGroup).Count;
+    /// <remarks>
+    /// 只查清单条目数，不读实际文件内容。
+    /// 原先走 LoadOriginals 会把每个 DDS 全读进内存：任一文件损坏或被占用就抛异常，
+    /// 而本方法在界面快照路径上被调用（SendPatcherSnapshot），
+    /// 异常会直接打断整个界面刷新。
+    /// </remarks>
+    public static bool HasBackup() => PatchFileBackup.CountOriginals(BackupGroup) > 0;
 
     /// <summary>
-    /// 客户端索引探针。封装 GGPK 与 Bundles2 两种形态，只暴露「按路径查大小」。
+    /// 内置图标包的全部虚拟路径。
+    ///
+    /// 这是「未自定义规则」时的默认规则：用户只勾选图标替换、不进配置页，
+    /// 就直接按这份全量清单应用。应用时 Apply 会逐条校验路径是否存在，
+    /// 缺失的自动跳过并汇总，不会写入无效条目。
     /// </summary>
-    private sealed class ClientIndexProbe : IDisposable
-    {
-        private readonly LibBundledGGPK3.BundledGGPK? _ggpk;
-        private readonly LibBundle3.Index? _index;
-        private readonly DriveBundleFactory? _factory;
+    public static IReadOnlyList<string> DefaultPaths =>
+        IconPatchAssets.IsAvailable
+            ? IconPatchAssets.Entries.Select(e => e.Path).Where(p => !string.IsNullOrWhiteSpace(p)).ToList()
+            : [];
 
-        private ClientIndexProbe(
-            LibBundledGGPK3.BundledGGPK? ggpk,
-            LibBundle3.Index? index,
-            DriveBundleFactory? factory)
-        {
-            _ggpk = ggpk;
-            _index = index;
-            _factory = factory;
-        }
+    /// <summary>已备份的图标数量。</summary>
+    public static int BackupCount() => PatchFileBackup.CountOriginals(BackupGroup);
 
-        public static ClientIndexProbe Open(GameModeInfo info)
-        {
-            if (info.Mode == GameMode.GGPK)
-            {
-                var ggpkPath = PatchEngine.GetGgpkPath(info);
-                if (!File.Exists(ggpkPath))
-                {
-                    throw new FileNotFoundException($"未找到客户端文件：{ggpkPath}");
-                }
-                var ggpk = new LibBundledGGPK3.BundledGGPK(ggpkPath, parsePathsInIndex: false);
-                ggpk.Index.ParsePaths();
-                return new ClientIndexProbe(ggpk, null, null);
-            }
-
-            var bundlesDir = PatchEngine.GetBundlesDirectory(info);
-            var indexPath = PatchEngine.GetBundlesIndexPath(info);
-            if (!File.Exists(indexPath))
-            {
-                throw new FileNotFoundException($"未找到客户端索引：{indexPath}");
-            }
-            var factory = new DriveBundleFactory(bundlesDir);
-            var index = new LibBundle3.Index(indexPath, parsePaths: false, factory);
-            index.ParsePaths();
-            return new ClientIndexProbe(null, index, factory);
-        }
-
-        /// <summary>返回文件大小；客户端不存在该路径时返回 null。</summary>
-        public int? Find(string virtualPath)
-        {
-            var target = _ggpk?.Index ?? _index;
-            if (target is null) return null;
-            return target.TryGetFile(virtualPath, out var record) ? record.Size : null;
-        }
-
-        /// <summary>读取客户端中该路径的原始内容；不存在或读取失败时返回 null。</summary>
-        public byte[]? Read(string virtualPath)
-        {
-            var target = _ggpk?.Index ?? _index;
-            if (target is null) return null;
-            if (!target.TryGetFile(virtualPath, out var record)) return null;
-            try
-            {
-                return record.Read().ToArray();
-            }
-            catch
-            {
-                // 单个文件读取失败按「拿不到原件」处理，由调用方决定是否继续。
-                return null;
-            }
-        }
-
-        public void Dispose()
-        {
-            _ggpk?.Dispose();
-            _index?.Dispose();
-            (_factory as IDisposable)?.Dispose();
-        }
-    }
+    /// <summary>
+    /// 打开客户端索引会话；文件缺失时抛出与旧实现一致的异常。
+    /// 复用 <see cref="ClientIndexSession"/>，不再自行 new BundledGGPK/Index。
+    /// </summary>
+    private static ClientIndexSession OpenProbe(GameModeInfo info)
+        => ClientIndexSession.Open(info)
+           ?? throw new FileNotFoundException(
+               info.Mode == GameMode.GGPK
+                   ? $"未找到客户端文件：{PatchEngine.GetGgpkPath(info)}"
+                   : $"未找到客户端索引：{PatchEngine.GetBundlesIndexPath(info)}");
 }

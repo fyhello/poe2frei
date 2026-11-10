@@ -2,6 +2,8 @@ using System.Buffers.Binary;
 using System.Text;
 using System.Text.RegularExpressions;
 
+using FreiAtlas.Patcher.Core;
+
 namespace FreiAtlas.Patcher.EffectPatch.MudMan;
 
 /// <summary>
@@ -50,7 +52,7 @@ public static class GrayDdsMaker
         if (string.IsNullOrEmpty(virtualPath)) return false;
         if (!virtualPath.EndsWith(".dds", StringComparison.OrdinalIgnoreCase)) return false;
         if (GlowOrEmissiveRegex.IsMatch(virtualPath)) return false;
-        if (ProtectedDirRegex.IsMatch(virtualPath.Replace('\\', '/'))) return false;
+        if (ProtectedDirRegex.IsMatch(VirtualPath.Normalize(virtualPath))) return false;
 
         return MudManTables.IsListed(virtualPath);
     }

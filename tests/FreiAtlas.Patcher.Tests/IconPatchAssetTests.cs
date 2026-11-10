@@ -35,12 +35,17 @@ public sealed class IconPatchAssetTests
     }
 
     [Fact]
-    public void 雪碧图字节可读取且为WebP容器()
+    public void 雪碧图随Web目录分发且为WebP容器()
     {
-        var sheet = IconPatchService.SpriteSheetBytes;
+        // 雪碧图源文件只保留一份：构建时复制到 Settings 的 Web 目录供 patcher.js 引用，
+        // 不再同时嵌入 Patcher.dll，避免同一份 1.2 MB 资源随包两次。
+        string sheetPath = Path.Combine(
+            FindRepositoryRoot(), "src", "FreiAtlas.Patcher", "Resources", "iconpatch", "icons.sheet.webp");
 
-        Assert.NotNull(sheet);
-        Assert.True(sheet!.Length > 0);
+        Assert.True(File.Exists(sheetPath), $"雪碧图缺失：{sheetPath}");
+
+        byte[] sheet = File.ReadAllBytes(sheetPath);
+        Assert.True(sheet.Length > 0);
         Assert.Equal((byte)'R', sheet[0]);
         Assert.Equal((byte)'I', sheet[1]);
         Assert.Equal((byte)'F', sheet[2]);
@@ -49,6 +54,22 @@ public sealed class IconPatchAssetTests
         Assert.Equal((byte)'E', sheet[9]);
         Assert.Equal((byte)'B', sheet[10]);
         Assert.Equal((byte)'P', sheet[11]);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, "src", "FreiAtlas.Settings", "Web")))
+            {
+                return dir.FullName;
+            }
+
+            dir = dir.Parent;
+        }
+
+        throw new DirectoryNotFoundException("未能从测试输出目录向上找到仓库根目录。");
     }
 
     [Fact]
@@ -63,7 +84,7 @@ public sealed class IconPatchAssetTests
     [Fact]
     public void 写入空列表被拒绝()
     {
-        bool ok = new IconPatchService().Apply(InvalidClient(), [], null, out var message);
+        bool ok = new IconPatchService().Apply(InvalidClient(), [], previousPaths: null, progress: null, out var message);
 
         Assert.False(ok);
         Assert.False(string.IsNullOrWhiteSpace(message));
@@ -75,7 +96,8 @@ public sealed class IconPatchAssetTests
         bool ok = new IconPatchService().Apply(
             InvalidClient(),
             ["art/2ditems/currency/abyss/ancientclavicle.dds"],
-            null,
+            previousPaths: null,
+            progress: null,
             out var message);
 
         Assert.False(ok);

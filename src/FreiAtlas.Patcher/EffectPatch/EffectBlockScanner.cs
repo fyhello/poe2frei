@@ -19,8 +19,7 @@ public static class EffectBlockScanner
         string Name,
         int NameStart,      // 块名首字符位置
         int OpenBracePos,   // 开括号 { 位置
-        int CloseBracePos,  // 配平后的闭括号 } 位置
-        int Depth)          // 该块所处的嵌套深度（最外层为 0）
+        int CloseBracePos)  // 配平后的闭括号 } 位置
     {
         /// <summary>块内容区间（不含括号本身）。</summary>
         public (int Start, int Length) InnerSpan => (OpenBracePos + 1, CloseBracePos - OpenBracePos - 1);
@@ -89,7 +88,7 @@ public static class EffectBlockScanner
 
                 // 找到了块开头，从开括号开始找配平的闭括号
                 int openBrace = _pos;   // 此时 _pos 指向 {
-                int closeBrace = FindMatchingBrace(openBrace);
+                int closeBrace = EffectTextScanner.FindMatchingBrace(_text, openBrace);
                 if (closeBrace < 0)
                 {
                     // 未配平：不记录，继续往后扫（后面可能还有正常的块）
@@ -97,7 +96,7 @@ public static class EffectBlockScanner
                     continue;
                 }
 
-                results.Add(new BlockSpan(name, nameStart, openBrace, closeBrace, 0));
+                results.Add(new BlockSpan(name, nameStart, openBrace, closeBrace));
                 _pos = closeBrace + 1;
             }
         }
@@ -189,80 +188,7 @@ public static class EffectBlockScanner
             return p;
         }
 
-        /// <summary>
-        /// 从开括号位置找到配平的闭括号位置。找不到返回 -1。
-        /// 字符串、行注释、块注释内的括号不参与计数。
-        ///
-        /// 单引号按字符串处理：.ao 的 ParticleEffects 块写成 animations = '[...]'，
-        /// 里面含 { }。只认双引号会把它们当块边界，配平算错，
-        /// 清空后就会留下多余的 } 让客户端拒绝加载。
-        /// </summary>
-        private int FindMatchingBrace(int openBracePos)
-        {
-            int depth = 0;
-            bool inString = false;
-            char stringQuote = '\0';
-            bool inLineComment = false;
-            bool inBlockComment = false;
 
-            for (int i = openBracePos; i < _text.Length; i++)
-            {
-                char c = _text[i];
-
-                if (inLineComment)
-                {
-                    if (c == '\n' || c == '\r') inLineComment = false;
-                    continue;
-                }
-
-                if (inBlockComment)
-                {
-                    if (c == '*' && i + 1 < _text.Length && _text[i + 1] == '/')
-                    {
-                        inBlockComment = false;
-                        i++;
-                    }
-                    continue;
-                }
-
-                if (inString)
-                {
-                    // 反斜杠转义只对下一个字符生效，不能跳过后继续判定引号。
-                    if (c == '\\')
-                    {
-                        i++;
-                        continue;
-                    }
-                    if (c == stringQuote) inString = false;
-                    continue;
-                }
-
-                switch (c)
-                {
-                    case '"':
-                    case '\'':
-                        inString = true;
-                        stringQuote = c;
-                        break;
-                    case '/':
-                        if (i + 1 < _text.Length)
-                        {
-                            if (_text[i + 1] == '/') { inLineComment = true; i++; }
-                            else if (_text[i + 1] == '*') { inBlockComment = true; i++; }
-                        }
-                        break;
-                    case '{':
-                        depth++;
-                        break;
-                    case '}':
-                        depth--;
-                        if (depth == 0) return i;
-                        break;
-                }
-            }
-
-            return -1;
-        }
 
         /// <summary>跳过当前位置的一个字符。用于非块头位置的推进。</summary>
         private void SkipOne()

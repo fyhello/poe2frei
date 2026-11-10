@@ -1,0 +1,34 @@
+[
+  {
+    "id": "map_spawn_extra_torment_spirits",
+    "style": "Whole"
+  },
+  {
+    "id": "maps_with_powerful_bosses_additional_spirit_+",
+    "style": "Whole"
+  },
+  {
+    "id": "map_tormented_spirit_chance_+%",
+    "style": "Whole"
+  },
+  {
+    "id": "map_tormented_spirit_chance_%",
+    "style": "Whole"
+  },
+  {
+    "id": "map_boss_is_possessed",
+    "style": "Whole"
+  },
+  {
+    "id": "tamed_beasts_randomly_possessed_every_x_ms",
+    "style": "Whole"
+  },
+  {
+    "id": "map_expedition2_remnants_have_at_least_x_slots",
+    "style": "Whole"
+  },
+  {
+    "id": "map_logbook_has_at_least_1_expedition2_remnant_with_at_least_x_slots",
+    "style": "Whole"
+  }
+]

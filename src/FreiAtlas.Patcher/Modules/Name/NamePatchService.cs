@@ -15,6 +15,12 @@ public sealed class NamePatchItem
     public int RowIndex { get; set; }
     public List<int> GroupedRowIndices { get; set; } = [];
     public string IdField { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 由 <see cref="IdField"/> 派生出的族名（去掉 Low/Mid/High/Expedition 等变体后缀）。
+    /// 这是规则的匹配键：同族多稀有度共用一条规则，且不受汉化影响。
+    /// </summary>
+    public string FamilyName { get; set; } = string.Empty;
     public string OriginalName { get; set; } = string.Empty;
     public string ModifiedName { get; set; } = string.Empty;
     public string Memo { get; set; } = string.Empty;
@@ -41,7 +47,7 @@ public sealed class NamePatchService
         public bool IsIdString => FileName != "archnemesismods.datc64";
     }
 
-    private record DatLayout(int RowCount, int RowSize, int StringBase);
+
 
     private static readonly Dictionary<NamePatchKind, KindInfo> KindInfos = new()
     {
@@ -169,6 +175,115 @@ public sealed class NamePatchService
         new(["保险箱", "保險箱", "Strongbox"], "基础", "全道具")
     ];
 
+    /// <summary>变体后缀：同族不同稀有度/场景的尾部标记。</summary>
+    private static readonly Regex VariantSuffixRe =
+        new("(Low|Mid|High|Expedition|Ultimate|\\d+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// 从 IdField 末段派生族名。IdField 形如
+    /// <c>Metadata/Chests/StrongBoxes/MartialStrongboxLow</c>，族名为 <c>MartialStrongbox</c>。
+    /// </summary>
+    public static string GetFamilyName(string? idField)
+    {
+        if (string.IsNullOrWhiteSpace(idField)) return string.Empty;
+
+        string current = idField.Split('/').Last();
+        for (int i = 0; i < 4; i++)
+        {
+            string next = VariantSuffixRe.Replace(current, string.Empty);
+            if (string.Equals(next, current, StringComparison.Ordinal)) break;
+            current = next;
+            if (string.IsNullOrEmpty(current)) return string.Empty;
+        }
+
+        return current;
+    }
+
+    /// <summary>
+    /// 保险箱族 → 掉落类型标注。
+    ///
+    /// 匹配键是 IdField 族名，不是显示名：显示名会随汉化与版本变化
+    /// （实测旧的精确表 28 条 key 在当前客户端命中 0 条），而元数据路径稳定。
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> StrongboxFamilyTags =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["MartialStrongbox"] = "武器",
+            ["CasterStrongbox"] = "法系装备",
+            ["ArmourerStrongbox"] = "防具",
+            ["JewellerStrongbox"] = "珠宝",
+            ["ResearchStrongbox"] = "通货",
+            ["LargeStrongbox"] = "全道具",
+            ["BasicStrongbox"] = "全道具",
+            ["OrnateStrongbox"] = "全道具",
+            ["MapStrongbox"] = "地图",
+            ["GemStrongbox"] = "宝石",
+            ["AbyssStrongboxArmour"] = "防具",
+            ["AbyssStrongboxCurrency"] = "通货",
+            ["AbyssStrongboxJewellery"] = "珠宝",
+            ["AbyssStrongboxWeapons"] = "武器",
+            ["AbyssStrongboxGeneric"] = "全道具"
+        };
+
+    /// <summary>MarakethSanctum 系列的掉落类型标注。档位（青铜/白银/黄金）不参与标注。</summary>
+    public static readonly IReadOnlyDictionary<string, (string Tag, string? ColorRgb)> SanctumTypeTags =
+        new Dictionary<string, (string Tag, string? ColorRgb)>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Currency"] = ("通货", null),
+            ["Jewels"] = ("珠宝", null),
+            ["Maps"] = ("地图", null),
+            ["Amulet"] = ("项链", null),
+            ["Ring"] = ("戒指", null),
+            ["Belt"] = ("腰带", null),
+            ["BodyArmour"] = ("胸甲", null),
+            ["Helmet"] = ("头盔", null),
+            ["Gloves"] = ("手套", null),
+            ["Boots"] = ("鞋子", null),
+            ["Shield"] = ("盾牌", null),
+            ["CasterWeapons"] = ("法系武器", null),
+            ["MeleeWeapons"] = ("近战武器", null),
+            ["RangedWeapons"] = ("远程武器", null),
+            ["Gold"] = ("囤积者", null),
+            ["Generic"] = ("神秘", null),
+            ["SmallRelic"] = ("小型遗物", null),
+            ["MediumRelic"] = ("中型遗物", null),
+            ["LargeRelic"] = ("大型遗物", null),
+            ["RadiusJewels"] = ("时迭珠宝", "166,90,255"),
+            ["GrandSpectrum"] = ("光谱珠宝", "255,0,0")
+        };
+
+    /// <summary>
+    /// 按族名生成默认标注。找不到规则返回空串（表示该行不标注）。
+    /// </summary>
+    public static string GetChestDefaultMemo(string? familyName, string originalName)
+    {
+        if (string.IsNullOrWhiteSpace(familyName) || string.IsNullOrWhiteSpace(originalName))
+        {
+            return string.Empty;
+        }
+
+        if (StrongboxFamilyTags.TryGetValue(familyName, out var strongboxTag))
+        {
+            return $"{originalName}[{strongboxTag}]";
+        }
+
+        // MarakethSanctum：{Bronze|Silver|Gold}Chest{LootType}
+        foreach (var tier in new[] { "Bronze", "Silver", "Gold" })
+        {
+            string prefix = tier + "Chest";
+            if (!familyName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+
+            string lootType = familyName[prefix.Length..];
+            if (!SanctumTypeTags.TryGetValue(lootType, out var spec)) return string.Empty;
+
+            return spec.ColorRgb is null
+                ? $"{originalName}[{spec.Tag}]"
+                : $"<rgb({spec.ColorRgb})>{{{originalName}[{spec.Tag}]}}";
+        }
+
+        return string.Empty;
+    }
+
     public static ChestSemanticRule? MatchChestRule(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
@@ -214,7 +329,8 @@ public sealed class NamePatchService
         GameModeInfo info,
         NamePatchKind kind,
         Dictionary<string, string>? customMappings = null,
-        Action<string>? progress = null)
+        Action<string>? progress = null,
+        IReadOnlySet<string>? selectedNames = null)
     {
         const string label = "保险箱标注";
         progress?.Invoke($"正在定位 {label} 数据文件...");
@@ -240,11 +356,44 @@ public sealed class NamePatchService
         progress?.Invoke($"已读取 {actualPath}，正在解析条目...");
         var items = ParseFromBytes(datBytes, info.IsSimplifiedChinese, kind);
 
-        // 应用预设或用户自定义覆盖
+        // 应用预设或用户自定义覆盖。
+        //
+        // enabled 由调用方的选择集合决定：
+        //   · 传了集合 → 只有集合内的条目才启用，其余一律禁用。
+        //     旧实现只看 Memo 是否非空，而绝大多数宝箱都能匹配到兜底规则拿到 Memo，
+        //     于是用户在界面取消勾选完全无效，保存后照样被注入标注。
+        //   · 没传集合（内部扫描等场景）→ 保持「有预设就启用」的原行为。
         int enabledCount = 0;
+        bool hasExplicitSelection = selectedNames != null;
         foreach (var item in items)
         {
-            if (customMappings != null && customMappings.TryGetValue(item.OriginalName, out var userCustom))
+            bool selected = !hasExplicitSelection
+                || selectedNames!.Contains(item.OriginalName)
+                || (!string.IsNullOrEmpty(item.FamilyName) && selectedNames.Contains(item.FamilyName));
+
+            if (!selected)
+            {
+                item.Memo = string.Empty;
+                item.Enabled = false;
+                continue;
+            }
+
+            string? userCustom = null;
+            if (customMappings != null)
+            {
+                // 优先按族名匹配（与默认规则一致），旧配置仍可按显示名兜底。
+                if (!string.IsNullOrEmpty(item.FamilyName))
+                {
+                    customMappings.TryGetValue(item.FamilyName, out userCustom);
+                }
+
+                if (string.IsNullOrEmpty(userCustom))
+                {
+                    customMappings.TryGetValue(item.OriginalName, out userCustom);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(userCustom))
             {
                 item.Memo = userCustom;
                 item.Enabled = true;
@@ -275,7 +424,7 @@ public sealed class NamePatchService
         {
             // 透出根因，否则用户只看到「写入失败」无法判断是游戏没关、
             // 备份目录不可写还是写入后校验不一致。
-            progress?.Invoke($"{label}补丁写入失败：{PatchEngine.LastWriteException?.Message ?? "未知原因"}");
+            progress?.Invoke($"{label}补丁写入失败：{_engine.LastWriteException?.Message ?? "未知原因"}");
         }
         return success;
     }
@@ -340,15 +489,20 @@ public sealed class NamePatchService
             if (!string.IsNullOrEmpty(text))
             {
                 string cleanName = StripNamePatchSuffix(text);
+                string familyName = kind == NamePatchKind.Chests ? GetFamilyName(idField) : string.Empty;
                 var rule = kind == NamePatchKind.Chests ? MatchChestRule(cleanName) : null;
                 list.Add(new NamePatchItem
                 {
                     RowIndex = i,
                     GroupedRowIndices = [i],
                     IdField = idField,
+                    FamilyName = familyName,
                     OriginalName = cleanName,
                     ModifiedName = text,
-                    Memo = GetDefaultMemo(text, isSimplified, kind),
+                    // 宝箱的默认标注按 IdField 族名匹配；其它类型仍走原有逻辑。
+                    Memo = kind == NamePatchKind.Chests
+                        ? GetChestDefaultMemo(familyName, cleanName)
+                        : GetDefaultMemo(text, isSimplified, kind),
                     Category = rule?.Category ?? (kind == NamePatchKind.Chests ? "其它" : "宿敌"),
                     Color = !string.IsNullOrEmpty(rule?.ColorRgb) ? $"rgb({rule.ColorRgb})" : string.Empty,
                     Enabled = false

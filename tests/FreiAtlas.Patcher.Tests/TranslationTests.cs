@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using FreiAtlas.Patcher.Core;
 using FreiAtlas.Patcher.Translation;
 using Xunit;
 
@@ -226,7 +227,7 @@ public class TranslationTests
             (pointerPos, "全新简体中文名称")
         };
 
-        byte[] patchedData = DatTextPatcher.RewriteStringPointersAppend(initialData, stringBase, replacements);
+        byte[] patchedData = DatBinaryUtils.RewriteStringPointersAppend(initialData, stringBase, replacements);
 
         int patchedRows = BitConverter.ToInt32(patchedData, 0);
         Assert.Equal(1, patchedRows);
