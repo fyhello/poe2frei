@@ -140,7 +140,8 @@ public sealed class UnifiedOverlayCompositionTests
             WorkspaceRoot,
             "src",
             "FreiAtlas.Host",
-            "AtlasOverlayRunner.cs"));
+            "AtlasOverlayRunner.cs"))
+            .ReplaceLineEndings("\n");
 
     private static int Count(string value, string token)
     {

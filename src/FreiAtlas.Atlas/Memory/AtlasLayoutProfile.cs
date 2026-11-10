@@ -45,8 +45,6 @@ public sealed record AtlasLayoutProfile(
     public int AtlasEdgeStride { get; init; } = 20;
     public int AtlasEdgeSourceOffset { get; init; } = 0x04;
     public int AtlasEdgeTargetOffset { get; init; } = 0x0C;
-    public int AtlasNodeIconOffset { get; init; } = 0x028;
-    public int AtlasNodeIconPositionOffset { get; init; } = 0x100;
     public int MinimumNodeClassCount { get; init; } = 50;
     public int MinimumBiomeKinds { get; init; } = 3;
     public int MinimumDistinctGrids { get; init; } = 20;
