@@ -786,11 +786,13 @@ public sealed class LiveAtlasMemoryProbe
                 Vtable = pair.Key,
                 Elements = pair.Value,
                 Biomes = ReadBiomeKinds(memory, pair.Value, profile),
-                ModalWidth = ReadModalWidth(memory, pair.Value, profile)
+                ModalWidth = ReadModalWidth(memory, pair.Value, profile),
+                DistinctGrids = CountDistinctGrids(memory, pair.Value, profile)
             })
             .Where(candidate =>
-                candidate.Biomes.Count >= profile.MinimumBiomeKinds
-                && candidate.ModalWidth is >= 28f and <= 56f)
+                candidate.ModalWidth is >= 28f and <= 56f
+                && (candidate.Biomes.Count >= profile.MinimumBiomeKinds
+                    || candidate.DistinctGrids >= profile.MinimumDistinctGrids))
             .OrderByDescending(candidate => candidate.Elements.Count)
             .FirstOrDefault();
 
@@ -1124,37 +1126,20 @@ public sealed class LiveAtlasMemoryProbe
             ? rawFlags
             : 0u;
         var visible = ((flags >> profile.Game.UiElement.VisibleBit) & 1u) != 0;
-        var accessible = false;
-        var completed = false;
-        if (TryReadPointer(
-                memory,
-                element + profile.AtlasDataStorageOffset,
-                out var storage)
-            && TryReadPointer(
-                memory,
-                storage + profile.AtlasDataModelOffset,
-                out var model)
-            && TryReadByte(
-                memory,
-                model + profile.AtlasDataStatusOffset,
-                out var status))
-        {
-            accessible = (status & 0x01) != 0;
-            completed = (status & 0x02) != 0;
-        }
-
-        bool? isDiscovered = null;
-        if (TryReadByte(
+        if (!TryReadByte(
                 memory,
                 element + profile.AtlasFlagsOffset,
                 out var atlasFlags))
         {
-            isDiscovered = (atlasFlags & 0x03) != 0;
-            if (!isDiscovered.Value && (accessible || completed))
-            {
-                isDiscovered = true;
-            }
+            diagnostics.Add(
+                $"Atlas 节点 0x{element:X} 的状态字节不可读（偏移 +0x{profile.AtlasFlagsOffset:X}）。");
+            return false;
         }
+
+        // 客户端分别提取低两位；已完成不等于仍可进入。
+        var accessible = (atlasFlags & 0x01) != 0;
+        var completed = (atlasFlags & 0x02) != 0;
+        var isDiscovered = (atlasFlags & 0x03) != 0;
 
         if (!_cachedNodeData.TryGetValue(element, out var cachedData)
             || cachedData.Grid != grid)
@@ -1244,12 +1229,7 @@ public sealed class LiveAtlasMemoryProbe
                 out var biome)
                 ? biome
                 : (byte)0,
-            RawFlags = TryReadByte(
-                memory,
-                element + profile.AtlasFlagsOffset,
-                out var atlasFlagsValue)
-                ? atlasFlagsValue
-                : (byte)0,
+            RawFlags = atlasFlags,
             Completion = TryReadByte(
                 memory,
                 element + profile.AtlasCompletionOffset,
@@ -1664,6 +1644,38 @@ public sealed class LiveAtlasMemoryProbe
         }
 
         return result;
+    }
+
+    // 部分客户端版本不再提供稳定的 biome 字节，用网格坐标多样性作为等价识别信号。
+    private static int CountDistinctGrids(
+        IProcessMemory memory,
+        IEnumerable<nint> elements,
+        AtlasLayoutProfile profile)
+    {
+        var grids = new HashSet<AtlasGridPos>();
+        foreach (var element in elements.Take(64))
+        {
+            if (!TryReadInt32(
+                    memory,
+                    element + profile.AtlasGridOffset,
+                    out var x)
+                || !TryReadInt32(
+                    memory,
+                    element + profile.AtlasGridOffset + sizeof(int),
+                    out var y))
+            {
+                continue;
+            }
+
+            if (x is < -512 or > 512 || y is < -512 or > 512)
+            {
+                continue;
+            }
+
+            grids.Add(new AtlasGridPos(x, y));
+        }
+
+        return grids.Count;
     }
 
     private static float ReadModalWidth(

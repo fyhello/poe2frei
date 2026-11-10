@@ -1,5 +1,5 @@
 {
-  "gameBuild": "observed-2026-09-10",
+  "gameBuild": "observed-2026-11-10",
   "ui": {
     "relativePositionField": "UiElement.RelativePos",
     "scaleField": "UiElement.LocalScaleMul",

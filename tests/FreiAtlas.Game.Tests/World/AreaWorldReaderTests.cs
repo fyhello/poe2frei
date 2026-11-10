@@ -1,5 +1,6 @@
 using System.Numerics;
 using FreiAtlas.Core.Area;
+using FreiAtlas.Core.Memory;
 using FreiAtlas.Game.Entities;
 using FreiAtlas.Game.Memory;
 using FreiAtlas.Game.Tests.Entities;
@@ -10,6 +11,10 @@ namespace FreiAtlas.Game.Tests.World;
 
 public sealed class AreaWorldReaderTests
 {
+    private static readonly int AreaInfoOffset = Poe2MemoryProfile.Current.AreaInstance.AreaInfoOffset;
+    private static readonly int AreaLevelOffset = Poe2MemoryProfile.Current.AreaInstance.AreaLevelOffset;
+    private static readonly int AreaHashOffset = Poe2MemoryProfile.Current.AreaInstance.AreaHashOffset;
+
     [Fact]
     public void Read_CombinesAreaPlayerAndEntityFacts()
     {
@@ -21,11 +26,11 @@ public sealed class AreaWorldReaderTests
         var localPlayer = (nint)0x400000;
         var render = builder.WriteRender(new Vector3(250, 500, 17));
         var player = builder.Allocate(0x240);
-        memory.WritePointer(areaInstance + 0x098, areaInfo);
+        memory.WritePointer(areaInstance + AreaInfoOffset, areaInfo);
         memory.WritePointer(areaInfo, areaCode);
         memory.WriteUtf16Buffer(areaCode, "MapPlantation", 64);
-        memory.WriteInt32(areaInstance + 0x0BC, 78);
-        memory.WriteUInt32(areaInstance + 0x114, 0xAABBCCDD);
+        memory.WriteInt32(areaInstance + AreaLevelOffset, 78);
+        memory.WriteUInt32(areaInstance + AreaHashOffset, 0xAABBCCDD);
         memory.WriteStdWString(player + 0x1B0, "FreiTest");
         memory.WriteByte(player + 0x204, 91);
         builder.WriteEntity(
@@ -72,11 +77,11 @@ public sealed class AreaWorldReaderTests
         var localPlayer = (nint)0x415000;
         var playerRender = builder.WriteRender(new Vector3(10, 20, 0));
         var player = builder.Allocate(0x240);
-        memory.WritePointer(areaInstance + 0x098, areaInfo);
+        memory.WritePointer(areaInstance + AreaInfoOffset, areaInfo);
         memory.WritePointer(areaInfo, areaCode);
         memory.WriteUtf16Buffer(areaCode, "MapTest", 64);
-        memory.WriteInt32(areaInstance + 0x0BC, 80);
-        memory.WriteUInt32(areaInstance + 0x114, 123);
+        memory.WriteInt32(areaInstance + AreaLevelOffset, 80);
+        memory.WriteUInt32(areaInstance + AreaHashOffset, 123);
         memory.WriteStdWString(player + 0x1B0, "Reader");
         memory.WriteByte(player + 0x204, 90);
         builder.WriteEntity(
@@ -126,11 +131,11 @@ public sealed class AreaWorldReaderTests
         var localPlayer = (nint)0x410000;
         var playerRender = builder.WriteRender(new Vector3(10, 20, 0));
         var player = builder.Allocate(0x240);
-        memory.WritePointer(areaInstance + 0x098, areaInfo);
+        memory.WritePointer(areaInstance + AreaInfoOffset, areaInfo);
         memory.WritePointer(areaInfo, areaCode);
         memory.WriteUtf16Buffer(areaCode, "MapTest", 64);
-        memory.WriteInt32(areaInstance + 0x0BC, 80);
-        memory.WriteUInt32(areaInstance + 0x114, 123);
+        memory.WriteInt32(areaInstance + AreaLevelOffset, 80);
+        memory.WriteUInt32(areaInstance + AreaHashOffset, 123);
         memory.WriteStdWString(player + 0x1B0, "Reader");
         memory.WriteByte(player + 0x204, 90);
         builder.WriteEntity(

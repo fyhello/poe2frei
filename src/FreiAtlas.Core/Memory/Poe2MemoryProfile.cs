@@ -5,9 +5,9 @@ public sealed record Poe2MemoryProfile
 {
     public static Poe2MemoryProfile Current { get; } = new();
 
-    public string ProfileId { get; init; } = "poe2-2026.09.10-frei-live-r41";
+    public string ProfileId { get; init; } = "poe2-2026.11.09-frei-live-r42";
 
-    public DateOnly VerifiedOn { get; init; } = new(2026, 9, 10);
+    public DateOnly VerifiedOn { get; init; } = new(2026, 11, 9);
 
     public string Source { get; init; } =
         "POE2Radar v0.17.1 commit 2615bec65caf62589c4e80dca9b6f75425c9c014; "
@@ -17,7 +17,9 @@ public sealed record Poe2MemoryProfile
         + "6K-Minimal-Follow root layout reference; "
         + "root, area identity and UI layout live-verified 2026-09-10; "
         + "UI parent scroll layout verified from client code and cached runeforge rewards 2026-09-10; "
-        + "client poe2:6a9e477a:04c9c000:none:057fec473010c6370d67b764f9eed2764b41b32af6f2b274c1daf8a7654504aa";
+        + "2026-11-09 client build: AreaInstance fields shifted (area info/local player/area level/"
+        + "area hash +0x08, awake/sleeping entity maps and terrain +0x28), live-verified against pid 40168; "
+        + "previous client poe2:6a9e477a:04c9c000:none:057fec473010c6370d67b764f9eed2764b41b32af6f2b274c1daf8a7654504aa";
 
     public AobReferenceLayout GameStateReference { get; init; } = new(
         Array.AsReadOnly<byte?>(
@@ -33,14 +35,18 @@ public sealed record Poe2MemoryProfile
     public InGameStateLayout InGameState { get; init; } = new(0x290, 0x2F0);
     public CameraLayout Camera { get; init; } = new(0x368, 0x1A0);
 
+    // 2026-11-09 客户端更新后 AreaInstance 内部字段发生位移：
+    // AreaInfo/LocalPlayer/AreaLevel/AreaHash 后移 0x08，已在实机（pid 40168）逐级验证；
+    // AwakeEntities/SleepingEntities/Terrain 后移 0x28，已在普通地图区域验证：
+    // 实体容器 value 可解析出 Metadata/...，Terrain 可读出 tiles 尺寸、walkable 网格与 tile 路径。
     public AreaInstanceLayout AreaInstance { get; init; } = new(
-        0x098,
-        0x5D0,
-        0x6F0,
-        0x700,
-        0x8D0,
-        0x0BC,
-        0x114);
+        AreaInfoOffset: 0x0A0,
+        LocalPlayerOffset: 0x5D8,
+        AwakeEntitiesOffset: 0x718,
+        SleepingEntitiesOffset: 0x728,
+        TerrainOffset: 0x8F8,
+        AreaLevelOffset: 0x0C4,
+        AreaHashOffset: 0x11C);
 
     public StdMapNodeLayout StdMapNode { get; init; } = new(
         0x00,

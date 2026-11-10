@@ -21,18 +21,18 @@ public sealed record AtlasLayoutProfile(
     public int AtlasMapRowOffset { get; init; } = 0x2F0;
     public int AtlasCurrentMarkerNodeOffset { get; init; } = 0x2F0;
     public int AtlasContentRowOffset { get; init; } = 0x300;
-    public int AtlasGridOffset { get; init; } = 0x310;
-    public int AtlasRegionKeyOffset { get; init; } = 0x318;
-    public int AtlasStateOffset { get; init; } = 0x31C;
-    public int AtlasBiomeOffset { get; init; } = 0x31E;
-    public int AtlasFlagsOffset { get; init; } = 0x31F;
-    public int AtlasCompletionOffset { get; init; } = 0x329;
+    public int AtlasGridOffset { get; init; } = 0x320;
+    public int AtlasRegionKeyOffset { get; init; } = 0x328;
+    public int AtlasStateOffset { get; init; } = 0x32C;
+    public int AtlasBiomeOffset { get; init; } = 0x32E;
+    public int AtlasFlagsOffset { get; init; } = 0x32F;
+    public int AtlasCompletionOffset { get; init; } = 0x339;
     public int AtlasContentVectorBeginOffset { get; init; } = 0x340;
     public int AtlasContentVectorEndOffset { get; init; } = 0x348;
     public int AtlasContentVectorMaxBytes { get; init; } = 4096;
     public int AtlasDataStorageOffset { get; init; } = 0x10;
     public int AtlasDataModelOffset { get; init; } = 0x20;
-    public int AtlasDataStatusOffset { get; init; } = 0x2BF;
+    public int AtlasDataStatusOffset { get; init; } = 0x2CF;
     public int AtlasMapWorldAreaOffset { get; init; } = 0x00;
     public int AtlasMapCodeOffset { get; init; } = 0x00;
     public int AtlasMapNameOffset { get; init; } = 0x08;
@@ -45,12 +45,15 @@ public sealed record AtlasLayoutProfile(
     public int AtlasEdgeStride { get; init; } = 20;
     public int AtlasEdgeSourceOffset { get; init; } = 0x04;
     public int AtlasEdgeTargetOffset { get; init; } = 0x0C;
+    public int AtlasNodeIconOffset { get; init; } = 0x028;
+    public int AtlasNodeIconPositionOffset { get; init; } = 0x100;
     public int MinimumNodeClassCount { get; init; } = 50;
     public int MinimumBiomeKinds { get; init; } = 3;
+    public int MinimumDistinctGrids { get; init; } = 20;
     public int UiTreeNodeLimit { get; init; } = 200_000;
 
     public static AtlasLayoutProfile Default => new(
-        "observed-2026-09-10",
+        "observed-2026-11-10",
         "UiElement.RelativePos",
         "UiElement.LocalScaleMul",
         "UiElement.Flags",
