@@ -930,9 +930,9 @@ public sealed class PatcherFacade
         var point = FindMudManRestorePoint(info);
         if (point is null) return (false, null, false);
 
-        string current = PatchBackupManager.ReadGameVersion(info);
-        bool matches = !string.IsNullOrEmpty(current)
-                       && string.Equals(point.GameVersion, current, StringComparison.OrdinalIgnoreCase);
+        var currentBuild = ClientBuildStamp.Compute(info);
+        bool matches = !string.IsNullOrEmpty(point.BuildStamp) && !string.IsNullOrEmpty(currentBuild.Stamp)
+                       && string.Equals(point.BuildStamp, currentBuild.Stamp, StringComparison.OrdinalIgnoreCase);
 
         return (true, point.GameVersion, matches);
     }

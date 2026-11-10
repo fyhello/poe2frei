@@ -502,7 +502,8 @@ public class Phase3Tests
         string indexPath = Path.Combine(b2Dir, "_.index.bin");
         File.WriteAllBytes(indexPath, Encoding.UTF8.GetBytes("VERSION_1_CONTENT"));
 
-        // 快照记录游戏版本；空版本在还原时会被拒绝，测试环境需提供版本日志。
+        // 同一模拟客户端构建内，允许回滚被补丁改写的索引。
+        File.WriteAllBytes(Path.Combine(tempDir, "PathOfExile.exe"), [1, 2, 3]);
         string logsDir = Path.Combine(tempDir, "logs");
         Directory.CreateDirectory(logsDir);
         File.WriteAllText(Path.Combine(logsDir, "LatestClient.txt"), "poe2_production/tags/0.5.6");
@@ -524,7 +525,7 @@ public class Phase3Tests
 
             // 执行快照还原
             var restoreRes = mgr.RestoreSnapshot(info, v1Snapshot.Id, out string? restoredSettings);
-            Assert.True(restoreRes.Success);
+            Assert.True(restoreRes.Success, restoreRes.Message);
             Assert.Equal(expectedSettings, restoredSettings);
 
             // 验证客户端文件已被准确回滚为快照内容

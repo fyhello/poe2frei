@@ -2750,17 +2750,18 @@
         const size = s.sizeBytes !== undefined ? s.sizeBytes : s.SizeBytes;
         const created = s.createdAt || s.CreatedAt;
         const stale = Boolean(s.isStale);
-        // 版本不匹配才禁止恢复；stale 只表示「快照之后客户端被改过」，
+        // 构建戳不同只提示；stale 只表示「快照之后客户端被改过」，
         // 那是打完补丁的正常状态，不能据此禁用回滚。
-        const versionMismatch = Boolean(s.versionMismatch);
+        const buildMismatch = Boolean(s.buildMismatch);
+        const buildUnknown = Boolean(s.buildUnknown);
         const version = s.gameVersion || "";
         html += `
-          <div class="snapshot-card official${versionMismatch ? " stale" : ""}">
+          <div class="snapshot-card official${buildMismatch || buildUnknown ? " stale" : ""}">
             <div class="snapshot-info-col">
               <div class="snapshot-title-row">
                 <span class="snapshot-name">${escapeHtml(name)}</span>
                 <span class="snapshot-tag official">官方出厂底包</span>
-                ${versionMismatch ? '<span class="snapshot-tag stale">⚠ 版本不匹配</span>' : (stale ? '<span class="snapshot-tag stale">↺ 快照后已变更</span>' : "")}
+                ${buildUnknown ? '<span class="snapshot-tag stale">待校验</span>' : (buildMismatch ? '<span class="snapshot-tag stale">⚠ 构建已变化</span>' : (stale ? '<span class="snapshot-tag stale">↺ 快照后已变更</span>' : ""))}
                 <span style="font-size: 11px; color: var(--muted);">${formatSize(size)}</span>
               </div>
               <div class="snapshot-desc-row">
@@ -2769,15 +2770,17 @@
                 <span>📌 锁定状态: 禁止删除/覆盖</span>
               </div>
               <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                ${versionMismatch
-                  ? "该底包来自旧版本客户端，恢复会让客户端与资源不匹配而无法启动。下次启动会自动重建。"
-                  : desc}
+                ${buildUnknown
+                  ? "旧底包未记录构建信息，恢复时会先校验资源布局。"
+                  : (buildMismatch
+                    ? "该底包来自其他客户端构建，恢复会先做资源布局校验；不一致将被拒绝。"
+                    : desc)}
               </div>
             </div>
             <div class="snapshot-actions">
               <button class="btn-restore-snap" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}"
-                      ${versionMismatch ? "disabled" : ""}
-                      title="${versionMismatch ? "版本不匹配，已禁用恢复" : "将客户端恢复为此版本，所有补丁重置为关闭状态"}">
+
+                      title="将客户端恢复为此版本（会先校验资源布局），所有补丁重置为关闭状态">
                 ↺ 恢复出厂纯净
               </button>
             </div>
@@ -2809,24 +2812,25 @@
           ? modules.map(m => `<span class="snapshot-module-pill">${m}</span>`).join("")
           : `<span class="snapshot-module-pill">纯净状态</span>`;
         const stale = Boolean(s.isStale);
-        // 版本不匹配才禁止恢复；stale 只表示「快照之后客户端被改过」，
+        // 构建戳不同只提示；stale 只表示「快照之后客户端被改过」，
         // 那是打完补丁的正常状态，不能据此禁用回滚。
-        const versionMismatch = Boolean(s.versionMismatch);
+        const buildMismatch = Boolean(s.buildMismatch);
+        const buildUnknown = Boolean(s.buildUnknown);
         const version = s.gameVersion || "";
 
         html += `
-          <div class="snapshot-card${versionMismatch ? " stale" : ""}">
+          <div class="snapshot-card${buildMismatch || buildUnknown ? " stale" : ""}">
             <div class="snapshot-info-col">
               <div class="snapshot-title-row">
                 <span class="snapshot-name">${escapeHtml(name)}</span>
                 <span class="snapshot-tag manual">手动备份</span>
-                ${versionMismatch ? '<span class="snapshot-tag stale">⚠ 版本不匹配</span>' : (stale ? '<span class="snapshot-tag stale">↺ 快照后已变更</span>' : "")}
+                ${buildUnknown ? '<span class="snapshot-tag stale">待校验</span>' : (buildMismatch ? '<span class="snapshot-tag stale">⚠ 构建已变化</span>' : (stale ? '<span class="snapshot-tag stale">↺ 快照后已变更</span>' : ""))}
                 <span style="font-size: 11px; color: var(--muted);">${formatSize(size)}</span>
               </div>
               <div class="snapshot-desc-row">
                 <span>🕒 创建时间: ${formatDate(created)}</span>
                 ${version ? `<span>🎮 ${version}</span>` : ""}
-                <span>${versionMismatch ? "旧版本快照，48 小时后自动清理" : desc}</span>
+                <span>${buildUnknown ? "旧快照，恢复时会校验资源布局" : (buildMismatch ? "客户端已更新，恢复时会做布局校验" : desc)}</span>
               </div>
               <div class="snapshot-modules-row">
                 ${modulesHtml}
@@ -2834,8 +2838,8 @@
             </div>
             <div class="snapshot-actions">
               <button class="btn-restore-snap" data-busy-guard="1" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}"
-                      ${versionMismatch ? "disabled" : ""}
-                      title="${versionMismatch ? "版本不匹配，已禁用恢复" : "恢复此版本"}">
+
+                      title="恢复此版本（会先校验资源布局）">
                 ↺ 恢复此版本
               </button>
               <button class="btn-delete-snap" data-busy-guard="1" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}">
@@ -2870,24 +2874,25 @@
           ? modules.map(m => `<span class="snapshot-module-pill">${m}</span>`).join("")
           : `<span class="snapshot-module-pill">默认/纯净</span>`;
         const stale = Boolean(s.isStale);
-        // 版本不匹配才禁止恢复；stale 只表示「快照之后客户端被改过」，
+        // 构建戳不同只提示；stale 只表示「快照之后客户端被改过」，
         // 那是打完补丁的正常状态，不能据此禁用回滚。
-        const versionMismatch = Boolean(s.versionMismatch);
+        const buildMismatch = Boolean(s.buildMismatch);
+        const buildUnknown = Boolean(s.buildUnknown);
         const version = s.gameVersion || "";
 
         html += `
-          <div class="snapshot-card${versionMismatch ? " stale" : ""}">
+          <div class="snapshot-card${buildMismatch || buildUnknown ? " stale" : ""}">
             <div class="snapshot-info-col">
               <div class="snapshot-title-row">
                 <span class="snapshot-name">${escapeHtml(name)}</span>
                 <span class="snapshot-tag auto">自动快照</span>
-                ${versionMismatch ? '<span class="snapshot-tag stale">⚠ 版本不匹配</span>' : (stale ? '<span class="snapshot-tag stale">↺ 快照后已变更</span>' : "")}
+                ${buildUnknown ? '<span class="snapshot-tag stale">待校验</span>' : (buildMismatch ? '<span class="snapshot-tag stale">⚠ 构建已变化</span>' : (stale ? '<span class="snapshot-tag stale">↺ 快照后已变更</span>' : ""))}
                 <span style="font-size: 11px; color: var(--muted);">${formatSize(size)}</span>
               </div>
               <div class="snapshot-desc-row">
                 <span>🕒 记录时间: ${formatDate(created)}</span>
                 ${version ? `<span>🎮 ${version}</span>` : ""}
-                <span>${versionMismatch ? "旧版本快照，48 小时后自动清理" : desc}</span>
+                <span>${buildMismatch ? "旧版本快照，48 小时后自动清理" : (buildUnknown ? "旧快照，48 小时后自动清理" : desc)}</span>
               </div>
               <div class="snapshot-modules-row">
                 ${modulesHtml}
@@ -2895,8 +2900,8 @@
             </div>
             <div class="snapshot-actions">
               <button class="btn-restore-snap" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}"
-                      ${versionMismatch ? "disabled" : ""}
-                      title="${versionMismatch ? "版本不匹配，已禁用恢复" : "恢复此版本"}">
+
+                      title="恢复此版本（会先校验资源布局）">
                 ↺ 恢复此版本
               </button>
               <button class="btn-delete-snap" data-snap-id="${id}" data-snap-name="${escapeHtml(name)}">

@@ -208,9 +208,19 @@ internal sealed class ClientIndexSession : IDisposable
 
             // 只读打开并允许其它句柄读写：既不需要写权限，也不会独占 Content.ggpk。
             var stream = new FileStream(ggpkPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            var ggpk = new BundledGGPK(stream, leaveOpen: true, parsePathsInIndex: false);
-            if (parsePaths) ggpk.Index.ParsePaths();
-            return new ClientIndexSession(ggpk, stream, null, null, ggpkPath, parsePaths);
+            BundledGGPK? ggpk = null;
+            try
+            {
+                ggpk = new BundledGGPK(stream, leaveOpen: true, parsePathsInIndex: false);
+                if (parsePaths) ggpk.Index.ParsePaths();
+                return new ClientIndexSession(ggpk, stream, null, null, ggpkPath, parsePaths);
+            }
+            catch
+            {
+                ggpk?.Dispose();
+                stream.Dispose();
+                throw;
+            }
         }
 
         var bundlesDir = PatchEngine.GetBundlesDirectory(info);
@@ -218,9 +228,22 @@ internal sealed class ClientIndexSession : IDisposable
         if (!File.Exists(indexPath)) return null;
 
         var factory = new DriveBundleFactory(bundlesDir);
-        var index = new LibBundle3.Index(indexPath, parsePaths: false, factory);
-        if (parsePaths) index.ParsePaths();
-        return new ClientIndexSession(null, null, index, factory, indexPath, parsePaths);
+        FileStream? indexStream = null;
+        LibBundle3.Index? index = null;
+        try
+        {
+            indexStream = new FileStream(indexPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            index = new LibBundle3.Index(indexStream, leaveOpen: false, parsePaths: false, factory);
+            if (parsePaths) index.ParsePaths();
+            return new ClientIndexSession(null, null, index, factory, indexPath, parsePaths);
+        }
+        catch
+        {
+            index?.Dispose();
+            indexStream?.Dispose();
+            (factory as IDisposable)?.Dispose();
+            throw;
+        }
     }
 
     private void ThrowIfDisposed()

@@ -56,7 +56,7 @@ public sealed class Stage4BaselineIntegrityTests
     }
 
     [Fact]
-    public void 空版本快照一律拒绝还原()
+    public void 旧快照必须经过构建戳或布局校验才能还原()
     {
         string src = Read("src", "FreiAtlas.Patcher", "Core", "PatchBackupManager.cs");
 
@@ -66,10 +66,11 @@ public sealed class Stage4BaselineIntegrityTests
         Assert.True(end > start);
         string body = src[start..end];
 
-        // 旧写法：版本为空时因为 !IsNullOrEmpty 短路而被放行。
-        Assert.DoesNotContain("if (!string.IsNullOrEmpty(target.GameVersion)", body);
-        Assert.Contains("if (string.IsNullOrEmpty(target.GameVersion))", body);
-        Assert.Contains("没有记录游戏版本", body);
+        // 不再单凭日志版本号放行/拒绝：构建戳优先，缺失时做索引布局校验。
+        Assert.DoesNotContain("if (string.IsNullOrEmpty(target.GameVersion))", body);
+        Assert.Contains("ClientBuildStamp.Compute(info)", body);
+        Assert.Contains("IndexLayoutFingerprint.ComputeFromIndexFile", body);
+        Assert.Contains("资源布局不一致", body);
     }
 
     [Fact]

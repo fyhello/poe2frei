@@ -60,8 +60,23 @@ public sealed class PatchSnapshotInfo
     /// </summary>
     public string IndexFingerprint { get; set; } = string.Empty;
 
-    /// <summary>生成该快照时的游戏版本号，仅用于界面展示。</summary>
+    /// <summary>生成该快照时的游戏版本号，仅用于界面展示；不再作为恢复资格判据。</summary>
     public string GameVersion { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 创建快照时的客户端构建戳（Authenticode 证书表哈希）。
+    /// 空表示旧版程序创建的快照，未记录构建信息。
+    /// </summary>
+    public string BuildStamp { get; set; } = string.Empty;
+
+    /// <summary>构建签名时间（RFC3161，ISO 8601），仅用于展示。</summary>
+    public string? SignedAt { get; set; }
+
+    /// <summary>
+    /// 官方 bundle 布局指纹。旧快照或尚未做深度校验时为空；
+    /// 一旦校验通过会写回，后续可直接复用。
+    /// </summary>
+    public string? LayoutFingerprint { get; set; }
 
     /// <summary>
     /// 建立该基线时客户端中已存在的补丁 bundle 前缀（自身与第三方）。
@@ -671,6 +686,8 @@ public sealed class PatchBackupManager
             var list = GetSnapshots(info).ToList();
             list.RemoveAll(s => s.Id == snapId);
 
+            var buildStamp = ClientBuildStamp.Compute(info);
+
             var snap = new PatchSnapshotInfo
             {
                 Id = snapId,
@@ -683,6 +700,8 @@ public sealed class PatchBackupManager
                 SettingsJson = null,
                 IndexFingerprint = ComputeFingerprint(indexBytes),
                 GameVersion = ReadGameVersion(info),
+                BuildStamp = buildStamp.Stamp,
+                SignedAt = buildStamp.SignedAt?.ToString("O"),
                 ThirdPartyPrefixes = thirdPartyPrefixes?.ToList() ?? []
             };
 
@@ -740,6 +759,37 @@ public sealed class PatchBackupManager
         }
     }
 
+    /// <summary>快照构建的简短展示文本：优先签名时间，其次日志版本号。</summary>
+    private static string DescribeSnapshotBuild(PatchSnapshotInfo snapshot)
+    {
+        if (!string.IsNullOrWhiteSpace(snapshot.SignedAt)
+            && DateTimeOffset.TryParse(snapshot.SignedAt, out var signedAt))
+        {
+            return signedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+        }
+
+        return string.IsNullOrWhiteSpace(snapshot.GameVersion) ? "未记录" : snapshot.GameVersion;
+    }
+
+    private bool SnapshotMatchesClient(GameModeInfo info, PatchSnapshotInfo snapshot)
+    {
+        string currentStamp = ClientBuildStamp.Compute(info).Stamp;
+        if (!string.IsNullOrEmpty(snapshot.BuildStamp) && !string.IsNullOrEmpty(currentStamp)
+            && string.Equals(snapshot.BuildStamp, currentStamp, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        string path = Path.Combine(GetSnapshotsDirectory(info), $"{snapshot.Id}.bin");
+        return IndexLayoutMatchesClient(info, path);
+    }
+
+    private static bool IndexLayoutMatchesClient(GameModeInfo info, string path)
+    {
+        string? saved = IndexLayoutFingerprint.ComputeFromIndexFile(path, PatchEngine.GetBundlesDirectory(info));
+        string? current = IndexLayoutFingerprint.ComputeCurrent(info);
+        return !string.IsNullOrEmpty(saved) && !string.IsNullOrEmpty(current)
+               && string.Equals(saved, current, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// 将客户端与设置精确还原到指定的版本快照
     /// </summary>
@@ -753,7 +803,7 @@ public sealed class PatchBackupManager
 
         if (!IsAvailable) return UnavailableResult();
 
-        var snapshots = GetSnapshots(info);
+        var snapshots = GetSnapshots(info).ToList();
         var target = snapshots.FirstOrDefault(s => s.Id == snapshotId);
         if (target == null)
         {
@@ -766,36 +816,50 @@ public sealed class PatchBackupManager
             return new BackupRestoreResult(false, $"快照索引数据文件丢失（目标位置: {binPath}）。");
         }
 
-        // 版本硬拦截：用旧版本的 _.index.bin 覆盖新客户端，索引与资源布局会错位，
-        // 客户端直接起不来（实测 2026-10-22 一次误还原导致 12,481 个文件读不出）。
-        // 前端虽然会置灰按钮，但按钮状态可能因缓存或直接调用而被绕过，这里必须自己挡。
-        //
-        // 只在两边的版本都读得到时才比较：读不到版本说明客户端损坏或快照来自旧格式，
-        // 此时放行由调用方按指纹判断，避免把「未知」当成「不匹配」而误拒。
-        string currentVersion = ReadGameVersion(info);
+        // 恢复资格判定：优先用构建戳（Authenticode 证书表），日志版本号只做展示。
+        //  1) 构建戳相同：同一客户端构建，直接放行（毫秒级）；
+        //  2) 构建戳不同或旧快照没有记录：比较官方 bundle 布局指纹，一致才放行；
+        //  3) 两者都无法证明一致：拒绝，避免把旧索引写进新客户端导致客户端起不来。
+        var currentBuild = ClientBuildStamp.Compute(info);
+        bool buildMatches = !string.IsNullOrEmpty(target.BuildStamp)
+                            && !string.IsNullOrEmpty(currentBuild.Stamp)
+                            && string.Equals(target.BuildStamp, currentBuild.Stamp, StringComparison.OrdinalIgnoreCase);
 
-        // 版本缺失一律拒绝。
-        //
-        // 旧版本创建的底包没有记录版本号，无法证明它与当前客户端兼容；
-        // 一旦把旧构建的索引写进新客户端，索引与 bundle 布局错位，客户端直接起不来
-        // （2026-10-28 实测：120,749,196 字节的底包写进 115,161,316 字节的客户端，
-        //   Content.ggpk 报废，只能用官方平台重下）。
-        // 这里宁可拒绝，也不做「读不到就当匹配」的放行。
-        if (string.IsNullOrEmpty(target.GameVersion))
+        if (!buildMatches)
         {
-            return new BackupRestoreResult(false,
-                $"快照【{target.Name}】没有记录游戏版本，无法确认它与当前客户端兼容。\n\n" +
-                "用未知版本的索引还原可能让客户端无法启动，已拒绝。\n" +
-                "请改用当前版本创建的备份，或通过官方平台验证游戏文件。");
-        }
+            string bundlesDirectory = PatchEngine.GetBundlesDirectory(info);
+            string? snapshotLayout = IndexLayoutFingerprint.ComputeFromIndexFile(binPath, bundlesDirectory);
+            string? currentLayout = IndexLayoutFingerprint.ComputeCurrent(info);
 
-        if (string.IsNullOrEmpty(currentVersion)
-            || !string.Equals(target.GameVersion, currentVersion, StringComparison.OrdinalIgnoreCase))
-        {
-            return new BackupRestoreResult(false,
-                $"快照【{target.Name}】创建于 {target.GameVersion} 版本，当前客户端是 {(string.IsNullOrEmpty(currentVersion) ? "未知" : currentVersion)}。\n" +
-                "跨版本还原会让索引与资源布局错位，客户端将无法启动，已拒绝。\n" +
-                "如需回退，请用「恢复纯净客户端」重建当前版本的底包，再按需重新打补丁。");
+            bool layoutMatches = !string.IsNullOrEmpty(snapshotLayout)
+                                 && !string.IsNullOrEmpty(currentLayout)
+                                 && string.Equals(snapshotLayout, currentLayout, StringComparison.OrdinalIgnoreCase);
+
+            if (!layoutMatches)
+            {
+                string snapshotBuild = DescribeSnapshotBuild(target);
+
+                return new BackupRestoreResult(false,
+                    $"快照【{target.Name}】与当前客户端的资源布局不一致，无法安全还原。\n\n" +
+                    $"快照构建：{snapshotBuild}；当前构建：{currentBuild.Describe()}。\n" +
+                    "跨版本还原会让索引与资源布局错位，客户端可能无法启动，已拒绝。\n" +
+                    "如需回退，请用「恢复纯净客户端」重建当前版本的底包，再按需重新打补丁。");
+            }
+
+            // 校验通过：把当前构建戳/布局指纹写回快照，后续恢复走毫秒级快路径。
+            if (!string.IsNullOrEmpty(currentBuild.Stamp))
+            {
+                target.BuildStamp = currentBuild.Stamp;
+                target.SignedAt = currentBuild.SignedAt?.ToString("O");
+            }
+            if (layoutMatches)
+            {
+                target.LayoutFingerprint = currentLayout;
+            }
+            if (!SaveManifest(info, snapshots))
+            {
+                logger?.Invoke(LastManifestError ?? "快照校验通过，但构建戳回写清单失败（不影响本次还原）。");
+            }
         }
 
         string settingsPath = Path.Combine(GetSnapshotsDirectory(info), $"{target.Id}.settings.json");
@@ -1069,15 +1133,11 @@ public sealed class PatchBackupManager
         try
         {
             // 版本号读不到时建出来的底包永远无法使用：
-            // CheckBaseline 会一直返回 VersionMismatch，RestoreSnapshot 也会拒绝，
-            // 用户会陷入「每次批量都重建底包、但底包永远不可用」的死循环。
-            // 与其留下一个不可用的底包，不如在这里挡下并给出可执行的引导。
+            // 版本号只用于展示；底包创建不再依赖日志（构建戳/布局校验才是判据）。
+            // 日志缺失时只提示，不阻断。
             if (string.IsNullOrEmpty(ReadGameVersion(info)))
             {
-                logger?.Invoke(
-                    "无法读取当前游戏版本（logs/LatestClient.txt 缺失或其中没有版本号）。\n" +
-                    "请先启动一次游戏进入主菜单，让客户端生成日志，再回来打补丁。");
-                return false;
+                logger?.Invoke("提示：未能从日志读取游戏版本号，仅影响界面显示，不影响底包创建。");
             }
 
             if (info.Mode == GameMode.GGPK)
@@ -1389,20 +1449,41 @@ public sealed class PatchBackupManager
             string logPath = Path.Combine(info.GameDirectory, "logs", "LatestClient.txt");
             if (!File.Exists(logPath)) return string.Empty;
 
-            // 只读尾部：日志可能很大
             using var stream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            long readFrom = Math.Max(0, stream.Length - 256 * 1024);
-            stream.Seek(readFrom, SeekOrigin.Begin);
-            using var reader = new StreamReader(stream, Encoding.UTF8);
-            string text = reader.ReadToEnd();
 
-            var match = System.Text.RegularExpressions.Regex.Match(text, @"poe2_production/tags/([\w.]+)");
-            return match.Success ? match.Groups[1].Value : string.Empty;
+            // 版本标签只在启动时写一次，位于日志头部；日志增长后会被挤出尾部窗口。
+            // 先读头部，未命中再读尾部，两段各 512 KB。
+            string? version = TryReadVersionWindow(stream, 0, 512 * 1024);
+            if (version is not null) return version;
+
+            long from = Math.Max(0, stream.Length - 512 * 1024);
+            return TryReadVersionWindow(stream, from, 512 * 1024) ?? string.Empty;
         }
         catch
         {
             return string.Empty;
         }
+    }
+
+    private static string? TryReadVersionWindow(FileStream stream, long offset, int maxBytes)
+    {
+        long available = Math.Max(0, stream.Length - offset);
+        int length = (int)Math.Min(maxBytes, available);
+        if (length <= 0) return null;
+
+        stream.Position = offset;
+        var buffer = new byte[length];
+        int read = 0;
+        while (read < length)
+        {
+            int n = stream.Read(buffer, read, length - read);
+            if (n <= 0) break;
+            read += n;
+        }
+
+        string text = Encoding.UTF8.GetString(buffer, 0, read);
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"poe2_production/tags/([\w.\-]+)");
+        return match.Success ? match.Groups[1].Value : null;
     }
 
     /// <summary>
@@ -1419,10 +1500,9 @@ public sealed class PatchBackupManager
 
         try
         {
-            // 版本判据用日志里的版本号，不能用索引指纹：
-            // 索引内容会随补丁写入而变化，同一游戏版本下每次打补丁指纹都不同。
-            string current = ReadGameVersion(info);
-            if (string.IsNullOrEmpty(current)) return 0;
+            // 用构建戳判断，不用日志版本号：日志会滚动、格式也会变，不可靠。
+            string currentStamp = ClientBuildStamp.Compute(info).Stamp;
+            if (string.IsNullOrEmpty(currentStamp)) return 0;
 
             var now = DateTime.Now;
             var list = GetSnapshots(info).ToList();
@@ -1436,9 +1516,9 @@ public sealed class PatchBackupManager
                 // 用户失去它就无法回退到自己确认过的状态。官方底包同理由重建流程处理。
                 if (snap.Type != PatchSnapshotType.Auto) continue;
 
-                // 无版本号的是旧版程序创建的快照，无法证明仍适用，按过期处理
-                bool stale = string.IsNullOrEmpty(snap.GameVersion)
-                             || !string.Equals(snap.GameVersion, current, StringComparison.OrdinalIgnoreCase);
+                // 无构建戳的是旧版程序创建的快照，无法证明仍适用，按过期处理
+                bool stale = string.IsNullOrEmpty(snap.BuildStamp)
+                             || !string.Equals(snap.BuildStamp, currentStamp, StringComparison.OrdinalIgnoreCase);
                 if (!stale) continue;
                 if (now - snap.CreatedAt < maxAge) continue;
 
@@ -1506,20 +1586,12 @@ public sealed class PatchBackupManager
         if (!IsAvailable || !info.IsValid) return BaselineStatus.Missing;
 
         currentVersion = ReadGameVersion(info);
-
         var official = GetSnapshots(info).FirstOrDefault(s => s.Type == PatchSnapshotType.Official);
         if (official is null) return BaselineStatus.Missing;
 
         officialVersion = official.GameVersion;
 
-        // 版本号缺失时无法证明基线匹配，一律按不匹配处理：
-        // 用旧索引还原新客户端会让资源布局错位。
-        if (string.IsNullOrEmpty(currentVersion) || string.IsNullOrEmpty(officialVersion))
-        {
-            return BaselineStatus.VersionMismatch;
-        }
-
-        return string.Equals(officialVersion, currentVersion, StringComparison.OrdinalIgnoreCase)
+        return SnapshotMatchesClient(info, official)
             ? BaselineStatus.Ready
             : BaselineStatus.VersionMismatch;
     }
@@ -1567,15 +1639,11 @@ public sealed class PatchBackupManager
 
         try
         {
-            // 版本判据用日志版本号。索引指纹会随补丁写入变化，
-            // 同一版本下每次打补丁都不同，不能用来判断版本是否更新。
-            string current = ReadGameVersion(info);
-            if (string.IsNullOrEmpty(current)) return false;
+            // 判据优先用构建戳：日志版本号会滚动、会缺失，不能作为可靠依据。
+            var currentBuild = ClientBuildStamp.Compute(info);
 
             var official = GetSnapshots(info).FirstOrDefault(s => s.Type == PatchSnapshotType.Official);
-            bool matches = official is not null
-                           && !string.IsNullOrEmpty(official.GameVersion)
-                           && string.Equals(official.GameVersion, current, StringComparison.OrdinalIgnoreCase);
+            bool matches = official is not null && SnapshotMatchesClient(info, official);
 
             if (matches) return true;
 
@@ -1590,7 +1658,7 @@ public sealed class PatchBackupManager
 
             if (official is not null)
             {
-                logger?.Invoke($"检测到游戏版本变化（{official.GameVersion} → {current}），旧纯净底包已失效，开始重建。");
+                logger?.Invoke($"检测到客户端构建变化（{DescribeSnapshotBuild(official)} → {currentBuild.Describe()}），旧纯净底包已失效，开始重建。");
             }
 
             // 先重建、成功后才替换：旧底包在新底包落盘并校验通过之前保持原样。
@@ -1728,19 +1796,14 @@ public sealed class PatchBackupManager
             return true;
         }
 
-        string current = ReadGameVersion(info);
-        if (string.IsNullOrEmpty(current))
-        {
-            reason = "无法读取当前客户端版本，已拒绝还原：无法确认官方底包是否匹配。";
-            return false;
-        }
+        var currentBuild = ClientBuildStamp.Compute(info);
+        bool matched = SnapshotMatchesClient(info, official);
 
-        if (string.IsNullOrEmpty(official.GameVersion)
-            || !string.Equals(official.GameVersion, current, StringComparison.OrdinalIgnoreCase))
+        if (!matched)
         {
             reason =
-                $"官方纯净底包版本与当前客户端不匹配（底包 {official.GameVersion ?? "未知"}，" +
-                $"当前 {current}），已拒绝还原。\n\n" +
+                $"官方纯净底包与当前客户端不匹配（底包 {DescribeSnapshotBuild(official)}，" +
+                $"当前 {currentBuild.Describe()}），已拒绝还原。\n\n" +
                 "用旧版本底包还原会让索引与资源布局错位，客户端将无法启动。\n" +
                 "请改用「备份当前版本」手动创建的备份，或通过官方平台验证游戏文件。";
             return false;
@@ -1785,6 +1848,10 @@ public sealed class PatchBackupManager
                 return new BackupRestoreResult(false, $"找不到纯净备份文件（目标位置: {backupPath}）。若备份已损坏或从未在纯净状态下启动过本软件，请先通过官方平台验证游戏文件。");
             }
         }
+
+        // 历史单文件没有可信的构建元数据，必须独立验证资源布局，不能绕过快照校验。
+        if (!IndexLayoutMatchesClient(info, backupPath))
+            return new BackupRestoreResult(false, "历史备份无法证明与当前客户端资源布局一致，已拒绝还原。请通过官方平台验证游戏文件。");
 
         var (isLocked, lockReason) = CheckResourceLock(info);
         if (isLocked)

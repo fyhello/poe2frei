@@ -22,6 +22,7 @@ public sealed class Stage1BaselineSafetyTests : IDisposable
         _backupDir = Path.Combine(_root, "backup");
         Directory.CreateDirectory(Path.Combine(_gameDir, "logs"));
         Directory.CreateDirectory(_backupDir);
+        File.WriteAllBytes(Path.Combine(_gameDir, "PathOfExile.exe"), [1, 2, 3]);
     }
 
     public void Dispose()
@@ -146,6 +147,7 @@ public sealed class Stage1BaselineSafetyTests : IDisposable
 
         // 模拟游戏更新
         WriteClientVersion("0.5.6");
+        File.WriteAllBytes(Path.Combine(_gameDir, "PathOfExile.exe"), [1, 2, 3, 4]);
 
         var status = manager.CheckBaseline(info, out var official, out var current);
 

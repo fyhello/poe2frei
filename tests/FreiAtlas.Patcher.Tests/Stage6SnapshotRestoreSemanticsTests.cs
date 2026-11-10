@@ -7,9 +7,10 @@ namespace FreiAtlas.Patcher.Tests;
 /// 但指纹变化正是「打完补丁」的常态，结果任何补丁之后所有快照都被禁用，
 /// 用户永远无法回滚。
 ///
-/// 正确划分：
-///   versionMismatch = 游戏版本号不同（含版本号缺失）→ 禁止恢复
-///   isStale         = 快照之后客户端被改过        → 仅提示，允许恢复
+/// 当前划分：
+///   buildMismatch = 客户端构建戳不同（Authenticode）→ 提示并做布局校验
+///   buildUnknown  = 旧快照没有构建戳                → 待校验
+///   isStale       = 快照之后客户端被改过            → 仅提示，允许恢复
 /// </summary>
 public sealed class Stage6SnapshotRestoreSemanticsTests
 {
@@ -20,6 +21,7 @@ public sealed class Stage6SnapshotRestoreSemanticsTests
         {
             dir = dir.Parent;
         }
+
         Assert.NotNull(dir);
         return dir!.FullName;
     }
@@ -32,32 +34,34 @@ public sealed class Stage6SnapshotRestoreSemanticsTests
     }
 
     [Fact]
-    public void 快照列表同时投影版本不匹配与指纹失效()
+    public void 快照列表投影构建戳与指纹状态()
     {
         string mw = Read("src", "FreiAtlas.Settings", "MainWindow.xaml.cs");
 
-        Assert.Contains("snapshotCurrentVersion", mw);
-        Assert.Contains("versionMismatch =", mw);
-        // 版本号缺失也要判为不匹配
-        Assert.Contains("string.IsNullOrEmpty(s.GameVersion)", mw);
-        Assert.Contains("string.IsNullOrEmpty(snapshotCurrentVersion)", mw);
+        Assert.Contains("snapshotCurrentBuild", mw);
+        Assert.Contains("ClientBuildStamp.Compute(gameInfo)", mw);
+        Assert.Contains("buildMismatch =", mw);
+        Assert.Contains("buildUnknown =", mw);
+
         // 指纹标记仍保留，但不参与禁用
         Assert.Contains("isStale =", mw);
+
+        // 日志版本号不再作为恢复资格
+        Assert.DoesNotContain("versionMismatch =", mw);
     }
 
     [Fact]
-    public void 前端只在版本不匹配时禁用恢复()
+    public void 前端用构建戳标签且不再按版本号禁用恢复()
     {
         string js = Read("src", "FreiAtlas.Settings", "Web", "patcher.js");
 
-        Assert.Contains("const versionMismatch = Boolean(s.versionMismatch);", js);
-        Assert.Contains("versionMismatch ? \"disabled\" : \"\"", js);
+        Assert.Contains("const buildMismatch = Boolean(s.buildMismatch);", js);
+        Assert.Contains("const buildUnknown = Boolean(s.buildUnknown);", js);
+        Assert.Contains("⚠ 构建已变化", js);
+        Assert.Contains("待校验", js);
 
-        // 旧的「stale 即禁用」必须消失
+        // 不再按旧版本号字段禁用按钮
+        Assert.DoesNotContain("versionMismatch ? \"disabled\"", js);
         Assert.DoesNotContain("stale ? \"disabled\" : \"\"", js);
-
-        // 两种情况要有不同标签
-        Assert.Contains("⚠ 版本不匹配", js);
-        Assert.Contains("↺ 快照后已变更", js);
     }
 }

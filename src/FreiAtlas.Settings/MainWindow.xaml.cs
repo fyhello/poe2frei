@@ -1979,7 +1979,8 @@ public partial class MainWindow : Window
         // 还原到新客户端上 —— 那会让客户端直接起不来（实测 12,481 个文件读不出）。
         // PatchSnapshotInfo 本来就记录了 IndexFingerprint 与 GameVersion，此前忘了投影。
         string snapshotCurrentFingerprint = _patcher.BackupManager.GetCurrentFingerprint(gameInfo);
-        string snapshotCurrentVersion = PatchBackupManager.ReadGameVersion(gameInfo);
+        // 恢复资格用「构建戳」判定：优先 Authenticode 签名，不再依赖日志版本号。
+        var snapshotCurrentBuild = FreiAtlas.Patcher.Core.ClientBuildStamp.Compute(gameInfo);
         var snapshots = _patcher.GetSnapshots(gameInfo)
             .Select(s => new
             {
@@ -1991,11 +1992,15 @@ public partial class MainWindow : Window
                 sizeBytes = s.SizeBytes,
                 enabledModules = s.EnabledModules,
                 gameVersion = s.GameVersion,
-                // 版本不匹配 = 禁止恢复的唯一依据。
-                // 版本号缺失同样按不匹配处理：无法证明兼容就不允许写入。
-                versionMismatch = string.IsNullOrEmpty(s.GameVersion)
-                                  || string.IsNullOrEmpty(snapshotCurrentVersion)
-                                  || !string.Equals(s.GameVersion, snapshotCurrentVersion, StringComparison.OrdinalIgnoreCase),
+                signedAt = s.SignedAt,
+                currentSignedAt = snapshotCurrentBuild.SignedAt?.ToString("O"),
+                currentBuildDescription = snapshotCurrentBuild.Describe(),
+                // 构建戳不同：客户端已更新，恢复时由后端做布局深度校验。
+                buildMismatch = !string.IsNullOrEmpty(s.BuildStamp)
+                                && !string.IsNullOrEmpty(snapshotCurrentBuild.Stamp)
+                                && !string.Equals(s.BuildStamp, snapshotCurrentBuild.Stamp, StringComparison.OrdinalIgnoreCase),
+                // 旧快照没有构建戳：显示「待校验」，恢复时再校验布局。
+                buildUnknown = string.IsNullOrEmpty(s.BuildStamp),
                 // 指纹不一致只表示「快照之后客户端被改过」，是打完补丁的正常状态，
                 // 仅用于提示，不参与禁用判断 —— 否则任何补丁之后就再也回滚不了。
                 isStale = !string.IsNullOrEmpty(s.IndexFingerprint)
