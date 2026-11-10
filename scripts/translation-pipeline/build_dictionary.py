@@ -17,8 +17,10 @@ from __future__ import annotations
 import argparse
 import csv
 import gzip
+import hashlib
 import json
 import os
+import struct
 import sys
 
 import schema as schema_module
@@ -174,6 +176,114 @@ def build_base_items(
     return result
 
 
+_KEY_VALUE_SEPARATOR = '\x1f'
+
+_KEY_TYPE_SIZES = {
+    'i32': 4, 'u32': 4, 'i16': 2, 'u16': 2,
+    'bool': 1, 'foreignrow': 16, 'row': 8, 'f32': 4,
+}
+
+
+def compute_row_key(dat: Dat, row: int, spec: dict) -> str:
+    """按稳定键列计算一行于运行时一致的键哈希。
+
+    字符串列取实际文本，数值列取原始字节，避免不同语言/版本的数字格式差异；
+    各列用 0x1F 分隔后做 SHA-256，取前 16 字节（32 个十六进制字符）。
+    C# 端 DatTextPatcher 使用完全相同的拼接与截断规则。
+    """
+    parts: list[str] = []
+    for offset, column_type in zip(spec['offsets'], spec['types']):
+        if column_type == 'string':
+            parts.append(dat.text(row, offset))
+            continue
+        size = _KEY_TYPE_SIZES[column_type]
+        base = row * dat.row_length + offset
+        parts.append(dat.fixed[base:base + size].hex())
+    payload = _KEY_VALUE_SEPARATOR.join(parts).encode('utf-8')
+    return hashlib.sha256(payload).hexdigest()[:32]
+
+
+def build_key_row_map(cn: Dat, intl: Dat, spec: dict) -> tuple[list[int], str]:
+    """用稳定键把国服行映射到国际服行，不依赖 align 的启发式列选择。"""
+    lookup: dict[str, list[int]] = {}
+    for row in range(intl.row_count):
+        key = compute_row_key(intl, row, spec)
+        lookup.setdefault(key, []).append(row)
+
+    row_map: list[int] = []
+    matched = 0
+    for row in range(cn.row_count):
+        key = compute_row_key(cn, row, spec)
+        rows = lookup.get(key)
+        if rows is not None and len(rows) == 1:
+            row_map.append(rows[0])
+            matched += 1
+        else:
+            row_map.append(-1)
+    return row_map, f'keymap(matched={matched}/{cn.row_count})'
+
+
+def build_reference_row_map(
+    cn_dir: str,
+    intl_dir: str,
+    table_name: str,
+    reference_table: str,
+    key_offset: int,
+    ordinal: bool = False,
+) -> tuple[list[int] | None, str]:
+    """按 foreignrow 引用的目标表 Id 建立国服→国际服行映射。
+
+    用于 EndgameMaps/NPCTalk 这类没有字符串主键、但第一列是
+    foreignrow 且引用表有稳定 Id 的表。ordinal=True 时在引用 Id 内再按出现顺序编号。
+    """
+    cn = load_dat(cn_dir, table_name)
+    intl = load_dat(intl_dir, table_name)
+    cn_ref = load_dat(cn_dir, reference_table)
+    intl_ref = load_dat(intl_dir, reference_table)
+    if not all((cn, intl, cn_ref, intl_ref)):
+        return None, 'reference-missing'
+
+    def keys(dat: Dat, ref: Dat) -> list[tuple[str, int] | str]:
+        values: list[tuple[str, int] | str] = []
+        counter: dict[str, int] = {}
+        for row in range(dat.row_count):
+            index = struct.unpack_from('<I', dat.fixed, row * dat.row_length + key_offset)[0]
+            value = ref.text(index, 0) if index < ref.row_count else ''
+            if ordinal:
+                order = counter.get(value, 0)
+                counter[value] = order + 1
+                values.append((value, order))
+            else:
+                values.append(value)
+        return values
+
+    cn_keys = keys(cn, cn_ref)
+    intl_keys = keys(intl, intl_ref)
+    lookup: dict[object, int] = {}
+    for row, key in enumerate(intl_keys):
+        lookup[key] = -1 if key in lookup else row
+
+    row_map = [lookup.get(key, -1) for key in cn_keys]
+    matched = sum(1 for target in row_map if target >= 0)
+    return row_map, f'refkey({reference_table},matched={matched}/{cn.row_count})'
+
+
+def build_column_row_map(cn_dir: str, intl_dir: str, table_name: str, key_offset: int) -> tuple[list[int] | None, str]:
+    """按单个字符串列的 Id 建立国服→国际服行映射（用于 BindableVirtualKeys）。"""
+    cn = load_dat(cn_dir, table_name)
+    intl = load_dat(intl_dir, table_name)
+    if not cn or not intl:
+        return None, 'column-missing'
+    lookup: dict[str, int] = {}
+    for row in range(intl.row_count):
+        key = intl.text(row, key_offset)
+        if key:
+            lookup[key] = -1 if key in lookup else row
+    row_map = [lookup.get(cn.text(row, key_offset), -1) for row in range(cn.row_count)]
+    matched = sum(1 for target in row_map if target >= 0)
+    return row_map, f'columnkey(matched={matched}/{cn.row_count})'
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description='从纯净快照生成汉化词典')
     parser.add_argument('--schema', required=True, help='schema.min.json 路径')
@@ -181,8 +291,17 @@ def main() -> int:
     parser.add_argument('--cn-snapshot', required=True, help='国服简中快照目录')
     parser.add_argument('--output', required=True, help='输出词典 .json.gz')
     parser.add_argument('--report', help='构建报告 CSV 输出路径')
+    parser.add_argument('--keymap', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keymap.json'), help='稳定键定义 JSON')
     parser.add_argument('--skip-purity-check', action='store_true', help='跳过快照纯净度检查')
     args = parser.parse_args()
+
+    keymap: dict[str, dict] = {}
+    if args.keymap and os.path.exists(args.keymap):
+        with open(args.keymap, encoding='utf-8') as handle:
+            keymap = json.load(handle)
+        print(f'稳定键定义: {len(keymap)} 张表')
+    else:
+        print('警告：未找到 keymap.json，将回退为按行号匹配（不安全）')
 
     summary = schema_module.schema_summary(args.schema)
     print(f'schema: version={summary["version"]} 表数={summary["table_count"]}')
@@ -231,7 +350,33 @@ def main() -> int:
             ))
             continue
 
-        row_map, alignment = align(cn, intl)
+        key_spec = keymap.get(table_name.lower())
+        row_map = None
+        alignment = ''
+        if table_name == 'EndgameMaps':
+            row_map, alignment = build_reference_row_map(
+                args.cn_snapshot, args.intl_snapshot, table_name, 'WorldAreas', 0)
+            key_spec = None
+        elif table_name == 'NPCTalk':
+            row_map, alignment = build_reference_row_map(
+                args.cn_snapshot, args.intl_snapshot, table_name, 'NPCs', 0, ordinal=True)
+            key_spec = None
+        elif table_name == 'BindableVirtualKeys':
+            row_map, alignment = build_column_row_map(
+                args.cn_snapshot, args.intl_snapshot, table_name, 12)
+            key_spec = None
+        elif table_name == 'TieredMicrotransactionsVisuals':
+            # 国服/国际服仅差末尾新增档位，前 N 行顺序一致；该表只用于展示档位名，
+            # 且运行时由 RowCount 锁定，不会跨版本误写。
+            row_map = list(range(min(cn.row_count, intl.row_count)))
+            alignment = f'row-prefix({len(row_map)}/{cn.row_count})'
+            key_spec = None
+        elif key_spec:
+            row_map, alignment = build_key_row_map(cn, intl, key_spec)
+            if sum(1 for target in row_map if target >= 0) < cn.row_count * 0.5:
+                row_map = None
+        if row_map is None:
+            row_map, alignment = align(cn, intl)
         if row_map is None:
             report.append((table_name, 'skip', cn.row_count, intl.row_count, 0, alignment))
             continue
@@ -255,7 +400,12 @@ def main() -> int:
             if key in seen:
                 continue
             seen.add(key)
-            patches.append({'Row': intl_row, 'Col': column, 'Text': simplified})
+            patches.append({
+                'Row': intl_row,
+                'Col': column,
+                'Text': simplified,
+                'Key': compute_row_key(intl, intl_row, key_spec) if key_spec else '',
+            })
 
         if not patches:
             report.append((table_name, 'ok', cn.row_count, intl.row_count, 0, f'{alignment}|filtered-out'))
@@ -265,6 +415,11 @@ def main() -> int:
         catalogue[key] = {
             'FileName': key,
             'RowSize': intl.row_length,
+            'RowCount': intl.row_count,
+            'KeyColumns': [
+                {'Offset': offset, 'Type': column_type}
+                for offset, column_type in zip(key_spec['offsets'], key_spec['types'])
+            ] if key_spec else [],
             'RowPatches': patches,
         }
         total_patches += len(patches)

@@ -142,6 +142,7 @@ public sealed class PatchStateIntegrityTests
         {
             FileName = "test.datc64",
             RowSize = rowSize,
+            RowCount = rowCount,
             RowPatches = [new DatTextPatcher.RowCellPatch { Row = 0, Col = 0, Text = "测试" }]
         };
 
