@@ -324,6 +324,7 @@ public sealed class EffectPatchRuleTests
         Assert.DoesNotMatch(regex, "metadata/environmentsettings/atlas/lost_towers.env");
         Assert.DoesNotMatch(regex, "metadata/environmentsettings/effects/ghostflamelanterns.env");
         Assert.DoesNotMatch(regex, "metadata/environmentsettings/items/lantern_glow.env");
+        Assert.DoesNotMatch(regex, "metadata/environmentsettings/gallows/endgame_worldmap.env");
     }
 
     [Fact]
@@ -344,6 +345,10 @@ public sealed class EffectPatchRuleTests
         Assert.DoesNotMatch(regex, "metadata/environmentsettings/bosses/uber_elder.env");
         Assert.DoesNotMatch(regex, "metadata/environmentsettings/bosses/p3_3_boss_blizzard.env");
         Assert.DoesNotMatch(regex, "metadata/environmentsettings/leagues/azmeri/woods.env");
+        Assert.DoesNotMatch(regex, "metadata/environmentsettings/gallows/endgame_worldmap.env");
+
+        Assert.Contains("area", rEnv.TargetPattern, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("post_transform", rEnv.TargetPattern, StringComparison.OrdinalIgnoreCase);
 
         var rAffliction = rules.Single(r => r.Id == "fog_affliction_attachment");
         Assert.Equal(EffectAction.ClearBlock, rAffliction.Action);
@@ -355,24 +360,54 @@ public sealed class EffectPatchRuleTests
     }
 
     [Fact]
-    public void 异界去雾显线生成五条规则且双重幂等生效()
+    public void 环境去雾删除area和雾但保留post_transform()
+    {
+        var rule = EffectPatchRules.CreateRemoveFogRules()
+            .Single(r => r.Id == "fog_env_objects");
+
+        const string sampleEnv = """
+            {
+              "directional_light": { "multiplier": 5.0 },
+              "screenspace_fog": { "ssf_color_alpha": 0.1 },
+              "area": {
+                "player_environment_ao": "Metadata/Effects/weather_attachments/P1_1/d_fog.ao",
+                "wind_intensity": 50.0,
+                "dust_color": [0.5, 0.5, 0.5]
+              },
+              "water": { "flow_wait_init": true },
+              "clouds": { "clouds_intensity": 1.0 },
+              "post_transform": { "texture": "Metadata/EnvironmentSettings/test.env.post.dds" }
+            }
+            """;
+
+        var outcome = EffectRuleApplier.Apply(sampleEnv, rule);
+
+        Assert.True(outcome.Changed);
+        Assert.DoesNotContain("\"screenspace_fog\"", outcome.Content);
+        Assert.DoesNotContain("\"area\"", outcome.Content);
+        Assert.DoesNotContain("\"water\"", outcome.Content);
+        Assert.Contains("\"clouds\"", outcome.Content);
+        Assert.Contains("\"post_transform\"", outcome.Content);
+        Assert.True(EffectSyntaxValidator.ValidateFor(
+            outcome.Content,
+            "metadata/environmentsettings/gallows/act4_intermission/p1_1.env").IsValid);
+    }
+
+    [Fact]
+    public void 异界去雾显线生成八条规则且双重幂等生效()
     {
         var rules = EffectPatchRules.CreateRemoveFog2Rules();
-        Assert.Equal(5, rules.Count);
+        Assert.Equal(8, rules.Count);
+        Assert.DoesNotContain(rules, r => r.Id is
+            "fog2_worldmap_min" or "fog2_worldmap_max" or "fog2_windeffects");
 
         // 1. worldmap_fogofwar.fxgraph 规则测试
         var rBlend = rules.Single(r => r.Id == "fog2_worldmap_blend");
         var rOutput = rules.Single(r => r.Id == "fog2_worldmap_output");
-        var rMin = rules.Single(r => r.Id == "fog2_worldmap_min");
-        var rMax = rules.Single(r => r.Id == "fog2_worldmap_max");
 
         const string sampleFxGraph = """
             {
               "blend_mode": "DownScaledAddablend",
-              "ranges": {
-                "min": -1.0,
-                "max": 1.0
-              },
               "ui_size": [1920, 1080]
             }
             """;
@@ -387,22 +422,59 @@ public sealed class EffectPatchRuleTests
         var out2Second = EffectRuleApplier.Apply(out2.Content, rOutput);
         Assert.True(out2Second.SkippedByIdempotency);
 
-        var out3 = EffectRuleApplier.Apply(out2.Content, rMin);
-        Assert.Contains("\"min\": 0.0", out3.Content);
+        // 2. endgame_worldmap.env 亮度与氛围规则测试
+        var rLight = rules.Single(r => r.Id == "fog2_atlas_light_dim");
+        var rVeil = rules.Single(r => r.Id == "fog2_atlas_fog_veil");
+        const string sampleMapEnv = """
+            {
+              "directional_light": { "multiplier": 5.0 },
+              "screenspace_fog": { "ssf_color_alpha": 0.0 }
+            }
+            """;
 
-        var out4 = EffectRuleApplier.Apply(out3.Content, rMax);
-        Assert.Contains("\"max\": 0.0", out4.Content);
+        var lightOut = EffectRuleApplier.Apply(sampleMapEnv, rLight);
+        Assert.True(lightOut.Changed);
+        Assert.Contains("\"multiplier\": 4.0", lightOut.Content);
 
-        // 2. windeffects.ffx 规则测试
-        var rWind = rules.Single(r => r.Id == "fog2_windeffects");
-        const string sampleWind = "float4 wind_wave_2_0 = 0.5f - abs(wind_phase_2_0);";
-        var outWind = EffectRuleApplier.Apply(sampleWind, rWind);
-        Assert.True(outWind.Changed);
-        Assert.Contains("= 0.75f - abs(wind_phase_2_0);", outWind.Content);
+        var veilOut = EffectRuleApplier.Apply(lightOut.Content, rVeil);
+        Assert.True(veilOut.Changed);
+        Assert.Contains("\"ssf_color_alpha\": 0.05", veilOut.Content);
+        Assert.True(EffectSyntaxValidator.ValidateFor(
+            veilOut.Content,
+            "metadata/environmentsettings/gallows/endgame_worldmap.env").IsValid);
+
+        Assert.True(EffectRuleApplier.Apply(veilOut.Content, rLight).SkippedByIdempotency);
+        Assert.True(EffectRuleApplier.Apply(veilOut.Content, rVeil).SkippedByIdempotency);
+
+        // 3. windeffects.ffx 的 WorldMap::Paths 规则测试
+        var rColorStart = rules.Single(r => r.Id == "fog2_paths_color_start");
+        var rColorEnd = rules.Single(r => r.Id == "fog2_paths_color_end");
+        var rWidth = rules.Single(r => r.Id == "fog2_paths_width");
+        var rReveal = rules.Single(r => r.Id == "fog2_paths_reveal");
+        const string sampleWind = """
+            start_color = worldmap_path_color0;
+            end_color = worldmap_path_color1;
+            float final_w = width * worldmap_path_dashed.y;
+            alpha = sdf < 0.0f ? 1.0f : worldmap_path_reveal.y;
+            """;
+
+        var wind1 = EffectRuleApplier.Apply(sampleWind, rColorStart);
+        Assert.Contains("start_color = float4(worldmap_path_color0.rgb * 1.10f, max(worldmap_path_color0.a, 0.90f));", wind1.Content);
+
+        var wind2 = EffectRuleApplier.Apply(wind1.Content, rColorEnd);
+        Assert.Contains("end_color = float4(worldmap_path_color1.rgb * 1.10f, max(worldmap_path_color1.a, 0.90f));", wind2.Content);
+
+        var wind3 = EffectRuleApplier.Apply(wind2.Content, rWidth);
+        Assert.Contains("float final_w = width * worldmap_path_dashed.y * 1.20f;", wind3.Content);
+
+        var wind4 = EffectRuleApplier.Apply(wind3.Content, rReveal);
+        Assert.Contains("alpha = sdf < 0.0f ? 1.0f : max(worldmap_path_reveal.y, 0.35f);", wind4.Content);
 
         // 二次应用防叠加测试
-        var outWindSecond = EffectRuleApplier.Apply(outWind.Content, rWind);
-        Assert.True(outWindSecond.SkippedByIdempotency);
+        Assert.True(EffectRuleApplier.Apply(wind4.Content, rColorStart).SkippedByIdempotency);
+        Assert.True(EffectRuleApplier.Apply(wind4.Content, rColorEnd).SkippedByIdempotency);
+        Assert.True(EffectRuleApplier.Apply(wind4.Content, rWidth).SkippedByIdempotency);
+        Assert.True(EffectRuleApplier.Apply(wind4.Content, rReveal).SkippedByIdempotency);
     }
 
     [Fact]

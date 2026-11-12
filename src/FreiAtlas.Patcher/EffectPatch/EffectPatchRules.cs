@@ -24,11 +24,11 @@ public static class EffectPatchRules
 
     /// <summary>环境去黑暗的保护白名单：排除特殊 Boss 与赛季机制场景。</summary>
     public const string EnvProtectedPattern =
-        @".*environmentsettings/(?!.*(p3_3_boss_blizzard|azmeri|Azmeri|Acronym|tormented_?spirits|azmeriwisps|wisp_doodads|vodoo_king_boss|paleelite|kurgals_gasp|Kulemak|lost_towers|misery_shield_charge|SpecialCorpses|SpiritTortoise|twilight_sunrise|glow_variant|lightbringer|endgame_world_map|doodads|League_Ritual|VodooKing_Arena|treasure_bound_soul|toxic_runes|ghostflamelanterns|largeallflamelanterndrop|atlantis_deepwater|pointer|lantern)).*\.env$";
+        @".*environmentsettings/(?!.*(p3_3_boss_blizzard|azmeri|Azmeri|Acronym|tormented_?spirits|azmeriwisps|wisp_doodads|vodoo_king_boss|paleelite|kurgals_gasp|Kulemak|lost_towers|misery_shield_charge|SpecialCorpses|SpiritTortoise|twilight_sunrise|glow_variant|lightbringer|endgame_world_?map|doodads|League_Ritual|VodooKing_Arena|treasure_bound_soul|toxic_runes|ghostflamelanterns|largeallflamelanterndrop|atlantis_deepwater|pointer|lantern)).*\.env$";
 
     /// <summary>环境去雾的保护白名单：排除特殊 Boss、Uber 与赛季机制场景。</summary>
     public const string EnvFogProtectedPattern =
-        @".*environmentsettings/(?!.*(p3_3_boss_blizzard|uber|azmeri|Azmeri|Acronym|tormented_?spirits|azmeriwisps|wisp_doodads|vodoo_king_boss|paleelite|kurgals_gasp|Kulemak|lost_towers|misery_shield_charge|SpecialCorpses|SpiritTortoise|twilight_sunrise|glow_variant|lightbringer|endgame_world_map|doodads|League_Ritual|VodooKing_Arena|treasure_bound_soul|toxic_runes|ghostflamelanterns|largeallflamelanterndrop|atlantis_deepwater|pointer|lantern)).*\.env$";
+        @".*environmentsettings/(?!.*(p3_3_boss_blizzard|uber|azmeri|Azmeri|Acronym|tormented_?spirits|azmeriwisps|wisp_doodads|vodoo_king_boss|paleelite|kurgals_gasp|Kulemak|lost_towers|misery_shield_charge|SpecialCorpses|SpiritTortoise|twilight_sunrise|glow_variant|lightbringer|endgame_world_?map|doodads|League_Ritual|VodooKing_Arena|treasure_bound_soul|toxic_runes|ghostflamelanterns|largeallflamelanterndrop|atlantis_deepwater|pointer|lantern)).*\.env$";
 
     /// <summary>
     /// 未自定义时的默认规则：排除高危（一键全清、移除音效）与当前版本不可用的条目。
@@ -470,8 +470,8 @@ public static class EffectPatchRules
             Feature = "去除迷雾",
             PathPattern = EnvFogProtectedPattern,
             Action = EffectAction.RemoveObject,
-            TargetPattern = "screenspace_fog|fog|area|water|post_transform",
-            Description = "移除场景配置中的雾、水面与后处理变换（保护特殊 Boss、Uber 与赛季机制场景）。"
+            TargetPattern = "screenspace_fog|fog|area|water",
+            Description = "移除场景配置中的雾、天气附着物与水面（保护特殊 Boss、Uber 与赛季机制场景）。"
         },
         new EffectPatchRule
         {
@@ -494,8 +494,9 @@ public static class EffectPatchRules
     ];
 
     /// <summary>
-    /// 生成异界去雾显线规则（对齐易刷 remove_fog2，POE2 专有）。
-    /// 清除异界图鉴迷雾材质混合模式与输出范围，并将风效连线波纹增强为 0.75f。
+    /// 生成异界去雾显线规则（POE2 专有）。
+    /// 保留彻底去雾的雾材质处理；在世界地图环境配置上补回低亮度氛围；
+    /// 用真实 WorldMap::Paths 着色器替换旧版空转的风效规则。
     /// </summary>
     public static IReadOnlyList<EffectPatchRule> CreateRemoveFog2Rules() =>
     [
@@ -522,34 +523,69 @@ public static class EffectPatchRules
         },
         new EffectPatchRule
         {
-            Id = "fog2_worldmap_min",
+            Id = "fog2_atlas_light_dim",
             Feature = "异界去雾显线",
-            PathPattern = @".*metadata/materials/environment/worldmap/worldmap_fogofwar\.fxgraph$",
+            PathPattern = @".*environmentsettings/gallows/endgame_worldmap\.env$",
             Action = EffectAction.ReplaceCode,
-            TargetPattern = @"""min""\s*:\s*-1\.0",
-            Replacement = "\"min\": 0.0",
-            Description = "将异界迷雾深度最小值归零。"
+            TargetPattern = @"""multiplier""\s*:\s*5(?:\.0+)?(?=\s*[,}])",
+            Replacement = "\"multiplier\": 4.0",
+            Description = "将异界大地图主光强度从 5.0 降至 4.0，压低雪山与地表高光。",
+            AppliedSentinel = "\"multiplier\": 4.0"
         },
         new EffectPatchRule
         {
-            Id = "fog2_worldmap_max",
+            Id = "fog2_atlas_fog_veil",
             Feature = "异界去雾显线",
-            PathPattern = @".*metadata/materials/environment/worldmap/worldmap_fogofwar\.fxgraph$",
+            PathPattern = @".*environmentsettings/gallows/endgame_worldmap\.env$",
             Action = EffectAction.ReplaceCode,
-            TargetPattern = @"""max""\s*:\s*1\.0",
-            Replacement = "\"max\": 0.0",
-            Description = "将异界迷雾深度最大值归零。"
+            TargetPattern = @"""ssf_color_alpha""\s*:\s*0(?:\.0*)?(?=\s*[,}])",
+            Replacement = "\"ssf_color_alpha\": 0.05",
+            Description = "为异界大地图叠加一层 5% 暗蓝色屏幕空间薄雾，降低整体亮度。",
+            AppliedSentinel = "\"ssf_color_alpha\": 0.05"
         },
         new EffectPatchRule
         {
-            Id = "fog2_windeffects",
+            Id = "fog2_paths_color_start",
             Feature = "异界去雾显线",
             PathPattern = @".*shaders/renderer/nodes/windeffects\.ffx$",
             Action = EffectAction.ReplaceCode,
-            TargetPattern = @"=\s*0\.5f\s*-\s*abs\(wind_phase",
-            Replacement = "= 0.75f - abs(wind_phase",
-            Description = "将异界连线风效波纹偏移增强至 0.75f，使连线更清晰。",
-            AppliedSentinel = "= 0.75f - abs(wind_phase"
+            TargetPattern = @"start_color\s*=\s*worldmap_path_color0\s*;",
+            Replacement = "start_color = float4(worldmap_path_color0.rgb * 1.10f, max(worldmap_path_color0.a, 0.90f));",
+            Description = "提高异界连线起始端颜色的亮度与最低不透明度。",
+            AppliedSentinel = "worldmap_path_color0.rgb * 1.10f"
+        },
+        new EffectPatchRule
+        {
+            Id = "fog2_paths_color_end",
+            Feature = "异界去雾显线",
+            PathPattern = @".*shaders/renderer/nodes/windeffects\.ffx$",
+            Action = EffectAction.ReplaceCode,
+            TargetPattern = @"end_color\s*=\s*worldmap_path_color1\s*;",
+            Replacement = "end_color = float4(worldmap_path_color1.rgb * 1.10f, max(worldmap_path_color1.a, 0.90f));",
+            Description = "提高异界连线末端颜色的亮度与最低不透明度。",
+            AppliedSentinel = "worldmap_path_color1.rgb * 1.10f"
+        },
+        new EffectPatchRule
+        {
+            Id = "fog2_paths_width",
+            Feature = "异界去雾显线",
+            PathPattern = @".*shaders/renderer/nodes/windeffects\.ffx$",
+            Action = EffectAction.ReplaceCode,
+            TargetPattern = @"float\s+final_w\s*=\s*width\s*\*\s*worldmap_path_dashed\.y\s*;",
+            Replacement = "float final_w = width * worldmap_path_dashed.y * 1.20f;",
+            Description = "将异界连线宽度放大约 20%，提升远距离可读性。",
+            AppliedSentinel = "worldmap_path_dashed.y * 1.20f"
+        },
+        new EffectPatchRule
+        {
+            Id = "fog2_paths_reveal",
+            Feature = "异界去雾显线",
+            PathPattern = @".*shaders/renderer/nodes/windeffects\.ffx$",
+            Action = EffectAction.ReplaceCode,
+            TargetPattern = @"alpha\s*=\s*sdf\s*<\s*0\.0f\s*\?\s*1\.0f\s*:\s*worldmap_path_reveal\.y\s*;",
+            Replacement = "alpha = sdf < 0.0f ? 1.0f : max(worldmap_path_reveal.y, 0.35f);",
+            Description = "给未完全揭示的连线设置 35% 最低可见度，保留已揭示/未揭示层级。",
+            AppliedSentinel = "max(worldmap_path_reveal.y, 0.35f)"
         }
     ];
 

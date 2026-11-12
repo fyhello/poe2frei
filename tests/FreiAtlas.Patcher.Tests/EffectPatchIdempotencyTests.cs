@@ -19,7 +19,7 @@ public sealed class EffectPatchIdempotencyTests
             .Where(r => r.AppliedSentinel is null)
             // 整文件覆盖型与 JSON 数值直接覆盖型规则天然幂等：重复应用结果不变
             .Where(r => r.Id is not ("all_particles" or "spell_effect_packages" or "dark_exposure" or "dark_light_enhance"
-                or "fog2_worldmap_blend" or "fog2_worldmap_min" or "fog2_worldmap_max"))
+                or "fog2_worldmap_blend"))
             .Select(r => r.Id)
             .ToList();
 
