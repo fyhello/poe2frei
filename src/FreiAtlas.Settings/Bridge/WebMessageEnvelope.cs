@@ -4,6 +4,10 @@ public abstract record WebCommand;
 
 public sealed record ReadyWebCommand : WebCommand;
 
+public sealed record ActivateLicenseWebCommand(string LicenseKey) : WebCommand;
+
+public sealed record RefreshLicenseWebCommand : WebCommand;
+
 public sealed record RefreshProcessesWebCommand : WebCommand;
 
 public sealed record SelectProcessWebCommand(int ProcessId) : WebCommand;

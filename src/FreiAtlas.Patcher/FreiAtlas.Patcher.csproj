@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FreiAtlas.Core\FreiAtlas.Core.csproj" />
+    <ProjectReference Include="..\FreiAtlas.Licensing\FreiAtlas.Licensing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

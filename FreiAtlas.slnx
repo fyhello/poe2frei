@@ -8,6 +8,7 @@
     <Project Path="src/FreiAtlas.Host/FreiAtlas.Host.csproj" />
     <Project Path="src/FreiAtlas.Host.Runtime/FreiAtlas.Host.Runtime.csproj" />
     <Project Path="src/FreiAtlas.Launcher/FreiAtlas.Launcher.csproj" />
+    <Project Path="src/FreiAtlas.Licensing/FreiAtlas.Licensing.csproj" />
     <Project Path="src/FreiAtlas.Platform.Windows/FreiAtlas.Platform.Windows.csproj" />
     <Project Path="src/FreiAtlas.Plugin.AreaMap/FreiAtlas.Plugin.AreaMap.csproj" />
     <Project Path="src/FreiAtlas.Plugin.ExpeditionPanel/FreiAtlas.Plugin.ExpeditionPanel.csproj" />
@@ -38,6 +39,9 @@
       <Platform Project="x64" />
     </Project>
     <Project Path="tests/FreiAtlas.Launcher.Tests/FreiAtlas.Launcher.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="tests/FreiAtlas.Licensing.Tests/FreiAtlas.Licensing.Tests.csproj">
       <Platform Project="x64" />
     </Project>
     <Project Path="tests/FreiAtlas.Plugin.AreaMap.Tests/FreiAtlas.Plugin.AreaMap.Tests.csproj">

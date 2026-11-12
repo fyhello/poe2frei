@@ -21,16 +21,27 @@
       <button id="refreshButton" class="icon-button" type="button" title="刷新进程" disabled><i data-lucide="refresh-cw"></i></button>
       <button id="overlayButton" class="primary-button" type="button" disabled><i data-lucide="loader-circle"></i><span>正在加载</span></button>
     </header>
+    <div id="licenseDialog" class="license-dialog hidden" role="dialog" aria-modal="true">
+      <div class="license-dialog-card">
+        <h2>FreiAtlas 会员授权</h2>
+        <p id="licenseMessage">请输入会员卡密。</p>
+        <input id="licenseKeyInput" class="search-box" type="text" autocomplete="off" placeholder="FA-XXXX-XXXX-XXXX-XXXX">
+        <div class="license-dialog-actions">
+          <button id="licenseSubmitButton" class="primary-button" type="button">激活</button>
+          <button id="licenseCloseButton" class="secondary-button" type="button">关闭</button>
+        </div>
+      </div>
+    </div>
 
     <div class="workspace">
       <aside class="sidebar">
         <nav>
-          <button class="nav-button active" type="button" data-page="nodes"><i data-lucide="route"></i><span>地图节点</span></button>
+          <button class="nav-button" type="button" data-page="nodes"><i data-lucide="route"></i><span>地图节点</span></button>
           <button class="nav-button" type="button" data-page="contents"><i data-lucide="map-pin"></i><span>地图内容</span></button>
           <button class="nav-button" type="button" data-page="atlasNavigation"><i data-lucide="navigation"></i><span>地图导航</span></button>
           <button class="nav-button" type="button" data-page="areaMap"><i data-lucide="map"></i><span>区域地图</span></button>
           <button class="nav-button" type="button" data-page="visuals"><i data-lucide="sliders-horizontal"></i><span>视觉样式</span></button>
-          <button class="nav-button" type="button" data-page="quickAssist"><i data-lucide="keyboard"></i><span>快捷助手</span></button>
+          <button class="nav-button active" type="button" data-page="quickAssist"><i data-lucide="keyboard"></i><span>快捷助手</span></button>
           <button class="nav-button" type="button" data-page="prices"><i data-lucide="coins"></i><span>物价设置</span></button>
           <button class="nav-button" type="button" data-page="clientPatch"><i data-lucide="wrench"></i><span>客户端补丁</span></button>
         </nav>
@@ -53,7 +64,7 @@
       </aside>
 
       <main class="main-content">
-        <section id="nodes" class="page active">
+        <section id="nodes" class="page">
           <div class="page-head"><div><h1>地图节点</h1><span id="nodeCount" class="page-meta">正在加载</span></div><button class="link-button reset-page" type="button" data-reset="nodes">恢复本页默认值</button></div>
           <div class="table-head"><span>分类</span><span>地图名称</span><span>节点连线</span><span>地图内容</span></div>
           <div id="nodeRows" class="setting-table"></div>
@@ -174,7 +185,7 @@
             </section>
           </div>
         </section>
-        <section id="quickAssist" class="page">
+        <section id="quickAssist" class="page active">
           <div class="page-head"><div><h1>快捷助手</h1><span class="page-meta">恢复</span></div><button class="link-button reset-page" type="button" data-reset="quickAssist">恢复本页默认值</button></div>
           <div class="vitals-grid" aria-label="当前角色数值">
             <div class="vital-card"><span>生命</span><strong id="healthVital">等待数据</strong><small id="healthVitalDetail"></small></div>
@@ -250,730 +261,955 @@
           <div class="page-head">
             <div>
               <h1>客户端补丁</h1>
-              <span class="page-meta">游戏原生资源强化与微调</span>
+              <span class="page-meta">集中管理本地游戏资源补丁与性能优化方案</span>
             </div>
             <button class="link-button reset-page" type="button" data-reset="clientPatch">恢复本页默认值</button>
           </div>
 
-          <!-- 游戏环境与状态指示条 -->
-          <div class="patcher-status-banner">
-            <div class="patcher-meta-row">
-              <div class="patcher-dir-group">
-                <input id="patcherGameDir" class="patcher-dir-input" type="text" placeholder="PoE2 游戏目录 (例: E:\Path of Exile 2)">
-                <button id="btnSetGameDir" class="secondary-button" type="button">更新路径</button>
+          <div class="patch-shell">
+            <!-- Hero 状态与快捷操作带（窄宽自适应 3 列 -> 2 列 -> 1 列） -->
+            <div class="patch-hero">
+              <div class="hero-card hero-card-dir">
+                <div class="hero-card-label">PoE2 客户端目录 &amp; 检测状态</div>
+                <div class="hero-dir-row">
+                  <input id="patcherGameDir" class="patcher-dir-input" type="text" placeholder="PoE2 游戏目录 (例: E:\Path of Exile 2)">
+                  <button id="btnSetGameDir" class="secondary-button" type="button" data-busy-guard="1">更新路径</button>
+                </div>
+                <div class="hero-badges">
+                  <span id="patcherBadgeMode" class="patcher-badge mode-ggpk">检测中</span>
+                  <span id="patcherBadgeRun" class="patcher-badge running-safe">检查运行状态</span>
+                </div>
               </div>
-              <div class="patcher-badges">
-                <span id="patcherBadgeMode" class="patcher-badge mode-ggpk">检测中</span>
-                <span id="patcherBadgeRun" class="patcher-badge running-safe">检查运行状态</span>
-                <span id="patcherBadgeBackup" class="patcher-badge">检查备份</span>
-                <button id="btnBackupCurrentVersion" class="btn-compact" style="color: #60a5fa; border-color: rgba(96,165,250,0.4);" title="将当前客户端状态拍摄为永久保存的独立快照">
-                  💾 备份当前版本
-                </button>
-                <button id="btnOpenSnapshotsModal" class="btn-compact" style="color: #34d399; border-color: rgba(52,211,153,0.4);" title="查看并管理官方底包、手动备份和最近5版自动快照">
-                  📜 版本备份管理
-                </button>
-                <button id="btnRestorePatches" class="btn-compact" style="color: #f87171; border-color: rgba(239,68,68,0.4);" title="还原所有游戏文件索引为纯净官方状态">
-                  ↺ 恢复纯净
-                </button>
-              </div>
-            </div>
-            <div id="patcherFeedback" class="patcher-feedback" role="alert"></div>
-          </div>
 
-          <!-- 方案 B: 视图 1 - 仪表盘总览 (Hub) -->
-          <div id="patcherHubView">
-            <div class="batch-hint">
-              大类与小功能是「与」关系：只有<b>大类已勾选</b>且<b>该小功能也勾选</b>，才会被打进客户端。
-              勾选状态与各功能参数会自动保存，下次打开无需重选。
-            </div>
+              <div class="hero-card hero-card-backup">
+                <div class="hero-card-label">版本快照与纯净基线</div>
+                <div class="hero-badges" style="margin-bottom: 6px;">
+                  <span id="patcherBadgeBackup" class="patcher-badge">检查备份</span>
+                </div>
+                <div class="hero-card-note">
+                  改写共享表前会自动创建版本快照；客户端更新后，构建校验将阻止不兼容旧索引还原。
+                </div>
+              </div>
 
-            <div class="batch-category" data-category="translation">
-              <div class="batch-category-head">
-                <label class="batch-category-label">
-                  <input type="checkbox" class="batch-category-toggle" data-category="translation">
-                  <span class="batch-category-icon">🇨🇳</span>
-                  <span class="batch-category-name">汉化类</span>
-                </label>
-              </div>
-              <div class="batch-module-list">
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="translation">
-                <span class="batch-module-name">官方简中汉化</span>
-                <span class="batch-module-desc">全量改写 CSD 词缀描述，注入官方基础物品与暗金译名</span>
-              </div>
+              <div class="hero-card hero-card-actions">
+                <div class="hero-card-label">恢复与快照管理</div>
+                <div class="hero-btn-group">
+                  <button id="btnBackupCurrentVersion" class="btn-compact btn-tone-info" type="button" data-busy-guard="1" title="将当前客户端状态拍摄为永久保存的独立快照">
+                    💾 备份当前版本
+                  </button>
+                  <button id="btnOpenSnapshotsModal" class="btn-compact btn-tone-ok" type="button" title="查看并管理官方底包、手动备份和最近5版自动快照">
+                    📜 版本备份管理
+                  </button>
+                  <button id="btnRestorePatches" class="btn-compact btn-tone-danger" type="button" data-busy-guard="1" title="还原所有游戏文件索引为纯净官方状态">
+                    ↺ 恢复纯净
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div class="batch-category" data-category="text">
-              <div class="batch-category-head">
-                <label class="batch-category-label">
-                  <input type="checkbox" class="batch-category-toggle" data-category="text">
-                  <span class="batch-category-icon">🎨</span>
-                  <span class="batch-category-name">文本显示类</span>
-                </label>
+            <!-- 简洁反馈摘要条 + 错误/明细展开 -->
+            <div id="patcherFeedbackWrap" class="feedback-strip hidden">
+              <div class="feedback-main">
+                <span id="patcherFeedbackDot" class="feedback-dot"></span>
+                <div id="patcherFeedback" class="patcher-feedback" role="alert"></div>
+                <button id="btnToggleFeedbackDetail" class="btn-compact hidden" type="button">展开详情 ▾</button>
               </div>
-              <div class="batch-module-list">
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="colormod">
-                <span class="batch-module-name">词缀多色彩染色</span>
-                <span class="batch-module-desc">装备与地图词缀按类别着色，高危词缀警示加粗</span>
-                <button class="batch-module-config" data-workbench="colormod">配置 ➔</button>
-              </div>
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="price">
-                <span class="batch-module-name">原生价格深度注入</span>
-                <span class="batch-module-desc">在物品名称上挂接实时参考物价</span>
-                <button class="batch-module-config" data-workbench="price">配置 ➔</button>
-              </div>
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="fontmod">
-                <span class="batch-module-name">游戏字体与排版</span>
-                <span class="batch-module-desc">替换界面字体，按类别微调字号</span>
-                <button class="batch-module-config" data-workbench="fontmod">配置 ➔</button>
-              </div>
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="chests">
-                <span class="batch-module-name">宝箱掉落标注</span>
-                <span class="batch-module-desc">保险箱掉落类型透视与致命词缀警示</span>
-                <button class="batch-module-config" data-workbench="chests">配置 ➔</button>
-              </div>
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="rumours">
-                <span class="batch-module-name">异界地图传言标注</span>
-                <span class="batch-module-desc">地图传言文本着色与分类识别</span>
-                <button class="batch-module-config" data-workbench="rumours">配置 ➔</button>
-              </div>
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="iconpatch">
-                <span class="batch-module-name">图标替换</span>
-                <span class="batch-module-desc">替换客户端图标贴图</span>
-                <button class="batch-module-config" data-workbench="iconpatch">配置 ➔</button>
-              </div>
-              </div>
+              <pre id="patcherFeedbackDetail" class="feedback-detail hidden"></pre>
             </div>
 
-            <div class="batch-category" data-category="effect">
-              <div class="batch-category-head">
-                <label class="batch-category-label">
-                  <input type="checkbox" class="batch-category-toggle" data-category="effect">
-                  <span class="batch-category-icon">⚡</span>
-                  <span class="batch-category-name">特效类</span>
-                </label>
+            <!-- 视图 1: 总览核对清单 (Hub - 方案 A) -->
+            <div id="patcherHubView">
+              <!-- 互斥与状态冲突提示条（按真实状态显隐） -->
+              <div id="patcherConflictBanner" class="conflict-banner hidden">
+                <span id="patcherConflictText">⚠️ 检测到「泥人」与「商城外观 (MTX)」同时开启：两者部分贴图/模型规则存在覆盖关系，应用时泥人将优先接管冲突外观。</span>
               </div>
-              <div class="batch-module-list">
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="effectpatch">
-                <span class="batch-module-name">特效与性能优化</span>
-                <span class="batch-module-desc">小地图全开、视距、尸体消散、去黑暗、技能屏蔽、泥人、头顶血条</span>
-                <button class="batch-module-config" data-workbench="effectpatch">配置 ➔</button>
-              </div>
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="mapbeam">
-                <span class="batch-module-name">神图冲天光柱</span>
-                <span class="batch-module-desc">高价值地图掉落时生成醒目彩色光柱</span>
-                <button class="batch-module-config" data-workbench="mapbeam">配置 ➔</button>
-              </div>
-              </div>
-            </div>
 
-            <div class="batch-category" data-category="mtx">
-              <div class="batch-category-head">
-                <label class="batch-category-label">
-                  <input type="checkbox" class="batch-category-toggle" data-category="mtx">
-                  <span class="batch-category-icon">👑</span>
-                  <span class="batch-category-name">商城外观类</span>
-                </label>
+              <div class="hub-intro-bar">
+                <div class="batch-hint">
+                  大类与子模块为「与」关系：仅当<b>所属大类开启</b>且<b>该功能开启</b>时才会写入客户端；所有参数与开关自动持久化。
+                </div>
               </div>
-              <div class="batch-module-list">
-              <div class="batch-module-row">
-                <input type="checkbox" class="batch-module-toggle" data-module="mtxpatch">
-                <span class="batch-module-name">商城外观特效替换</span>
-                <span class="batch-module-desc">时装、技能特效、传送门、宠物、翻滚翅膀</span>
-                <button class="batch-module-config" data-workbench="mtxpatch">配置 ➔</button>
-              </div>
-              </div>
-            </div>
 
-            <div class="batch-apply-bar">
-              <span id="batchApplyHint" class="batch-apply-hint">已选 0 项</span>
-              <button id="btnRestoreDefaultRules" class="btn-compact" title="清空全部自定义规则，恢复为内置默认规则">↺ 恢复默认规则</button>
-      <button id="btnApplyBatch" class="primary-button batch-apply-btn">💾 保存配置并应用补丁</button>
-            </div>
-          </div>
-
-          <!-- 方案 B: 视图 2 - 专注配置工作台 (Workbench) -->
-          <div id="patcherWorkbenchView" class="hidden">
-            <!-- 工作台顶栏 -->
-            <div class="wb-navbar">
-              <div class="wb-left-crumb">
-                <button id="btnBackToHub" class="wb-back-btn">← 返回功能总览</button>
-                <span style="color: var(--border-color, #2d3345);">|</span>
-                <span id="wbModuleTitle" class="wb-current-badge">🎨 词缀多色彩染色 (ColorMod)</span>
-              </div>
-              <div class="wb-right-nav">
-                <span style="color: var(--text-muted, #94a3b8); font-size: 11px;">快速直达：</span>
-                <select id="wbModuleSelect" class="preset-select" style="height: 26px;">
-                  <option value="mtxpatch">👑 商城外观特效替换 (MTX)</option>
-                  <option value="effectpatch">⚡ 特效与性能优化 (Effect)</option>
-                  <option value="colormod">🎨 词缀染色 (ColorMod)</option>
-                  <option value="mapbeam">🌟 神图光柱 (MapBeam)</option>
-                  <option value="iconpatch">🖼️ 图标替换 (IconPatch)</option>
-                  <option value="chests">📦 宝箱透视与防暴毙 (Chests)</option>
-                  <option value="rumours">🔮 异界传言透视 (Rumours)</option>
-                  <option value="fontmod">🔤 游戏字体与排版 (FontMod)</option>
-                  <option value="price">💰 原生价格注入 (Price)</option>
-                </select>
-  
-              </div>
-            </div>
-
-            <!-- 功能专注视窗 -->
-            <!-- 模块 0.5: 游戏特效与性能优化 -->
-            <div id="psec-effectpatch" class="patcher-section hidden">
-              <div class="patcher-box" style="width: 100%;">
-                <div class="section-title-bar" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-                  <div class="fx-row-8">
-                    <span style="font-size: 16px;">⚡</span>
-                    <div>
-                      <strong style="color: var(--text); font-size: 14px;">游戏特效与性能优化</strong>
-                      <span style="color: var(--muted); font-size: 11px; display: block;">独立勾选各项特效与画面规则，按需自由组合，提升高压场景与密集战斗的画面流畅度</span>
+              <!-- 1. 汉化类 -->
+              <div class="batch-category" data-category="translation">
+                <div class="batch-category-head">
+                  <label class="batch-category-label">
+                    <span class="switch">
+                      <input type="checkbox" class="batch-category-toggle" data-category="translation">
+                      <span class="switch-track"></span>
+                    </span>
+                    <span class="batch-category-icon">🇨🇳</span>
+                    <span class="batch-category-name">汉化类</span>
+                    <span class="cat-badge">基础文本汉化</span>
+                  </label>
+                  <span class="cat-restore-tag">恢复方式：版本快照 / 恢复纯净</span>
+                </div>
+                <div class="batch-module-list">
+                  <div class="batch-module-row" data-module-row="translation">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="translation">
+                        <span class="switch-track"></span>
+                      </label>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">官方简中汉化</span>
+                          <span class="mod-restore-pill pill-snapshot">快照还原</span>
+                        </div>
+                        <span class="batch-module-desc">全量改写 CSD 词缀描述，注入官方基础物品与暗金译名</span>
+                      </div>
                     </div>
-                  </div>
-                  <div class="fx-row-6">
-                    <button id="btnRestoreEffectRules" class="btn-compact" style="color: #f87171; border-color: rgba(239,68,68,0.3);" title="从原始备份完全还原画面与技能特效">↺ 还原全部优化</button>
+                    <div class="mod-row-mid">
+                      <span id="hubState-translation" class="mod-status-chip">待应用</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <span id="hubTranslationNote" class="mod-static-hint">内置词典</span>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div class="effect-options-list" style="display: flex; flex-direction: column; gap: 10px;">
-                  <!-- 卡片 1: 小地图全开 -->
-                  <div class="effect-opt-card">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-minimap_visibility" class="effect-rule-checkbox" data-rule="minimap_visibility" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">小地图全开</strong>
-                            <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">✅ 高清轮廓区分</span>
-                          </div>
-                          <span class="effect-opt-desc">全量显示地形轮廓，保留已探索痕迹与边界高亮，不污染存档。</span>
-                        </div>
+              <!-- 2. 文本显示类 -->
+              <div class="batch-category" data-category="text">
+                <div class="batch-category-head">
+                  <label class="batch-category-label">
+                    <span class="switch">
+                      <input type="checkbox" class="batch-category-toggle" data-category="text">
+                      <span class="switch-track"></span>
+                    </span>
+                    <span class="batch-category-icon">🎨</span>
+                    <span class="batch-category-name">文本显示类</span>
+                    <span class="cat-badge">词缀 / 物价 / 字体 / 图标 / 宝箱 / 传言</span>
+                  </label>
+                  <span class="cat-restore-tag">恢复方式：共享数据表快照还原</span>
+                </div>
+                <div class="batch-module-list">
+                  <div class="batch-module-row" data-module-row="colormod">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="colormod">
+                        <span class="switch-track"></span>
                       </label>
-                      <button id="btnOpenMinimapColorModal" class="btn-tool-outline" type="button" style="font-size: 11px; padding: 2px 8px; margin-left: 8px; flex-shrink: 0;" title="自定义小地图已探索/边界/探索中颜色与发光">
-                        ⚙️ 轮廓颜色
-                      </button>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">词缀多色彩染色</span>
+                          <span class="mod-restore-pill pill-snapshot">快照还原</span>
+                        </div>
+                        <span class="batch-module-desc">装备、地图、石板词缀按规则着色，高危词缀醒目标注</span>
+                      </div>
+                    </div>
+                    <div class="mod-row-mid">
+                      <span id="hubState-colormod" class="mod-status-chip">待检查规则</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <button class="batch-module-config" type="button" data-workbench="colormod">配置 ➔</button>
                     </div>
                   </div>
 
-                  <!-- 卡片 2: 视距拉远 (支持自由调节倍率) -->
-                  <div class="effect-opt-card">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-view_distance" class="effect-rule-checkbox" data-rule="view_distance" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">视距拉远</strong>
-                            <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">✅ 实机验证通过</span>
-                          </div>
-                          <span class="effect-opt-desc">拉远镜头高度，大幅提升预警视野与战场空间感。</span>
-                        </div>
+                  <div class="batch-module-row" data-module-row="price">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="price">
+                        <span class="switch-track"></span>
                       </label>
-                      <div style="display: flex; align-items: center; gap: 6px; margin-left: 12px;">
-                        <span style="font-size: 11px; color: var(--muted); white-space: nowrap;">缩放倍率:</span>
-                        <select id="selViewDistanceRatio" class="preset-select" style="height: 26px; padding: 0 8px; font-size: 11px; min-width: 90px;">
-                          <option value="1.5">1.5 倍</option>
-                          <option value="2.0" selected>2.0 倍 (推荐)</option>
-                          <option value="2.5">2.5 倍</option>
-                          <option value="3.0">3.0 倍 (最大)</option>
-                        </select>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">原生价格深度注入</span>
+                          <span class="mod-restore-pill pill-clean">可独立清除后缀</span>
+                        </div>
+                        <span class="batch-module-desc">在掉落物品名称后缀挂接参考物价（写入前校验物价时效）</span>
+                      </div>
+                    </div>
+                    <div class="mod-row-mid">
+                      <span id="hubState-price" class="mod-status-chip">待检查物价</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <button class="batch-module-config" type="button" data-workbench="price">配置 ➔</button>
+                    </div>
+                  </div>
+
+                  <div class="batch-module-row" data-module-row="fontmod">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="fontmod">
+                        <span class="switch-track"></span>
+                      </label>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">游戏字体与排版</span>
+                          <span class="mod-restore-pill pill-snapshot">快照还原</span>
+                        </div>
+                        <span class="batch-module-desc">替换游戏字体与字重，分别调整掉落、正文、标题、微字档位</span>
+                      </div>
+                    </div>
+                    <div class="mod-row-mid">
+                      <span id="hubState-fontmod" class="mod-status-chip">默认字号</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <button class="batch-module-config" type="button" data-workbench="fontmod">配置 ➔</button>
+                    </div>
+                  </div>
+
+                  <div class="batch-module-row" data-module-row="chests">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="chests">
+                        <span class="switch-track"></span>
+                      </label>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">宝箱掉落标注</span>
+                          <span class="mod-restore-pill pill-snapshot">快照还原</span>
+                        </div>
+                        <span class="batch-module-desc">识别保险箱奖励分类并标注自定义显示名称</span>
+                      </div>
+                    </div>
+                    <div class="mod-row-mid">
+                      <span id="hubState-chests" class="mod-status-chip">预设规则</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <button class="batch-module-config" type="button" data-workbench="chests">配置 ➔</button>
+                    </div>
+                  </div>
+
+                  <div class="batch-module-row" data-module-row="rumours">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="rumours">
+                        <span class="switch-track"></span>
+                      </label>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">异界地图传言标注</span>
+                          <span class="mod-restore-pill pill-snapshot">快照还原</span>
+                        </div>
+                        <span class="batch-module-desc">改写终局地图传言显示文本以便快速分辨机制与奖励</span>
+                      </div>
+                    </div>
+                    <div class="mod-row-mid">
+                      <span id="hubState-rumours" class="mod-status-chip">预设规则</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <button class="batch-module-config" type="button" data-workbench="rumours">配置 ➔</button>
+                    </div>
+                  </div>
+
+                  <div class="batch-module-row" data-module-row="iconpatch">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="iconpatch">
+                        <span class="switch-track"></span>
+                      </label>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">图标替换</span>
+                          <span class="mod-restore-pill pill-independent">支持独立还原</span>
+                        </div>
+                        <span class="batch-module-desc">替换通货与物品贴图（按路径单独备份还原）</span>
+                      </div>
+                    </div>
+                    <div class="mod-row-mid">
+                      <span id="hubState-iconpatch" class="mod-status-chip">未应用</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <button class="batch-module-config" type="button" data-workbench="iconpatch">配置 ➔</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. 特效类 -->
+              <div class="batch-category" data-category="effect">
+                <div class="batch-category-head">
+                  <label class="batch-category-label">
+                    <span class="switch">
+                      <input type="checkbox" class="batch-category-toggle" data-category="effect">
+                      <span class="switch-track"></span>
+                    </span>
+                    <span class="batch-category-icon">⚡</span>
+                    <span class="batch-category-name">特效类</span>
+                    <span class="cat-badge">视觉精简 / 泥人 / 血条 / 光柱</span>
+                  </label>
+                  <span class="cat-restore-tag">效果/泥人/血条支持独立还原</span>
+                </div>
+                <div class="batch-module-list">
+                  <div class="batch-module-row" data-module-row="effectpatch">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="effectpatch">
+                        <span class="switch-track"></span>
+                      </label>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">特效与性能优化</span>
+                          <span class="mod-restore-pill pill-independent">支持独立还原</span>
+                        </div>
+                        <span class="batch-module-desc">小地图全开、视距、去黑去雾、后处理精简、技能屏蔽、泥人、头顶血条</span>
+                      </div>
+                    </div>
+                    <div class="mod-row-mid">
+                      <span id="hubState-effectpatch" class="mod-status-chip">未开启规则</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <button class="batch-module-config" type="button" data-workbench="effectpatch">配置 ➔</button>
+                    </div>
+                  </div>
+
+                  <div class="batch-module-row" data-module-row="mapbeam">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="mapbeam">
+                        <span class="switch-track"></span>
+                      </label>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">神图冲天光柱</span>
+                          <span class="mod-restore-pill pill-snapshot">快照还原</span>
+                        </div>
+                        <span class="batch-module-desc">为高价值地图与异界图腾注入醒目垂直光柱特效</span>
+                      </div>
+                    </div>
+                    <div class="mod-row-mid">
+                      <span id="hubState-mapbeam" class="mod-status-chip">默认配置</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <button class="batch-module-config" type="button" data-workbench="mapbeam">配置 ➔</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4. 商城外观类 -->
+              <div class="batch-category" data-category="mtx">
+                <div class="batch-category-head">
+                  <label class="batch-category-label">
+                    <span class="switch">
+                      <input type="checkbox" class="batch-category-toggle" data-category="mtx">
+                      <span class="switch-track"></span>
+                    </span>
+                    <span class="batch-category-icon">👑</span>
+                    <span class="batch-category-name">商城外观类</span>
+                    <span class="cat-badge">时装 / 技能 / 传送门 / 宠物</span>
+                  </label>
+                  <span class="cat-restore-tag">支持独立还原纯净外观</span>
+                </div>
+                <div class="batch-module-list">
+                  <div class="batch-module-row" data-module-row="mtxpatch">
+                    <div class="mod-row-left">
+                      <label class="switch">
+                        <input type="checkbox" class="batch-module-toggle" data-module="mtxpatch">
+                        <span class="switch-track"></span>
+                      </label>
+                      <div class="mod-info">
+                        <div class="mod-title-line">
+                          <span class="batch-module-name">商城外观特效替换</span>
+                          <span class="mod-restore-pill pill-independent">支持独立还原</span>
+                        </div>
+                        <span class="batch-module-desc">全身防具、技能特效、传送门、宠物与背饰光效替换</span>
+                      </div>
+                    </div>
+                    <div class="mod-row-mid">
+                      <span id="hubState-mtxpatch" class="mod-status-chip">未应用</span>
+                    </div>
+                    <div class="mod-row-right">
+                      <button class="batch-module-config" type="button" data-workbench="mtxpatch">配置 ➔</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 唯一写入入口（粘性底部操作坞） -->
+              <div class="batch-apply-bar">
+                <div class="batch-apply-info">
+                  <span id="batchApplyHint" class="batch-apply-hint">已选 0 项</span>
+                  <button id="btnTogglePipelineOrder" class="pipeline-toggle-btn" type="button" title="展开查看后端真实写入管线顺序">
+                    执行顺序 ▾
+                  </button>
+                </div>
+                <div class="batch-apply-actions">
+                  <button id="btnRestoreDefaultRules" class="btn-compact" type="button" data-busy-guard="1" title="清空全部自定义规则，恢复为内置默认规则">↺ 恢复默认规则</button>
+                  <button id="btnApplyBatch" class="primary-button batch-apply-btn" type="button" data-busy-guard="1">💾 保存配置并应用补丁</button>
+                </div>
+                <div id="batchPipelineChips" class="pipeline-chips hidden">
+                  <span class="pipeline-step">1. 简中汉化 / 文本数据</span>
+                  <span class="pipeline-arrow">→</span>
+                  <span class="pipeline-step">2. 染色 / 宝箱 / 传言 / 光柱 / 物价</span>
+                  <span class="pipeline-arrow">→</span>
+                  <span class="pipeline-step">3. 字体排版</span>
+                  <span class="pipeline-arrow">→</span>
+                  <span class="pipeline-step">4. 图标替换</span>
+                  <span class="pipeline-arrow">→</span>
+                  <span class="pipeline-step">5. 商城外观</span>
+                  <span class="pipeline-arrow">→</span>
+                  <span class="pipeline-step">6. 特效优化 / 泥人 / 血条</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 视图 2: 专注配置工作台 (Workbench - 参数自动保存，无单独写入客户端按钮) -->
+            <div id="patcherWorkbenchView" class="hidden">
+              <div class="wb-navbar">
+                <div class="wb-left-crumb">
+                  <button id="btnBackToHub" class="wb-back-btn" type="button">← 返回功能总览</button>
+                  <span class="wb-sep">|</span>
+                  <span id="wbModuleTitle" class="wb-current-badge">🎨 词缀染色 (ColorMod)</span>
+                  <span id="wbRestorePill" class="mod-restore-pill pill-snapshot">快照还原</span>
+                  <span class="wb-autosave-tag">自动保存配置 · 回总览统一应用</span>
+                </div>
+                <div class="wb-right-nav">
+                  <span class="wb-jump-label">切换模块：</span>
+                  <select id="wbModuleSelect" class="preset-select">
+                    <option value="effectpatch">⚡ 特效与性能优化 (Effect)</option>
+                    <option value="colormod">🎨 词缀染色 (ColorMod)</option>
+                    <option value="mapbeam">🌟 神图光柱 (MapBeam)</option>
+                    <option value="fontmod">🔤 游戏字体与排版 (FontMod)</option>
+                    <option value="price">💰 原生价格注入 (Price)</option>
+                    <option value="iconpatch">🖼️ 图标替换 (IconPatch)</option>
+                    <option value="chests">📦 宝箱掉落标注 (Chests)</option>
+                    <option value="rumours">🔮 异界地图传言 (Rumours)</option>
+                    <option value="mtxpatch">👑 商城外观特效 (MTX)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 模块: 特效与性能优化 -->
+              <div id="psec-effectpatch" class="patcher-section hidden">
+                <div class="patcher-box">
+                  <div class="section-title-bar">
+                    <div class="fx-row-8">
+                      <span class="section-icon">⚡</span>
+                      <div>
+                        <strong class="section-heading">游戏特效与性能优化</strong>
+                        <span class="section-sub">自由组合画面精简与战斗可读性规则；此处仅保存配置，回总览点击「保存配置并应用补丁」生效</span>
+                      </div>
+                    </div>
+                    <div class="fx-row-6">
+                      <button id="btnRestoreEffectRules" class="btn-compact btn-tone-danger" type="button" data-busy-guard="1" title="从原始备份完全还原画面、技能特效、泥人与头顶血条">↺ 还原全部优化</button>
+                    </div>
+                  </div>
+
+                  <!-- 分组 1: 视觉与视野增强 -->
+                  <div class="effect-group-block">
+                    <div class="effect-group-title">视觉清晰度与视野</div>
+                    <div class="effect-options-grid">
+                      <div class="effect-opt-card">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-minimap_visibility" class="effect-rule-checkbox" data-rule="minimap_visibility">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">小地图全开</strong>
+                                <span class="effect-tag tag-ok">轮廓区分</span>
+                              </div>
+                              <span class="effect-opt-desc">全量显示地形轮廓，保留已探索痕迹与边界高亮。</span>
+                            </div>
+                          </label>
+                          <button id="btnOpenMinimapColorModal" class="btn-tool-outline" type="button" title="自定义小地图已探索/边界/探索中颜色与发光">⚙️ 轮廓颜色</button>
+                        </div>
+                      </div>
+
+                      <div class="effect-opt-card">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-view_distance" class="effect-rule-checkbox" data-rule="view_distance">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">视距拉远</strong>
+                                <span class="effect-tag tag-ok">实机验证</span>
+                              </div>
+                              <span class="effect-opt-desc">拉远镜头高度，提升战场视野与预警空间。</span>
+                            </div>
+                          </label>
+                          <div class="effect-inline-control">
+                            <span>倍率</span>
+                            <select id="selViewDistanceRatio" class="preset-select">
+                              <option value="1.5">1.5 倍</option>
+                              <option value="2.0" selected>2.0 倍 (推荐)</option>
+                              <option value="2.5">2.5 倍</option>
+                              <option value="3.0">3.0 倍 (最大)</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="effect-opt-card effect-card-warn">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-remove_dark" class="effect-rule-checkbox" data-rule="remove_dark">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">环境去黑暗与全局亮度</strong>
+                                <span class="effect-tag tag-warn">8 档可调</span>
+                                <span id="badgeRemoveDarkSummary" class="effect-summary-muted">(未开启)</span>
+                              </div>
+                              <span class="effect-opt-desc">5 档纯去黑全局曝光与 3 档保留光影增强，保护特殊 Boss 机制场景。</span>
+                            </div>
+                          </label>
+                          <button id="btnOpenRemoveDarkSettings" class="btn-compact btn-tone-warn" type="button" title="配置去黑暗与全局亮度档位">⚙️ 亮度设置</button>
+                        </div>
+                      </div>
+
+                      <div class="effect-opt-card">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-fog_only" class="effect-rule-checkbox" data-rule="fog_env_objects,fog_affliction_attachment,fog_weather_d_fog">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">环境去雾</strong>
+                                <span class="effect-tag tag-info">3 项规则</span>
+                              </div>
+                              <span class="effect-opt-desc">移除环境迷雾、荒林雾气与天气雾气挂件。</span>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div class="effect-opt-card effect-card-info">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-remove_fog2" class="effect-rule-checkbox" data-rule="fog2_worldmap_blend,fog2_worldmap_output,fog2_atlas_light_dim,fog2_atlas_fog_veil,fog2_paths_color_start,fog2_paths_color_end,fog2_paths_width,fog2_paths_reveal">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">异界去雾显线 (POE2)</strong>
+                                <span class="effect-tag tag-info">异界图鉴</span>
+                              </div>
+                              <span class="effect-opt-desc">消除异界舆图迷雾阴影并加亮加粗节点连线。</span>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div class="effect-opt-card effect-card-info">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-fog_env_disable" class="effect-rule-checkbox" data-rule="fog_env_disable">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">环境雾关闭</strong>
+                                <span class="effect-tag tag-info">5 个材质文件</span>
+                              </div>
+                              <span class="effect-opt-desc">将纯环境雾像素输出设为透明，保留引导光与 Boss 预警。</span>
+                            </div>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- 卡片 3: 怪物死亡特效秒消 / 尸体清理 -->
-                  <div class="effect-opt-card">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-monster_dead" class="effect-rule-checkbox" data-rule="monster_dead_base,monster_dead_child,monster_dead_revive" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">怪物死亡特效秒消 / 尸体清理</strong>
-                            <span class="hub-badge" style="color: #34d399; border-color: rgba(52,211,153,0.3); font-size: 10px; padding: 1px 6px;">✅ 实机验证通过</span>
-                          </div>
-                          <span class="effect-opt-desc">怪物死亡瞬间清除特效并隐藏模型，防止密集怪堆积掉帧；复活时自动恢复。</span>
+                  <!-- 分组 2: 性能与技能颗粒度精简 -->
+                  <div class="effect-group-block">
+                    <div class="effect-group-title">帧率优化与特效精简</div>
+                    <div class="effect-options-grid">
+                      <div class="effect-opt-card">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-monster_dead" class="effect-rule-checkbox" data-rule="monster_dead_base,monster_dead_child,monster_dead_revive">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">怪物死亡特效秒消 / 尸体清理</strong>
+                                <span class="effect-tag tag-ok">实机验证</span>
+                              </div>
+                              <span class="effect-opt-desc">怪物死亡瞬间清除特效并隐藏模型，复活机制自动恢复。</span>
+                            </div>
+                          </label>
                         </div>
-                      </label>
+                      </div>
+
+                      <div class="effect-opt-card effect-card-info">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-spell_block_master">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">人物技能与装备特效屏蔽</strong>
+                                <span class="effect-tag tag-info">110 项精选</span>
+                                <span id="badgeSpellSummary" class="effect-summary-muted">(未开启)</span>
+                              </div>
+                              <span class="effect-opt-desc">按技能/装备单选屏蔽高负载粒子、全屏爆闪与多余音效。</span>
+                            </div>
+                          </label>
+                          <button id="btnOpenSpellBlockSettings" class="btn-compact btn-tone-info" type="button" title="配置屏蔽的技能与装备列表">⚙️ 技能列表</button>
+                        </div>
+                      </div>
+
+                      <div class="effect-opt-card">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-bloom" class="effect-rule-checkbox" data-rule="dark_bloom_cutoff,dark_bloom_gather">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">关闭泛光 (Bloom)</strong>
+                                <span class="effect-tag">弱视觉差</span>
+                              </div>
+                              <span class="effect-opt-desc">切断泛光层高光溢出。</span>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div class="effect-opt-card effect-card-warn">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-postprocess" class="effect-rule-checkbox" data-rule="pp_bloom_cutoff,pp_bloom_gather,pp_blur,pp_screenspace_shadows,pp_depth_minmax,pp_depth_of_field,pp_ambient_occlusion">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">后处理精简（7 项常量）</strong>
+                                <span class="effect-tag tag-warn">改变光照</span>
+                              </div>
+                              <span class="effect-opt-desc">关闭屏幕空间阴影、AO、景深与模糊，会明显改变阴影观感。</span>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <!-- 卡片 4: 人物技能和装备特效屏蔽 (POE2) -->
-                  <div class="effect-opt-card">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-spell_block_master" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">人物技能和装备特效屏蔽 (POE2)</strong>
-                            <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">🪄 110 项全收录</span>
-                            <span id="badgeSpellSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
-                          </div>
-                          <span class="effect-opt-desc">
-                            精细屏蔽热门技能与装备的高负载视觉粒子、全屏爆闪与卡顿模型，支持单项精选、搜索过滤与保留球体机制。
-                          </span>
+                  <!-- 分组 3: 专项深度模块（泥人 & 头顶血条） -->
+                  <div class="effect-group-block">
+                    <div class="effect-group-title">专项增强（泥人 / 血条）</div>
+                    <div class="effect-options-grid">
+                      <div class="effect-opt-card effect-card-amber">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-mudman">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">泥人极致优化</strong>
+                                <span class="effect-tag tag-amber">高负载优化</span>
+                                <span id="badgeMudManSummary" class="effect-summary-muted">(未开启)</span>
+                              </div>
+                              <span class="effect-opt-desc">分档处理贴图压缩、粒子与模型；与商城外观部分规则存在覆盖关系。</span>
+                            </div>
+                          </label>
+                          <button id="btnOpenMudManSettings" class="btn-compact btn-tone-amber" type="button" title="配置泥人档位与贴图压缩细则">⚙️ 泥人设置</button>
                         </div>
-                      </label>
-                      <button id="btnOpenSpellBlockSettings" class="btn-compact" style="margin-left: 10px; display: flex; align-items: center; gap: 5px; padding: 3px 8px; font-size: 11px; color: #38bdf8; border-color: rgba(56,189,248,0.4);" title="配置屏蔽的技能与装备列表">
-                        <span>⚙️</span>
-                        <span>技能与装备设置</span>
-                      </button>
-                    </div>
-                  </div>
+                      </div>
 
-                  <!-- 卡片 5: 环境去黑暗，全局亮度调整 -->
-                  <div class="effect-opt-card" style="border-color: rgba(250, 204, 21, 0.35);">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-remove_dark" class="effect-rule-checkbox" data-rule="remove_dark" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">环境去黑暗，全局亮度调整</strong>
-                            <span class="hub-badge" style="color: #facc15; border-color: rgba(250, 204, 21, 0.35); font-size: 10px; padding: 1px 6px;">☀️ 8 档可调</span>
-                            <span id="badgeRemoveDarkSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
-                          </div>
-                          <span class="effect-opt-desc">
-                            支持 5 档纯去黑暗全局曝光度调节（0.1 ~ 1.5）与 3 档保留光影暗处增强，保护特殊 Boss 与赛季机制场景。
-                          </span>
+                      <div class="effect-opt-card effect-card-danger">
+                        <div class="effect-card-row">
+                          <label class="effect-check-label">
+                            <input type="checkbox" id="chkOpt-healthbar">
+                            <div>
+                              <div class="fx-row-6">
+                                <strong class="effect-opt-title">全怪物头顶血条</strong>
+                                <span class="effect-tag tag-danger">战斗信息</span>
+                                <span id="badgeHealthBarSummary" class="effect-summary-muted">(未开启)</span>
+                              </div>
+                              <span class="effect-opt-desc">为 Boss、精英及特殊召唤物开启头顶血条（受击后触发）。</span>
+                            </div>
+                          </label>
                         </div>
-                      </label>
-                      <button id="btnOpenRemoveDarkSettings" class="btn-compact" style="margin-left: 10px; display: flex; align-items: center; gap: 5px; padding: 3px 8px; font-size: 11px; color: #facc15; border-color: rgba(250, 204, 21, 0.4);" title="配置去黑暗与全局亮度档位">
-                        <span>⚙️</span>
-                        <span>亮度设置</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- 卡片 5.5: 环境去雾 -->
-                  <div class="effect-opt-card">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-fog_only" class="effect-rule-checkbox" data-rule="fog_env_objects,fog_affliction_attachment,fog_weather_d_fog" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">环境去雾</strong>
-                            <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">🌫️ 3项规则</span>
-                          </div>
-                          <span class="effect-opt-desc">移除场景配置中的屏幕空间雾、水面与后处理变换，并清空荒林迷雾与天气迷雾挂件（保留特殊Boss与机制场景）。</span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <!-- 卡片 5.6: 异界去雾显线 (POE2) -->
-                  <div class="effect-opt-card" style="border-color: rgba(56, 189, 248, 0.35);">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-remove_fog2" class="effect-rule-checkbox" data-rule="fog2_worldmap_blend,fog2_worldmap_output,fog2_worldmap_min,fog2_worldmap_max,fog2_windeffects" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">异界去雾显线 (POE2)</strong>
-                            <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.35); font-size: 10px; padding: 1px 6px;">🗺️ 异界图鉴</span>
-                          </div>
-                          <span class="effect-opt-desc">彻底消除异界天赋与舆图迷雾阴影，强化异界连线波纹可见度，全图节点与连线一目了然。</span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <!-- 卡片 6: 关闭泛光 (Bloom) -->
-                  <div class="effect-opt-card">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-bloom" class="effect-rule-checkbox" data-rule="dark_bloom_cutoff,dark_bloom_gather" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">关闭泛光 (Bloom)</strong>
-                            <span class="hub-badge" style="color: var(--muted); border-color: var(--line); font-size: 10px; padding: 1px 6px;">⚪ 已实施·视觉无感</span>
-                          </div>
-                          <span class="effect-opt-desc">切断泛光层高光溢出，实测日常场景肉眼不易察觉。</span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                  <!-- 卡片 7: 后处理精简（7 条，只改常量） -->
-                  <div class="effect-opt-card" style="border-color: rgba(56,189,248,0.25);">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-postprocess" class="effect-rule-checkbox" data-rule="pp_bloom_cutoff,pp_bloom_gather,pp_blur,pp_screenspace_shadows,pp_depth_minmax,pp_depth_of_field,pp_ambient_occlusion" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">后处理精简</strong>
-                            <span class="hub-badge" style="color: #fbbf24; border-color: rgba(251,191,36,0.3); font-size: 10px; padding: 1px 6px;">🧪 待验证</span>
-                          </div>
-                          <span class="effect-opt-desc">
-                            关闭屏幕空间阴影、环境光遮蔽（AO）、泛光、景深，并把模糊半径归零。
-                            这是帧率提升的主要来源，但会明显改变画面观感。
-                          </span>
-                          <span style="color: var(--muted); font-size: 10px; display: block; margin-top: 3px;">
-                            ⚠️ 阴影会消失、画面整体变亮。建议单独开启测试，确认无异常后再叠加其它项。
-                          </span>
-                          <span style="color: var(--muted); font-size: 10px; display: block; margin-top: 2px;">
-                            仅改写着色器里已有的常量字面量，不注入新代码，因此不会引入未定义符号。
-                          </span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                  <!-- 卡片 8: 环境雾关闭（.fxgraph JSON 节点改写） -->
-                  <div class="effect-opt-card" style="border-color: rgba(56,189,248,0.25);">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-fog_env_disable" class="effect-rule-checkbox" data-rule="fog_env_disable" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">环境雾关闭</strong>
-                            <span class="hub-badge" style="color: #38bdf8; border-color: rgba(56,189,248,0.3); font-size: 10px; padding: 1px 6px;">⚡ 需实机验证</span>
-                          </div>
-                          <span class="effect-opt-desc">
-                            把屏幕空间雾的像素输出改为全透明，画面不再有环境雾。
-                            只处理 materials/environment 下的 5 个纯环境雾文件。
-                          </span>
-                          <span style="color: var(--muted); font-size: 10px; display: block; margin-top: 3px;">
-                            ✅ 不影响引导光（TORMENTED SPIRITS）、Ultimatum 血雾、BOSS 技能预警 ——
-                            这些是功能性视觉，清掉会影响玩法，规则里已刻意排除。
-                          </span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                  <!-- 卡片 9: 泥人优化 (外层卡片带主开关，右上角齿轮设置按钮) -->
-                  <div class="effect-opt-card" style="border-color: rgba(251, 146, 60, 0.35);">                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-mudman" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">泥人</strong>
-                            <span class="hub-badge" style="color: #fb923c; border-color: rgba(251, 146, 60, 0.35); font-size: 10px; padding: 1px 6px;">⚡ 极致优化</span>
-                            <span id="badgeMudManSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
-                          </div>
-                          <span class="effect-opt-desc">
-                            分档优化怪物死亡特效、场景粒子、技能表现与场景材质贴图，极大缓解复杂战斗卡顿与显存占用。
-                          </span>
-                        </div>
-                      </label>
-                      <button id="btnOpenMudManSettings" class="btn-compact" style="margin-left: 10px; display: flex; align-items: center; gap: 5px; padding: 3px 8px; font-size: 11px; color: #fb923c; border-color: rgba(251, 146, 60, 0.4);" title="配置泥人档位与贴图压缩细则">
-                        <span>⚙️</span>
-                        <span>泥人设置</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- 卡片 10: 头顶血条 -->
-                  <div class="effect-opt-card" style="border-color: rgba(239, 68, 68, 0.35);">
-                    <div class="fx-between">
-                      <label style="display: flex; gap: 10px; cursor: pointer; align-items: flex-start; flex: 1;">
-                        <input type="checkbox" id="chkOpt-healthbar" style="margin-top: 3px; cursor: pointer;">
-                        <div>
-                          <div class="fx-row-6">
-                            <strong class="effect-opt-title">头顶血条</strong>
-                            <span class="hub-badge" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.35); font-size: 10px; padding: 1px 6px;">⚔️ 战斗信息</span>
-                            <span id="badgeHealthBarSummary" style="font-size: 11px; color: var(--muted);">(未开启)</span>
-                          </div>
-                          <span class="effect-opt-desc">
-                            让原本隐藏头顶血条的怪物（含 Boss、精英、特殊召唤物）也显示血条。游戏机制决定血条需怪物受到伤害后出现。
-                          </span>
-                        </div>
-                      </label>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- 模块 0.6: PoE 2 商城外观特效替换 -->
-            <div id="psec-mtxpatch" class="patcher-section hidden">
-              <div class="patcher-box" style="width: 100%;">
-                <div class="section-title-bar" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                  <div class="fx-row-8">
-                    <span style="font-size: 18px;">👑</span>
-                    <div>
-                      <strong style="color: #fbbf24; font-size: 14px;">PoE 2 全量商城外观特效替换 (MTX)</strong>
-                      <span id="badgeMtxStatus" class="tag" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 11px; margin-left: 8px;">未应用</span>
-                      <span id="badgeMtxCount" style="color: var(--text-muted, #94a3b8); font-size: 11px; margin-left: 4px;">(共 843 款特效)</span>
-                    </div>
-                  </div>
-                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <label style="font-size: 12px; color: var(--text-muted, #94a3b8); display: flex; align-items: center; gap: 4px;">
-                      职业挂载:
-                      <select id="selMtxCharacterClass" class="preset-select" style="height: 28px; font-size: 12px;">
-                        <option value="all">全部职业 (推荐，同时生效)</option>
-                        <option value="int">女巫 (Witch — 智力)</option>
-                        <option value="intb">女术士 (Sorceress — 智力B)</option>
-                        <option value="str">战士 (Warrior — 力量)</option>
-                        <option value="dex">游侠 (Ranger — 敏捷)</option>
-                        <option value="dexb">女猎手 (Huntress — 敏捷B)</option>
-                        <option value="strdex">佣兵 (Mercenary — 力敏)</option>
-                        <option value="dexint">武僧 (Monk — 敏智)</option>
-                        <option value="intstr">德鲁伊 (Druid — 力智)</option>
-                      </select>
-                    </label>
-                    <button id="btnRestoreMtxPatch" class="secondary-button" style="height: 28px; padding: 0 12px; font-size: 12px;" title="将所有外观文件恢复至官方纯净原版">↺ 恢复纯净外观</button>
-                    <button id="btnApplyMtxPatch" class="primary-button" style="height: 28px; padding: 0 16px; font-size: 12px; font-weight: bold; background: #d97706; border-color: #f59e0b;" title="应用当前勾选与选中的全部外观特效">👑 应用外观方案</button>
-                  </div>
-                </div>
-
-                <!-- 分类 Tabs 与 搜索过滤 -->
-                <div class="mtx-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line, #2d3345);">
-                  <div class="mtx-tabs" style="display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button class="mtx-tab-btn active" data-tab="all">全部 (843)</button>
-                    <button class="mtx-tab-btn" data-tab="ArmourSets">全身防具 (205)</button>
-                    <button class="mtx-tab-btn" data-tab="Skills">技能特效 (79)</button>
-                    <button class="mtx-tab-btn" data-tab="Portals">传送门 (245)</button>
-                    <button class="mtx-tab-btn" data-tab="Pets">沙虫变宠物 (154)</button>
-                    <button class="mtx-tab-btn" data-tab="CharacterEffects">背饰·翻滚·光效 (146)</button>
-                    <button class="mtx-tab-btn" data-tab="Misc">杂项·变身·指针 (14)</button>
-                  </div>
-                  <div class="mtx-search-box fx-row-6">
-                    <input type="text" id="txtMtxSearch" placeholder="🔍 搜索特效名称、系列或部位..." style="height: 28px; width: 220px; font-size: 12px; background: var(--control, rgba(0,0,0,0.1)); border: 1px solid var(--line, #2d3345); border-radius: 4px; padding: 0 8px; color: var(--text);">
-                    <button id="btnClearMtxSearch" class="secondary-button" style="height: 28px; padding: 0 8px; font-size: 11px;">✕</button>
-                  </div>
-                </div>
-
-                <!-- 选装指示器 -->
-                <div class="mtx-selected-summary" style="display: flex; gap: 12px; font-size: 12px; color: var(--muted, #94a3b8); margin-bottom: 12px; background: var(--surface-2, rgba(0,0,0,0.05)); border: 1px solid var(--line, rgba(0,0,0,0.1)); padding: 8px 12px; border-radius: 4px; flex-wrap: wrap; align-items: center;">
-                  <strong class="fx-text">已选方案:</strong>
-                  <div>防具套装: <span id="lblSelectedArmour" style="color: #fbbf24; font-weight: bold;">(未选择)</span></div>
-                  <div>传送门: <span id="lblSelectedPortal" style="color: #a855f7; font-weight: bold;">(未选择)</span></div>
-                  <div>宠物: <span id="lblSelectedPet" style="color: #34d399; font-weight: bold;">(未选择)</span></div>
-                  <div>技能/背饰/光效: <span id="lblSelectedOtherCount" style="color: #38bdf8; font-weight: bold;">0 款</span></div>
-                  <button id="btnClearAllMtxSelections" style="background: none; border: none; color: #f87171; cursor: pointer; text-decoration: underline; margin-left: auto; font-size: 11px;">清空所有选择</button>
-                </div>
-
-                <!-- 特效卡片网格 -->
-                <div id="mtxGrid" class="mtx-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; max-height: calc(100vh - 360px); overflow-y: auto; padding-right: 4px;">
-                  <!-- 卡片由 patcher.js 动态渲染 -->
-                </div>
-              </div>
-            </div>
-
-            <!-- 模块 1: 词缀染色 -->
-            <div id="psec-colormod" class="patcher-section">
-                <div class="patch-restore-hint">
-                  ⓘ <strong>词缀染色</strong> 会改写共享数据表，无法单独还原 ——
-                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
-                </div>
-              <div class="patcher-grid-split">
+              <!-- 模块: 商城外观特效替换 (MTX) - 移除单独写入按钮，写入统一归入总览 -->
+              <div id="psec-mtxpatch" class="patcher-section hidden">
                 <div class="patcher-box">
-                  <!-- 词缀专属预设与客户端词库管理工具栏 -->
-                  <div class="patcher-preset-bar" style="margin-bottom: 0;">
-                    <div class="preset-left">
-                      <span class="fx-text-muted">规则预设：</span>
-                      <select id="presetSelect" class="preset-select" style="min-width: 170px;">
-                        <option value="default">🌟 默认预设 (官方推荐)</option>
+                  <div class="section-title-bar">
+                    <div class="fx-row-8">
+                      <span class="section-icon">👑</span>
+                      <div>
+                        <div class="fx-row-6">
+                          <strong class="section-heading" style="color: var(--gold, #fbbf24);">PoE 2 商城外观特效替换 (MTX)</strong>
+                          <span id="badgeMtxStatus" class="tag">未应用</span>
+                          <span id="badgeMtxCount" class="section-sub-inline">(共 843 款特效)</span>
+                        </div>
+                        <span class="section-sub">挑选外观组合后自动保存配置；可随时点击「恢复纯净外观」单独还原，写入请回总览应用</span>
+                      </div>
+                    </div>
+                    <div class="fx-row-8">
+                      <label class="mtx-class-label">
+                        职业挂载:
+                        <select id="selMtxCharacterClass" class="preset-select">
+                          <option value="all">全部职业 (推荐，同时生效)</option>
+                          <option value="int">女巫 (Witch — 智力)</option>
+                          <option value="intb">女术士 (Sorceress — 智力B)</option>
+                          <option value="str">战士 (Warrior — 力量)</option>
+                          <option value="dex">游侠 (Ranger — 敏捷)</option>
+                          <option value="dexb">女猎手 (Huntress — 敏捷B)</option>
+                          <option value="strdex">佣兵 (Mercenary — 力敏)</option>
+                          <option value="dexint">武僧 (Monk — 敏智)</option>
+                          <option value="intstr">德鲁伊 (Druid — 力智)</option>
+                        </select>
+                      </label>
+                      <button id="btnRestoreMtxPatch" class="btn-compact btn-tone-danger" type="button" data-busy-guard="1" title="将所有外观文件恢复至官方纯净原版">↺ 恢复纯净外观</button>
+                    </div>
+                  </div>
+
+                  <!-- 2x2 已选方案槽位 -->
+                  <div class="mtx-selected-summary">
+                    <div class="mtx-slots-head">
+                      <strong>当前已选方案槽位</strong>
+                      <button id="btnClearAllMtxSelections" class="link-button" type="button">清空所有选择</button>
+                    </div>
+                    <div class="mtx-slots-grid">
+                      <div class="mtx-slot-item">
+                        <span class="mtx-slot-label">防具套装</span>
+                        <span id="lblSelectedArmour" class="mtx-slot-val tone-gold">(未选择)</span>
+                      </div>
+                      <div class="mtx-slot-item">
+                        <span class="mtx-slot-label">传送门</span>
+                        <span id="lblSelectedPortal" class="mtx-slot-val tone-purple">(未选择)</span>
+                      </div>
+                      <div class="mtx-slot-item">
+                        <span class="mtx-slot-label">宠物</span>
+                        <span id="lblSelectedPet" class="mtx-slot-val tone-green">(未选择)</span>
+                      </div>
+                      <div class="mtx-slot-item">
+                        <span class="mtx-slot-label">技能 / 背饰 / 光效</span>
+                        <span id="lblSelectedOtherCount" class="mtx-slot-val tone-info">0 款</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 分类 Tabs 与 搜索过滤 -->
+                  <div class="mtx-toolbar">
+                    <div class="mtx-tabs">
+                      <button class="mtx-tab-btn active" type="button" data-tab="all">全部 (843)</button>
+                      <button class="mtx-tab-btn" type="button" data-tab="ArmourSets">全身防具 (205)</button>
+                      <button class="mtx-tab-btn" type="button" data-tab="Skills">技能特效 (79)</button>
+                      <button class="mtx-tab-btn" type="button" data-tab="Portals">传送门 (245)</button>
+                      <button class="mtx-tab-btn" type="button" data-tab="Pets">沙虫变宠物 (154)</button>
+                      <button class="mtx-tab-btn" type="button" data-tab="CharacterEffects">背饰·翻滚·光效 (146)</button>
+                      <button class="mtx-tab-btn" type="button" data-tab="Misc">杂项·变身·指针 (14)</button>
+                    </div>
+                    <div class="mtx-search-box fx-row-6">
+                      <input type="text" id="txtMtxSearch" class="search-box" placeholder="🔍 搜索特效名称、系列或部位...">
+                      <button id="btnClearMtxSearch" class="btn-compact" type="button">✕</button>
+                    </div>
+                  </div>
+
+                  <div id="mtxGrid" class="mtx-grid"></div>
+                </div>
+              </div>
+
+              <!-- 模块: 词缀染色 -->
+              <div id="psec-colormod" class="patcher-section">
+                <div class="patch-restore-hint">
+                  ⓘ <strong>词缀染色</strong> 会改写共享数据表，无法单独还原 —— 如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                </div>
+                <div class="patcher-grid-split">
+                  <div class="patcher-box">
+                    <div class="patcher-preset-bar">
+                      <div class="preset-left">
+                        <span class="fx-text-muted">规则预设：</span>
+                        <select id="presetSelect" class="preset-select">
+                          <option value="default">🌟 默认预设 (官方推荐)</option>
+                        </select>
+                        <button id="btnSavePresetModal" class="btn-compact" type="button" title="将当前编辑的规则另存为自定义预设">💾 另存为预设</button>
+                        <button id="btnDeletePreset" class="btn-compact btn-tone-danger hidden" type="button" title="删除选中的自定义预设">🗑️ 删除预设</button>
+                        <button id="btnRestoreSnapshot" class="btn-compact" type="button" title="读取上一次成功保存到游戏的规则快照">🕒 引用上次</button>
+
+                        <button id="btnScanClient" class="btn-compact btn-scan-client" type="button" title="从当前游戏客户端提取 StatDescriptions 完整官方词库">
+                          <span id="scanSpinner" class="hidden animate-spin">⟳</span>
+                          <span id="scanBtnText">🎮 读取客户端词库</span>
+                        </button>
+
+                        <span class="dict-status-badge">
+                          <span id="dictStatusDot" class="dict-status-dot"></span>
+                          <span id="dictStatusText">词库: 内置精选</span>
+                        </span>
+
+                        <span class="fx-text-muted">染色样式：</span>
+                        <select id="patcherColorModStyle" class="preset-select" title="选择词缀染色覆盖的范围">
+                          <option value="Whole">整行染色</option>
+                          <option value="NumberOnly">仅数值染色</option>
+                          <option value="FollowGame">跟随游戏原生</option>
+                        </select>
+                      </div>
+
+                      <div class="fx-row-6">
+                        <button id="btnOpenAddModal" class="btn-compact btn-compact-accent" type="button">✨ + 添加自定义规则</button>
+                        <button id="btnOpenImportModal" class="btn-compact" type="button">📥 导入</button>
+                        <button id="btnOpenExportModal" class="btn-compact" type="button">📤 导出</button>
+                      </div>
+                    </div>
+
+                    <div class="filter-bar">
+                      <div class="pill-tabs">
+                        <button id="pill-通用" class="pill-btn" type="button">通用装备</button>
+                        <button id="pill-地图" class="pill-btn active" type="button">异界地图</button>
+                        <button id="pill-石板" class="pill-btn" type="button">远征石板</button>
+                        <button id="pill-终局地图" class="pill-btn" type="button">终局顶级</button>
+                      </div>
+                      <input id="searchInput" type="text" placeholder="搜索关键词 (如反伤/偷取)..." class="search-box">
+                    </div>
+
+                    <div class="table-container">
+                      <table class="compact-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 34px; text-align: center;">
+                              <input type="checkbox" id="chkSelectAllRules" title="全选 / 全不选当前筛选的词缀">
+                            </th>
+                            <th style="min-width: 200px; text-align: left;">词缀描述</th>
+                            <th style="width: 65px; text-align: left;">分组</th>
+                            <th style="width: 44px; text-align: center;">色板</th>
+                            <th style="width: 78px; text-align: left;">染色模式</th>
+                            <th style="width: 68px; text-align: left;">标记</th>
+                            <th style="width: 38px; text-align: center;">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody id="rulesTableBody"></tbody>
+                      </table>
+                    </div>
+
+                    <div class="table-footer-bar">
+                      <span id="rulesCountText">当前展示 0 条 (全库 0 条)</span>
+                      <div class="fx-row-4">
+                        <button id="btnFirstPage" class="btn-compact btn-xs" type="button">首页</button>
+                        <button id="btnPrevPage" class="btn-compact btn-xs" type="button">上一页</button>
+                        <span id="pageIndicator" class="page-indicator">1 / 1</span>
+                        <button id="btnNextPage" class="btn-compact btn-xs" type="button">下一页</button>
+                        <button id="btnLastPage" class="btn-compact btn-xs" type="button">尾页</button>
+                      </div>
+                      <div class="fx-row-4">
+                        <button id="btnBatchCheckAll" class="btn-compact btn-xs" type="button" title="将当前筛选的所有词缀批量设为开启">一键全选</button>
+                        <button id="btnBatchUncheckAll" class="btn-compact btn-xs" type="button" title="将当前筛选的所有词缀批量设为关闭">一键全不选</button>
+                        <button id="btnBatchWhole" class="btn-compact btn-xs" type="button">一键整句</button>
+                        <button id="btnBatchNumber" class="btn-compact btn-xs" type="button">一键数字</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 右侧 Tooltip 实时仿真（对应 updateCardPreviewInfo & renderLiveCard） -->
+                  <div class="preview-sticky-wrap">
+                    <div class="fx-between">
+                      <span class="preview-wrap-title">物品悬浮框染色效果仿真</span>
+                      <select id="cardTypeSelect" class="preset-select" title="切换预览的物品卡片类型">
+                        <option value="map" selected>异界地图</option>
+                        <option value="gear">通用装备</option>
+                        <option value="tablet">远征石板</option>
+                        <option value="endgame">终局顶级</option>
                       </select>
-                      <button id="btnSavePresetModal" class="btn-compact" title="将当前编辑的规则另存为自定义预设">
-                        💾 另存为预设
-                      </button>
-                      <button id="btnDeletePreset" class="btn-compact hidden" style="color: #ef4444; border-color: rgba(239,68,68,0.3);" title="删除选中的自定义预设">
-                        🗑️ 删除预设
-                      </button>
-                      <button id="btnRestoreSnapshot" class="btn-compact" title="读取上一次成功保存到游戏的规则快照">
-                        🕒 引用上次
-                      </button>
-
-                      <button id="btnScanClient" class="btn-compact btn-scan-client" title="从当前游戏客户端提取 StatDescriptions 完整官方词库">
-                        <span id="scanSpinner" class="hidden animate-spin">⟳</span>
-                        <span id="scanBtnText">🎮 读取客户端词库</span>
-                      </button>
-
-                      <span class="dict-status-badge">
-                        <span id="dictStatusDot" class="dict-status-dot"></span>
-                        <span id="dictStatusText">词库: 内置精选 (86条)</span>
-                      </span>
-
-                      <!-- 全局染色样式：作用于未单独指定样式的规则 -->
-                      <span style="color: var(--text-muted); font-size: 11px; margin-left: 4px;">染色样式：</span>
-                      <select id="patcherColorModStyle" class="preset-select" style="min-width: 130px;" title="选择词缀染色覆盖的范围">
-                        <option value="Whole">整行染色</option>
-                        <option value="NumberOnly">仅数值染色</option>
-                        <option value="FollowGame">跟随游戏原生</option>
-                      </select>
                     </div>
-
-                    <div class="fx-row-6">
-                      <button id="btnOpenAddModal" class="btn-compact btn-compact-accent">
-                        ✨ + 添加自定义规则
-                      </button>
-                      <button id="btnOpenImportModal" class="btn-compact">📥 导入</button>
-                      <button id="btnOpenExportModal" class="btn-compact">📤 导出</button>
+                    <div class="poe-tooltip-card">
+                      <div class="poe-tooltip-header">
+                        <div id="cardTitle" class="poe-tooltip-title">阿兹莫里山区 (Azmerian Ranges)</div>
+                        <div id="cardSubtitle" class="poe-tooltip-sub">阶级: 15 异界地图</div>
+                      </div>
+                      <div id="cardBaseProps" class="poe-tooltip-props">
+                        <span>物品稀有度: <strong>稀有 (Rare)</strong></span>
+                        <span>物品数量: <strong>+68%</strong></span>
+                      </div>
+                      <div class="poe-tooltip-divider"></div>
+                      <div id="cardAffixesBox" class="poe-tooltip-affixes"></div>
                     </div>
-                  </div>
-
-                  <div class="filter-bar">
-                    <div class="pill-tabs">
-                      <button id="pill-通用" class="pill-btn">通用装备</button>
-                      <button id="pill-地图" class="pill-btn active">异界地图</button>
-                      <button id="pill-石板" class="pill-btn">远征石板</button>
-                      <button id="pill-终局地图" class="pill-btn">终局顶级</button>
+                    <div class="poe-ground-preview">
+                      <span class="preview-wrap-sub">地面掉落标签对照</span>
+                      <div id="lootLabelAffix" class="loot-ground-label">阿兹莫里山区 [T15]</div>
                     </div>
-                    <input id="searchInput" type="text" placeholder="搜索关键词 (如反伤/偷取)..." class="search-box">
-                  </div>
-
-                  <div class="table-container">
-                    <table class="compact-table">
-                      <thead>
-                        <tr>
-                          <th style="width: 34px; text-align: center;">
-                            <input type="checkbox" id="chkSelectAllRules" style="cursor: pointer; vertical-align: middle;" title="全选 / 全不选当前筛选的词缀">
-                          </th>
-                          <th style="min-width: 220px; text-align: left;">词缀描述</th>
-                          <th style="width: 65px; text-align: left;">分组</th>
-                          <th style="width: 40px; text-align: center;">色板</th>
-                          <th style="width: 75px; text-align: left;">染色模式</th>
-                          <th style="width: 65px; text-align: left;">标记</th>
-                          <th style="width: 35px; text-align: center;">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody id="rulesTableBody"></tbody>
-                    </table>
-                  </div>
-
-                  <div style="display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 11px; margin-top: 6px; flex-wrap: wrap; gap: 6px;">
-                    <span id="rulesCountText">当前展示 0 条 (全库 0 条)</span>
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                      <button id="btnFirstPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">首页</button>
-                      <button id="btnPrevPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">上一页</button>
-                      <span id="pageIndicator" style="font-size: 10px; color: var(--text); padding: 0 4px;">1 / 1</span>
-                      <button id="btnNextPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">下一页</button>
-                      <button id="btnLastPage" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">尾页</button>
-                    </div>
-                    <div class="fx-row-4">
-                      <button id="btnBatchCheckAll" class="btn-compact" style="font-size: 10px; height: 22px;" title="将当前筛选的所有词缀批量设为开启">一键全选</button>
-                      <button id="btnBatchUncheckAll" class="btn-compact" style="font-size: 10px; height: 22px;" title="将当前筛选的所有词缀批量设为关闭">一键全不选</button>
-                      <button id="btnBatchWhole" class="btn-compact" style="font-size: 10px; height: 22px;">一键整句</button>
-                      <button id="btnBatchNumber" class="btn-compact" style="font-size: 10px; height: 22px;">一键数字</button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 右侧 Tooltip 仿真 -->
-              </div>
-            </div>
-
-            <!-- 模块 2: 神图光柱 -->
-            <div id="psec-mapbeam" class="patcher-section hidden">
-                <div class="patch-restore-hint">
-                  ⓘ <strong>神图光柱</strong> 会改写共享数据表，无法单独还原 ——
-                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
-                </div>
-              <div class="patcher-grid-split">
-                <div class="patcher-box" id="mapBeamListContainer"></div>
-                <div class="preview-sticky-wrap">
-                  <span style="font-weight: 600; color: var(--text);">瓦尔垂直冲天光束仿真视窗</span>
-                  <div class="beam-stage">
-                    <div id="beamCore" class="beam-core" style="background: linear-gradient(to top, #c9a84c 0%, rgba(201,168,76,0.6) 40%, transparent 100%);"></div>
-                    <div class="beam-center"></div>
-                    <div id="beamLabel" class="loot-ground-label">青玉群岛 (The Jade Isles)</div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- 模块 9: 图标替换 -->
-            <div id="psec-iconpatch" class="patcher-section hidden">
+              <!-- 模块: 神图光柱 -->
+              <div id="psec-mapbeam" class="patcher-section hidden">
                 <div class="patch-restore-hint">
-                  ⓘ <strong>图标替换</strong> 会改写共享数据表，无法单独还原 ——
-                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                  ⓘ <strong>神图光柱</strong> 会改写共享数据表，无法单独还原 —— 如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
                 </div>
-              <div class="patcher-box" style="gap: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                  <div>
-                    <strong style="color: var(--text); font-size: 12px;">图标替换</strong>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                      先读取客户端索引，只展示当前客户端真实存在的图标。勾选后点击顶部「保存并同步当前功能」写入。<br>
-                  <strong style="color: #fbbf24;">注意：写入前需先在总览页打开「图标替换」卡片的总开关</strong>，否则保存会被拒绝。
+                <div class="patcher-grid-split">
+                  <div class="patcher-box" id="mapBeamListContainer"></div>
+                  <div class="preview-sticky-wrap">
+                    <span class="preview-wrap-title">垂直冲天光束仿真视窗（6 种真实光柱色彩）</span>
+                    <div class="beam-stage">
+                      <div id="beamCore" class="beam-core" style="background: linear-gradient(to top, #c9a84c 0%, rgba(201,168,76,0.6) 40%, transparent 100%);"></div>
+                      <div class="beam-center"></div>
+                      <div id="beamLabel" class="loot-ground-label">青玉群岛 (The Jade Isles)</div>
                     </div>
                   </div>
-                  <div class="fx-row-6">
-                    <button id="btnScanIconPatch" class="btn-compact btn-scan-client" title="读取当前游戏客户端索引，比对内置图标是否适用">
-                      <span id="iconPatchSpinner" class="hidden animate-spin">⟳</span>
-                      <span>🎮 读取客户端图标</span>
-                    </button>
-                    <button id="btnRestoreIconPatch" class="btn-compact" title="把此前写入的图标还原成客户端原始版本">
-                      <span>↩ 恢复原版图标</span>
-                    </button>
-                    <span class="dict-status-badge">
-                      <span id="iconPatchStatusDot" class="dict-status-dot"></span>
-                      <span id="iconPatchStatusText">图标库: 未读取</span>
-                    </span>
-                  </div>
                 </div>
-
-                <div id="iconPatchToolbar" class="hidden" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                  <div id="iconPatchTabs" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
-                  <input type="text" id="iconPatchSearch" placeholder="搜索图标..."
-                         style="flex: 1; min-width: 140px; height: 24px; font-size: 11px; padding: 0 8px;">
-                  <button class="btn-compact" id="btnIconSelectAll">全选</button>
-                  <button class="btn-compact" id="btnIconSelectNone">全不选</button>
-                </div>
-
-                <div id="iconPatchList" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
-
-                <div id="iconPatchSummary" style="font-size: 11px; color: var(--text-muted);"></div>
               </div>
-            </div>
 
-            <!-- 模块 5: 宝箱透视与防暴毙 -->
-            <div id="psec-chests" class="patcher-section hidden">
+              <!-- 模块: 图标替换 -->
+              <div id="psec-iconpatch" class="patcher-section hidden">
                 <div class="patch-restore-hint">
-                  ⓘ <strong>宝箱增强</strong> 会改写共享数据表，无法单独还原 ——
-                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                  ⓘ <strong>图标替换</strong> 按文件单独备份管理 —— 点击下方「↺ 恢复原始图标」即可独立回滚全部已替换图标。
                 </div>
-              <div class="patcher-grid-split">
-                <div class="patcher-box" style="gap: 12px;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div class="patcher-box">
+                  <div class="section-title-bar">
                     <div>
-                      <strong style="color: var(--text); font-size: 12px;">高价值保险箱识别与致命陷阱防猝死</strong>
-                      <div style="color: var(--text-muted); font-size: 10px;">从游戏客户端实际数据提取，按关键词语义规则识别打标</div>
+                      <strong class="section-heading">客户端图标贴图替换 (Art/Textures)</strong>
+                      <span class="section-sub">支持通货、传奇、珠宝、暗金等图标定制；勾选更改自动保存，回总览点击应用写入</span>
                     </div>
                     <div class="fx-row-6">
-                      <button id="btnScanChests" class="btn-compact btn-scan-client" title="从当前游戏客户端提取 chests.datc64 真实宝箱条目并按语义规则打标">
-                        <span id="scanChestsSpinner" class="hidden animate-spin">⟳</span>
-                        <span>🎮 读取客户端宝箱</span>
+                      <button id="btnScanIconPatch" class="btn-compact btn-scan-client" type="button" title="扫描可用补丁图标资源并与客户端对齐">
+                        <span id="iconPatchSpinner" class="hidden animate-spin">⟳</span>
+                        <span>🔍 扫描图标资源</span>
                       </button>
+                      <button id="btnRestoreIconPatch" class="btn-compact btn-tone-danger" type="button" data-busy-guard="1" title="恢复所有已替换的客户端图标为原版">↺ 恢复原始图标</button>
                       <span class="dict-status-badge">
-                        <span id="chestsStatusDot" class="dict-status-dot"></span>
-                        <span id="chestsStatusText">宝箱库: 预设</span>
+                        <span id="iconPatchStatusDot" class="dict-status-dot"></span>
+                        <span id="iconPatchStatusText">图标库: 未读取</span>
                       </span>
                     </div>
                   </div>
-                  <div style="display: grid; gap: 6px;" id="chestsListContainer"></div>
-                  <div style="border-top: 1px solid var(--border-color); padding-top: 8px;">
-                    <strong style="color: #f87171; font-size: 11px;">⚠️ 致命开箱陷阱词缀警示：</strong>
-                    <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted); line-height: 1.6;">
-                      死尸爆炸、冰霜新星、点燃、冰冻等致命开箱词缀的染色警示，
-                      请在 <strong class="fx-text">词缀染色</strong> 模块中配置 ——
-                      那里会列出客户端实际存在的全部 <code style="color: #60a5fa;">chest_display_*</code> 词缀并默认标红。
+
+                  <div id="iconPatchToolbar" class="icon-patch-toolbar hidden">
+                    <div id="iconPatchTabs" class="icon-patch-tabs"></div>
+                    <input type="text" id="iconPatchSearch" class="search-box" placeholder="搜索图标名称或路径...">
+                    <button class="btn-compact" id="btnIconSelectAll" type="button">全选</button>
+                    <button class="btn-compact" id="btnIconSelectNone" type="button">全不选</button>
+                  </div>
+
+                  <div id="iconPatchList" class="icon-patch-grid"></div>
+                  <div id="iconPatchSummary" class="icon-patch-summary"></div>
+                </div>
+              </div>
+
+              <!-- 模块: 宝箱透视与防暴毙 -->
+              <div id="psec-chests" class="patcher-section hidden">
+                <div class="patch-restore-hint">
+                  ⓘ <strong>宝箱增强</strong> 会改写共享数据表，无法单独还原 —— 如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                </div>
+                <div class="patcher-grid-split">
+                  <div class="patcher-box">
+                    <div class="section-title-bar">
+                      <div>
+                        <strong class="section-heading">高价值保险箱识别与标注</strong>
+                        <span class="section-sub">从客户端 chests.datc64 读取真实宝箱条目，按语义打标</span>
+                      </div>
+                      <div class="fx-row-6">
+                        <button id="btnScanChests" class="btn-compact btn-scan-client" type="button" title="从当前游戏客户端提取 chests.datc64 真实宝箱条目">
+                          <span id="scanChestsSpinner" class="hidden animate-spin">⟳</span>
+                          <span>🎮 读取客户端宝箱</span>
+                        </button>
+                        <span class="dict-status-badge">
+                          <span id="chestsStatusDot" class="dict-status-dot"></span>
+                          <span id="chestsStatusText">宝箱库: 预设</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div id="chestsListContainer" class="chests-list"></div>
+                  </div>
+
+                  <div class="preview-sticky-wrap">
+                    <span class="preview-wrap-title">⚠️ 致命开箱陷阱词缀说明</span>
+                    <div class="chests-tip-card">
+                      <p>死尸爆炸、冰霜新星、点燃、冰冻等致命开箱词缀的染色警示，统一由 <strong>词缀多色彩染色 (ColorMod)</strong> 模块管理。</p>
+                      <p>在词缀染色列表中可直接搜索 <code class="inline-code">chest_display_*</code> 查看客户端真实存在的宝箱预警词缀。</p>
+                      <button id="btnJumpToChestMods" class="btn-compact btn-tone-info" type="button">前往「词缀染色」管理 ➔</button>
                     </div>
                   </div>
                 </div>
-
               </div>
-            </div>
 
-            <!-- 模块 6: 传言奖励透视与标注 -->
-            <div id="psec-rumours" class="patcher-section hidden">
+              <!-- 模块: 异界地图传言标注（单栏全宽表，无虚假预览） -->
+              <div id="psec-rumours" class="patcher-section hidden">
                 <div class="patch-restore-hint">
-                  ⓘ <strong>传言增强</strong> 会改写共享数据表，无法单独还原 ——
-                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                  ⓘ <strong>传言增强</strong> 会改写共享数据表，无法单独还原 —— 如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
                 </div>
-              <div class="patcher-grid-split">
-                <div class="patcher-box" style="gap: 10px;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div class="patcher-box">
+                  <div class="section-title-bar">
                     <div>
-                      <strong style="color: var(--text); font-size: 12px;">异界地图传言标注 (Endgame Map Rumours)</strong>
-                      <div style="color: var(--text-muted); font-size: 10px;">从游戏客户端实际数据提取，按规则闭环识别与精准注入</div>
+                      <strong class="section-heading">异界地图传言标注 (Endgame Map Rumours)</strong>
+                      <span class="section-sub">从游戏客户端提取真实传言条目，直接配置启用与替换文本（无虚假预览）</span>
                     </div>
                     <div class="fx-row-6">
-                      <button id="btnScanRumours" class="btn-compact btn-scan-client" title="从当前游戏客户端提取 EndgameMaps.datc64 实际传言数据">
+                      <button id="btnScanRumours" class="btn-compact btn-scan-client" type="button" title="从当前游戏客户端提取 EndgameMaps.datc64 实际传言数据">
                         <span id="scanRumoursSpinner" class="hidden animate-spin">⟳</span>
                         <span>🎮 读取客户端传言</span>
                       </button>
@@ -981,44 +1217,40 @@
                         <span id="rumoursStatusDot" class="dict-status-dot"></span>
                         <span id="rumoursStatusText">传言库: 待读取</span>
                       </span>
-                      <input id="rumourSearch" type="text" placeholder="搜索地图 / 原传言 / 分类..." class="search-box" style="width: 140px;">
+                      <input id="rumourSearch" type="text" placeholder="搜索地图 / 原传言 / 分类..." class="search-box">
                     </div>
                   </div>
-                  <div class="table-container" style="max-height: 420px;">
+                  <div class="table-container" style="max-height: 440px;">
                     <table class="compact-table">
                       <thead>
                         <tr>
-                          <th style="width: 32px; text-align: center;">启</th>
-                          <th style="width: 42px; text-align: center;">行</th>
-                          <th style="width: 95px;">所属地图</th>
-                          <th style="width: 65px; text-align: center;">分类</th>
-                          <th style="width: 145px;">客户端原始传言</th>
-                          <th>注入修改与染色效果</th>
+                          <th style="width: 34px; text-align: center;">启</th>
+                          <th style="width: 44px; text-align: center;">行</th>
+                          <th style="width: 110px;">所属地图</th>
+                          <th style="width: 72px; text-align: center;">分类</th>
+                          <th style="width: 180px;">客户端原始传言</th>
+                          <th>注入修改文本</th>
                         </tr>
                       </thead>
                       <tbody id="rumoursTbody"></tbody>
                     </table>
                   </div>
                 </div>
-
               </div>
-            </div>
 
-            <!-- 模块 7: 字体与排版 -->
-            <div id="psec-fontmod" class="patcher-section hidden">
+              <!-- 模块: 游戏字体与排版（单栏，-4..+6 步进器，无虚假字号预览） -->
+              <div id="psec-fontmod" class="patcher-section hidden">
                 <div class="patch-restore-hint">
-                  ⓘ <strong>字体排版</strong> 会改写共享数据表，无法单独还原 ——
-                  如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                  ⓘ <strong>游戏字体</strong> 会改写系统设置与字体资源，无法单独还原 —— 如需撤销，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
                 </div>
-              <div class="patcher-grid-split">
-                <div class="patcher-box" style="gap: 12px;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div class="patcher-box">
+                  <div class="section-title-bar">
                     <div>
-                      <strong style="color: var(--text); font-size: 12px;">游戏字体与排版引擎 (Font Settings)</strong>
-                      <div style="color: var(--text-muted); font-size: 10px;">成熟补丁精细基准兜底，双文件协同清除语言覆盖冲突</div>
+                      <strong class="section-heading">游戏字体与排版引擎 (Font Settings)</strong>
+                      <span class="section-sub">支持系统字体替换、原生 Bold 字重与四类文本独立档位微调（实际字号效果以游戏内渲染为准）</span>
                     </div>
                     <div class="fx-row-6">
-                      <button id="btnScanFontSettings" class="btn-compact btn-scan-client" title="从客户端实际读取 uisettings*.xml 当前生效模板">
+                      <button id="btnScanFontSettings" class="btn-compact btn-scan-client" type="button" title="从客户端实际读取 uisettings*.xml 当前生效模板">
                         <span id="scanFontSpinner" class="hidden animate-spin">⟳</span>
                         <span>🎮 读取客户端字体配置</span>
                       </button>
@@ -1029,346 +1261,244 @@
                     </div>
                   </div>
 
-                  <!-- 字体预设栏：默认预设锁定兜底，支持另存自定义预设 -->
-                  <div class="patcher-preset-bar" style="margin-bottom: 0;">
+                  <div class="patcher-preset-bar">
                     <div class="preset-left">
                       <span class="fx-text-muted">排版预设：</span>
-                      <select id="fontPresetSelect" class="preset-select" style="min-width: 195px;">
+                      <select id="fontPresetSelect" class="preset-select">
                         <option value="default">🌟 成熟推荐预设 (官方标准兜底)</option>
                       </select>
-                      <button id="btnSaveFontPreset" class="btn-compact" title="将当前编辑的字号与排版另存为自定义预设">
-                        💾 另存预设
-                      </button>
-                      <button id="btnDeleteFontPreset" class="btn-compact hidden" style="color: #ef4444; border-color: rgba(239,68,68,0.3);" title="删除当前选中的自定义预设">
-                        🗑️ 删除
-                      </button>
-                      <button id="btnResetFontPreset" class="btn-compact" title="恢复为成熟官方推荐默认标准">
-                        ↺ 恢复默认
-                      </button>
+                      <button id="btnSaveFontPreset" class="btn-compact" type="button" title="将当前编辑的字号与排版另存为自定义预设">💾 另存预设</button>
+                      <button id="btnDeleteFontPreset" class="btn-compact btn-tone-danger hidden" type="button" title="删除当前选中的自定义预设">🗑️ 删除</button>
+                      <button id="btnResetFontPreset" class="btn-compact" type="button" title="恢复为成熟官方推荐默认标准">↺ 恢复默认</button>
                     </div>
                   </div>
 
-                  <div id="clientFontInfoCard" class="hidden" style="background: var(--patcher-inner-bg); border: 1px solid rgba(52,211,153,0.3); border-radius: 4px; padding: 8px 10px; font-size: 11px; color: var(--text-muted);">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                      <span style="color: #34d399; font-weight: 600;">当前客户端生效文件：<span id="cfiFileName">-</span></span>
-                      <span>当前 Typeface：<strong class="fx-text" id="cfiCurrentTypeface">-</strong></span>
+                  <div id="clientFontInfoCard" class="client-font-info hidden">
+                    <div class="fx-between">
+                      <span>当前客户端生效文件：<strong id="cfiFileName">-</strong></span>
+                      <span>当前 Typeface：<strong id="cfiCurrentTypeface">-</strong></span>
                     </div>
-                    <div>Fallback 回落字体链条：<span id="cfiFallbackChain" style="color: var(--text-secondary); word-break: break-all;">-</span></div>
+                    <div class="font-fallback-row">Fallback 回落链条：<span id="cfiFallbackChain">-</span></div>
                   </div>
 
-                  <!-- 字体选择器 -->
-                  <div style="background: var(--patcher-inner-bg); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-color); display: grid; gap: 6px;">
-                    <div class="fx-between">
-                      <label style="color: var(--text); font-size: 11.5px; font-weight: 600;">目标游戏字体 (系统已安装)：</label>
-                      <span id="fontCountHint" style="color: var(--text-muted); font-size: 10px;">枚举系统中...</span>
-                    </div>
-                    <select id="fontSelectDropdown" class="preset-select" style="width: 100%; height: 30px; font-size: 11.5px;">
-                      <option value="Microsoft YaHei">微软雅黑 (Microsoft YaHei)</option>
-                    </select>
-                  </div>
-
-                  <!-- 细分内容字号详细微调面板 -->
-                  <div style="background: var(--patcher-inner-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); display: grid; gap: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
-                      <div>
-                        <strong style="color: var(--text); font-size: 11.5px;">细分内容字号个性化调节 (Detail Categories)</strong>
-                        <div style="color: var(--text-muted); font-size: 10px;">针对掉落标签、正文、标题与微小角标分别精准定标</div>
+                  <div class="font-grid-two">
+                    <!-- 左：字体选择与加粗 -->
+                    <div class="font-panel-card">
+                      <div class="fx-between">
+                        <label class="font-card-label" for="fontSelectDropdown">目标游戏字体（系统已安装）</label>
+                        <span id="fontCountHint" class="fx-text-muted">枚举系统中...</span>
                       </div>
-                      <span style="font-size: 10px; color: #34d399; background: rgba(52,211,153,0.12); padding: 2px 6px; border-radius: 3px;">
-                        独立独立作用域适配
-                      </span>
-                    </div>
-
-                    <!-- 1. 掉落物与物品标签 -->
-                    <div class="fx-between">
-                      <div>
-                        <span style="color: var(--text); font-size: 11px; font-weight: 500;">📦 地面掉落与物品标签：</span>
-                        <div style="color: var(--text-muted); font-size: 9.5px;">地面高亮标签、物品堆叠数量角标、悬浮标题</div>
-                      </div>
-                      <select id="fontSizeDropItemSelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
-                        <option value="-4">极微 (-4 号字)</option>
-                        <option value="-3">微缩 (-3 号字)</option>
-                        <option value="-2">微缩 (-2 号字)</option>
-                        <option value="-1">微缩 (-1 号字)</option>
-                        <option value="0" selected>成熟标准 (±0)</option>
-                        <option value="1">醒目 (+1 号字)</option>
-                        <option value="2">清晰 (+2 号字 推荐)</option>
-                        <option value="3">中大 (+3 号字)</option>
-                        <option value="4">超大 (+4 号字)</option>
-                        <option value="5">特大 (+5 号字)</option>
-                        <option value="6">巨大 (+6 号字)</option>
+                      <select id="fontSelectDropdown" class="preset-select font-main-select">
+                        <option value="Microsoft YaHei">微软雅黑 (Microsoft YaHei)</option>
                       </select>
+                      <div class="font-bold-row">
+                        <div>
+                          <strong class="font-card-label">原生字重加粗 (Weight 700 / Bold)</strong>
+                          <div class="font-card-sub">注入 DirectWrite 原生加粗，轮廓更清晰饱满</div>
+                        </div>
+                        <label class="switch-row">
+                          <input type="checkbox" id="chkFontBold">
+                          <span id="boldStatusText">未加粗</span>
+                        </label>
+                      </div>
                     </div>
 
-                    <!-- 2. 正文与技能描述 -->
-                    <div class="fx-between">
-                      <div>
-                        <span style="color: var(--text); font-size: 11px; font-weight: 500;">💬 通用正文与技能描述：</span>
-                        <div style="color: var(--text-muted); font-size: 9.5px;">天赋树说明、技能石词缀、NPC 任务对话正文</div>
+                    <!-- 右：-4..+6 步进调节 -->
+                    <div class="font-panel-card">
+                      <div class="font-stepper-head">
+                        <strong class="font-card-label">分级字号偏移 (-4 ~ +6 档)</strong>
+                        <span class="font-card-sub">0 为标准基准档</span>
                       </div>
-                      <select id="fontSizeGeneralSelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
-                        <option value="-4">极微 (-4 号字)</option>
-                        <option value="-3">微缩 (-3 号字)</option>
-                        <option value="-2">缩小 (-2 号字)</option>
-                        <option value="-1">微缩 (-1 号字)</option>
-                        <option value="0" selected>成熟标准 (±0)</option>
-                        <option value="1">适度 (+1 号字)</option>
-                        <option value="2">大号 (+2 号字)</option>
-                        <option value="3">中大 (+3 号字)</option>
-                        <option value="4">超大 (+4 号字)</option>
-                        <option value="5">特大 (+5 号字)</option>
-                        <option value="6">巨大 (+6 号字)</option>
-                      </select>
-                    </div>
 
-                    <!-- 3. 窗口标题与大字顶栏 -->
-                    <div class="fx-between">
-                      <div>
-                        <span style="color: var(--text); font-size: 11px; font-weight: 500;">🏷️ 界面窗口大标题 (防爆框)：</span>
-                        <div style="color: var(--text-muted); font-size: 9.5px;">窗口 Header、结算大标题（中文字体下已内建防爆框）</div>
-                      </div>
-                      <select id="fontSizeTitleSelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
-                        <option value="-4">收敛 (-4 号字)</option>
-                        <option value="-2">紧凑 (-2 号字)</option>
-                        <option value="0" selected>成熟标准 (±0 推荐)</option>
-                        <option value="2">微大 (+2 号字)</option>
-                        <option value="4">宽大 (+4 号字)</option>
-                        <option value="6">超大 (+6 号字)</option>
-                      </select>
-                    </div>
+                      <div class="font-stepper-list">
+                        <div class="font-stepper-row">
+                          <div>
+                            <div class="stepper-title">📦 地面掉落与物品标签</div>
+                            <div class="stepper-desc">掉落标签、物品堆叠角标、悬浮标题</div>
+                          </div>
+                          <div class="stepper-ctrl" data-stepper-for="fontSizeDropItemSelect">
+                            <button type="button" class="stepper-btn" data-step="-1">−</button>
+                            <span class="stepper-val" id="val-fontSizeDropItemSelect">±0</span>
+                            <button type="button" class="stepper-btn" data-step="1">+</button>
+                            <input type="hidden" id="fontSizeDropItemSelect" value="0">
+                          </div>
+                        </div>
 
-                    <!-- 4. 状态与微型数值角标 -->
-                    <div class="fx-between">
-                      <div>
-                        <span style="color: var(--text); font-size: 11px; font-weight: 500;">🔢 微型角标与价格标签：</span>
-                        <div style="color: var(--text-muted); font-size: 9.5px;">查价标签 [★ 15C]、倒计时、紧凑堆叠微小字</div>
-                      </div>
-                      <select id="fontSizeTinySelect" class="preset-select" style="width: 130px; height: 26px; font-size: 11px;">
-                        <option value="-4">极微 (-4 号字)</option>
-                        <option value="-3">极微 (-3 号字)</option>
-                        <option value="-2">极微 (-2 号字)</option>
-                        <option value="-1">精巧 (-1 号字)</option>
-                        <option value="0" selected>成熟标准 (±0)</option>
-                        <option value="1">清晰 (+1 号字 推荐)</option>
-                        <option value="2">醒目 (+2 号字)</option>
-                        <option value="3">清晰 (+3 号字)</option>
-                        <option value="4">醒目 (+4 号字)</option>
-                        <option value="5">特大 (+5 号字)</option>
-                        <option value="6">巨大 (+6 号字)</option>
-                      </select>
-                    </div>
-                  </div>
+                        <div class="font-stepper-row">
+                          <div>
+                            <div class="stepper-title">💬 通用正文与技能描述</div>
+                            <div class="stepper-desc">天赋树、技能石词缀、NPC 对话正文</div>
+                          </div>
+                          <div class="stepper-ctrl" data-stepper-for="fontSizeGeneralSelect">
+                            <button type="button" class="stepper-btn" data-step="-1">−</button>
+                            <span class="stepper-val" id="val-fontSizeGeneralSelect">±0</span>
+                            <button type="button" class="stepper-btn" data-step="1">+</button>
+                            <input type="hidden" id="fontSizeGeneralSelect" value="0">
+                          </div>
+                        </div>
 
-                  <!-- 全局整平微调与加粗 -->
-                  <div style="display: grid; gap: 8px; background: var(--patcher-inner-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-                    <div class="fx-between">
-                      <div>
-                        <strong style="color: var(--text); font-size: 11.5px;">全局整体平移档位 (Global Scale)：</strong>
-                        <div style="color: var(--text-muted); font-size: 10px;">在当前预设与细分设定的基础上，整盘平移缩放</div>
-                      </div>
-                      <select id="fontSizeDeltaSelect" class="preset-select" style="min-width: 130px; height: 28px; font-size: 11px;">
-                        <option value="-4">整平最小 (-4 档)</option>
-                        <option value="-3">整平极小 (-3 档)</option>
-                        <option value="-2">整平缩小 (-2 档)</option>
-                        <option value="-1">整平微缩 (-1 档)</option>
-                        <option value="0" selected>标准原准档 (±0)</option>
-                        <option value="1">整平微增 (+1 档)</option>
-                        <option value="2">整平放大 (+2 档)</option>
-                        <option value="3">整平大号 (+3 档)</option>
-                        <option value="4">整平超大 (+4 档)</option>
-                        <option value="5">整平特大 (+5 档)</option>
-                        <option value="6">整平最大 (+6 档)</option>
-                      </select>
-                    </div>
+                        <div class="font-stepper-row">
+                          <div>
+                            <div class="stepper-title">🏷️ 界面窗口大标题</div>
+                            <div class="stepper-desc">面板 Header、结算大标题（内置防爆框）</div>
+                          </div>
+                          <div class="stepper-ctrl" data-stepper-for="fontSizeTitleSelect">
+                            <button type="button" class="stepper-btn" data-step="-1">−</button>
+                            <span class="stepper-val" id="val-fontSizeTitleSelect">±0</span>
+                            <button type="button" class="stepper-btn" data-step="1">+</button>
+                            <input type="hidden" id="fontSizeTitleSelect" value="0">
+                          </div>
+                        </div>
 
-                    <div style="border-top: 1px solid var(--border-color); padding-top: 8px; display: flex; justify-content: space-between; align-items: center;">
-                      <div>
-                        <strong style="color: var(--text); font-size: 11.5px;">原生字重加粗 (Weight 700 / Bold)：</strong>
-                        <div style="color: var(--text-muted); font-size: 10px;">注入 DirectWrite 原生加粗，文字质感更饱满清晰</div>
+                        <div class="font-stepper-row">
+                          <div>
+                            <div class="stepper-title">🔢 微型角标与价格标签</div>
+                            <div class="stepper-desc">价格后缀、倒计时与微小数字</div>
+                          </div>
+                          <div class="stepper-ctrl" data-stepper-for="fontSizeTinySelect">
+                            <button type="button" class="stepper-btn" data-step="-1">−</button>
+                            <span class="stepper-val" id="val-fontSizeTinySelect">±0</span>
+                            <button type="button" class="stepper-btn" data-step="1">+</button>
+                            <input type="hidden" id="fontSizeTinySelect" value="0">
+                          </div>
+                        </div>
+
+                        <div class="font-stepper-row stepper-global">
+                          <div>
+                            <div class="stepper-title">⚖️ 全局整体平移档位</div>
+                            <div class="stepper-desc">在上述分级偏移之上整体平移缩放</div>
+                          </div>
+                          <div class="stepper-ctrl" data-stepper-for="fontSizeDeltaSelect">
+                            <button type="button" class="stepper-btn" data-step="-1">−</button>
+                            <span class="stepper-val" id="val-fontSizeDeltaSelect">±0</span>
+                            <button type="button" class="stepper-btn" data-step="1">+</button>
+                            <input type="hidden" id="fontSizeDeltaSelect" value="0">
+                          </div>
+                        </div>
                       </div>
-                      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                        <input type="checkbox" id="chkFontBold" style="cursor: pointer; width: 16px; height: 16px;">
-                        <span id="boldStatusText" style="font-size: 11px; color: var(--text-muted);">未加粗</span>
-                      </label>
                     </div>
                   </div>
                 </div>
-
-                <!-- 仿真多内容即时视窗 -->
               </div>
-            </div>
 
-            <!-- 模块 8: 原生物价注入 -->
-            <div id="psec-price" class="patcher-section hidden">
+              <!-- 模块: 原生物价注入 -->
+              <div id="psec-price" class="patcher-section hidden">
                 <div class="patch-restore-hint">
-                  ⓘ <strong>物价注入</strong> 会改写共享的 BaseItemTypes 数据表，无法单独还原 ——
-                  如需撤销已写入的价格后缀，请点 <strong>🧹 清除物价</strong>；
-                  如需整体回退，请用顶部的 <strong>📜 版本备份管理</strong> 或 <strong>↺ 恢复纯净</strong>。
+                  ⓘ <strong>物价注入</strong> 会改写共享的 BaseItemTypes 数据表 —— 如需撤销已写入的价格后缀，请点下方 <strong>🧹 清除物价</strong>；或使用顶部快照恢复。
                 </div>
-              <div class="patcher-grid-split">
-                <div class="patcher-box" style="gap: 10px;">
-                  <!-- 1. 顶部操作栏：读取客户端并预览放最上方 -->
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--patcher-inner-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-                    <div class="fx-row-8">
-                      <button id="btnPreviewPricePatch" class="btn-compact btn-scan-client" type="button" style="height: 30px; padding: 0 14px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" title="从当前客户端读取实际数据表并匹配物价生成预览">
-                        <span id="pricePreviewSpinner" class="hidden animate-spin">⟳</span>
-                        <span id="pricePreviewBtnText">🎮 读取客户端并预览</span>
-                      </button>
-                      <button id="btnCleanPricePatch" class="btn-compact" type="button" style="height: 30px; padding: 0 14px; font-size: 11.5px; color: #f87171; border-color: rgba(239,68,68,0.4);" title="剥离已写入客户端的价格后缀，恢复为纯物品名">
-                        🧹 清除物价
-                      </button>
-                      <span class="fx-text-muted">读取客户端双语基底表生成精准物价预览</span>
+                <div class="patcher-grid-split">
+                  <div class="patcher-box">
+                    <div class="price-top-bar">
+                      <div class="fx-row-8">
+                        <button id="btnPreviewPricePatch" class="btn-compact btn-scan-client" type="button" title="从当前客户端读取实际数据表并匹配物价生成预览">
+                          <span id="pricePreviewSpinner" class="hidden animate-spin">⟳</span>
+                          <span id="pricePreviewBtnText">🎮 读取客户端并预览</span>
+                        </button>
+                        <button id="btnCleanPricePatch" class="btn-compact btn-tone-danger" type="button" data-busy-guard="1" title="剥离已写入客户端的价格后缀，恢复为纯物品名">🧹 清除物价</button>
+                      </div>
+                      <span class="fx-text-muted">只读预览 · 回总览点击应用写入</span>
                     </div>
-                    <span style="color: var(--text-muted); font-size: 10px;">只读预览 · 确认后在顶部点击保存写入</span>
-                  </div>
 
-                  <!-- 2. 全量 14 资产分类选择胶囊（带快捷全选/反选/常用） -->
-                  <div style="background: var(--patcher-inner-bg); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); display: grid; gap: 6px;">
-                    <div class="fx-between">
-                      <span style="color: var(--text); font-size: 11px; font-weight: 600;">资产分类筛选 (覆盖 poe.ninja 全部 14 类)：</span>
-                      <div class="fx-row-4">
-                        <button id="btnPriceSelectAll" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">一键全选</button>
-                        <button id="btnPriceUnselectAll" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">全部取消</button>
-                        <button id="btnPriceSelectCommon" type="button" class="btn-compact" style="font-size: 10px; height: 22px; padding: 0 6px;">推荐常用</button>
+                    <div class="price-cat-box">
+                      <div class="fx-between">
+                        <span class="font-card-label">资产分类筛选 (poe.ninja 全量 14 类)</span>
+                        <div class="fx-row-4">
+                          <button id="btnPriceSelectAll" type="button" class="btn-compact btn-xs">一键全选</button>
+                          <button id="btnPriceUnselectAll" type="button" class="btn-compact btn-xs">全部取消</button>
+                          <button id="btnPriceSelectCommon" type="button" class="btn-compact btn-xs">推荐常用</button>
+                        </div>
+                      </div>
+                      <div class="price-chips-grid">
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceCurrency" data-cat="Currency"><span>基础通货</span></label>
+                        <label class="preset-pill pill-featured"><input type="checkbox" checked id="chkPriceLineage" data-cat="LineageSupportGems"><span>传承血脉</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceRunes" data-cat="Runes"><span>符文</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceEssences" data-cat="Essences"><span>精华</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceSoulCores" data-cat="SoulCores"><span>灵魂核心</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceUncutGems" data-cat="UncutGems"><span>未切割宝石</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceIdols" data-cat="Idols"><span>神像</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceExpedition" data-cat="Expedition"><span>远征</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceBreach" data-cat="Breach"><span>裂隙</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceDelirium" data-cat="Delirium"><span>谵妄</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceRitual" data-cat="Ritual"><span>仪式</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceFragments" data-cat="Fragments"><span>碎片</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceAbyss" data-cat="Abyss"><span>深渊</span></label>
+                        <label class="preset-pill"><input type="checkbox" checked id="chkPriceVerisium" data-cat="Verisium"><span>维利席姆</span></label>
                       </div>
                     </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px;">
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceCurrency" data-cat="Currency" style="cursor: pointer;">
-                        <span class="fx-text">基础通货</span>
+
+                    <div class="price-params-grid">
+                      <div>
+                        <label class="fx-text-muted" for="priceSepSelect">物价后缀分隔符</label>
+                        <select id="priceSepSelect" class="preset-select">
+                          <option value=" ">空格分隔 (崇高石 [15E])</option>
+                          <option value=" - ">中划线分隔 (崇高石 - [15E])</option>
+                          <option value="|">竖线分隔 (崇高石|[15E])</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="fx-text-muted" for="priceFilterMin">低价过滤门槛 (低于不注入)</label>
+                        <div class="fx-row-6">
+                          <input id="priceFilterMin" type="number" value="1" min="0" step="0.1" class="search-box" style="max-width: 90px;">
+                          <span class="fx-text-muted">E 以下隐藏</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="price-strip-row">
+                      <label class="switch-row">
+                        <input type="checkbox" id="chkPriceStripExisting" checked>
+                        <span>应用前剥离旧价格后缀（推荐）</span>
                       </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(96,165,250,0.3); cursor: pointer; background: rgba(96,165,250,0.08);">
-                        <input type="checkbox" checked id="chkPriceLineage" data-cat="LineageSupportGems" style="cursor: pointer;">
-                        <span style="color: #60a5fa; font-weight: 500;">传承血脉</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceRunes" data-cat="Runes" style="cursor: pointer;">
-                        <span class="fx-text">符文</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceEssences" data-cat="Essences" style="cursor: pointer;">
-                        <span class="fx-text">精华</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceSoulCores" data-cat="SoulCores" style="cursor: pointer;">
-                        <span class="fx-text">灵魂核心</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceUncutGems" data-cat="UncutGems" style="cursor: pointer;">
-                        <span class="fx-text">未切割宝石</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceIdols" data-cat="Idols" style="cursor: pointer;">
-                        <span class="fx-text">神像</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceExpedition" data-cat="Expedition" style="cursor: pointer;">
-                        <span class="fx-text">远征</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceBreach" data-cat="Breach" style="cursor: pointer;">
-                        <span class="fx-text">裂隙</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceDelirium" data-cat="Delirium" style="cursor: pointer;">
-                        <span class="fx-text">谵妄</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceRitual" data-cat="Ritual" style="cursor: pointer;">
-                        <span class="fx-text">仪式</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceFragments" data-cat="Fragments" style="cursor: pointer;">
-                        <span class="fx-text">碎片</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceAbyss" data-cat="Abyss" style="cursor: pointer;">
-                        <span class="fx-text">深渊</span>
-                      </label>
-                      <label class="preset-pill" style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; background: rgba(255,255,255,0.03);">
-                        <input type="checkbox" checked id="chkPriceVerisium" data-cat="Verisium" style="cursor: pointer;">
-                        <span class="fx-text">维利席姆</span>
-                      </label>
+                      <span class="fx-text-muted">单位自动 D/E（≥0.5D 自动折算为 D）</span>
                     </div>
                   </div>
 
-                  <!-- 3. 参数控制行 -->
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <div>
-                      <label class="fx-text-muted">物价后缀分隔符：</label>
-                      <select id="priceSepSelect" class="preset-select" style="width: 100%; height: 28px; margin-top: 3px;">
-                        <option value=" ">空格分隔 (如: 崇高石 [15E])</option>
-                        <option value=" - ">中划线分隔 (如: 崇高石 - [15E])</option>
-                        <option value="|">竖线分隔 (如: 崇高石|[15E])</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="fx-text-muted">低价过滤门槛 (低于不注入)：</label>
-                      <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
-                        <input id="priceFilterMin" type="number" value="1" min="0" step="0.1" class="search-box" style="max-width: 80px; height: 28px;">
-                        <span class="fx-text-muted">E 以下隐藏</span>
+                  <div class="preview-sticky-wrap">
+                    <span class="preview-wrap-title">地面掉落标签格式模拟</span>
+                    <div class="price-sim-box">
+                      <div id="simPriceUnique" class="loot-ground-label" style="border-color: #a8742b; color: #af6025;">
+                        法师之血 重革腰带 [280D]
+                      </div>
+                      <div id="simPriceDivine" class="loot-ground-label" style="border-color: #d4a754; color: #aa9e82;">
+                        神圣石 [400E]
+                      </div>
+                      <div id="simPriceSmall" class="loot-ground-label" style="border-color: #4b5563; color: #9ca3af; font-size: 10px;">
+                        重铸石 (低于门槛已隐藏物价后缀)
                       </div>
                     </div>
                   </div>
-
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--patcher-inner-bg); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border-color);">
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text); font-size: 11px;">
-                      <input type="checkbox" id="chkPriceStripExisting" checked style="cursor: pointer;">
-                      应用前剥离旧价格后缀（推荐）
-                    </label>
-                    <span class="fx-text-muted">单位自动 D/E（≥0.5D 自动折算为 D）</span>
-                  </div>
                 </div>
 
-                <div class="preview-sticky-wrap">
-                  <span style="font-weight: 600; color: var(--text); font-size: 11.5px;">地面 Label 视觉效果即时模拟</span>
-                  <div style="background: var(--patcher-inner-bg); border: 1px solid var(--border-color); border-radius: 6px; height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px;">
-                    <div id="simPriceUnique" class="loot-ground-label" style="border-color: #a8742b; color: #af6025;">
-                      法师之血 重革腰带 [280D]
-                    </div>
-                    <div id="simPriceDivine" class="loot-ground-label" style="border-color: #d4a754; color: #aa9e82;">
-                      神圣石 [400E]
-                    </div>
-                    <div id="simPriceSmall" class="loot-ground-label" style="border-color: #4b5563; color: #9ca3af; font-size: 10px;">
-                      重铸石 (低于门槛已隐藏物价后缀)
+                <div id="pricePatchPreview" class="price-patch-preview hidden" aria-live="polite">
+                  <div class="price-patch-preview-head">
+                    <strong>客户端物价匹配明细预览</strong>
+                    <div class="price-patch-preview-facts">
+                      <span>候选 <strong id="pricePreviewCandidate" class="tone-info">0</strong></span>
+                      <span>已匹配 <strong id="pricePreviewMatched" class="tone-ok">0</strong></span>
+                      <span>未匹配 <strong id="pricePreviewUnmatched">0</strong></span>
+                      <span>名称压缩 <strong id="pricePreviewCompacted" class="tone-warn">0</strong></span>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              <!-- 4. 预览明细表格区域：底部无多余确认按钮，表格撑满 -->
-              <div id="pricePatchPreview" class="price-patch-preview hidden" aria-live="polite">
-                <div class="price-patch-preview-head">
-                  <strong>客户端物价匹配明细预览</strong>
-                </div>
-                <div class="price-patch-preview-facts" style="gap: 12px;">
-                  <span>候选价格 <strong id="pricePreviewCandidate" style="color: #60a5fa;">0</strong></span>
-                  <span>实际匹配 <strong id="pricePreviewMatched" style="color: #34d399;">0</strong></span>
-                  <span>未匹配 <strong id="pricePreviewUnmatched" style="color: #94a3b8;">0</strong></span>
-                  <span>名称压缩 <strong id="pricePreviewCompacted" style="color: #eab308;">0</strong></span>
-                </div>
-                <p id="pricePreviewWarnings" class="price-patch-preview-warnings"></p>
-
-                <!-- 物品明细核对与快速搜索过滤 -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin: 8px 0 6px;">
-                  <input id="pricePreviewSearch" type="text" placeholder="搜索已匹配物品名称 (如: 神圣石 / 崇高石 / 符文)..." class="search-box" style="max-width: 280px; height: 26px; font-size: 11px;">
-                  <span class="fx-text-muted" id="pricePreviewFilteredCount">显示 0 / 0 条</span>
-                </div>
-
-                <div class="table-container" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.25);">
-                  <table class="compact-table">
-                    <thead>
-                      <tr>
-                        <th style="width: 38px; text-align: center;">序号</th>
-                        <th style="width: 80px; text-align: left;">分类</th>
-                        <th style="min-width: 140px; text-align: left;">客户端原名称</th>
-                        <th style="width: 85px; text-align: center;">注入物价</th>
-                        <th style="min-width: 160px; text-align: left;">地面掉落最终呈现</th>
-                        <th style="width: 60px; text-align: center;">状态</th>
-                      </tr>
-                    </thead>
-                    <tbody id="pricePreviewTableBody"></tbody>
-                  </table>
+                  <p id="pricePreviewWarnings" class="price-patch-preview-warnings"></p>
+                  <div class="fx-between" style="margin: 8px 0 6px;">
+                    <input id="pricePreviewSearch" type="text" placeholder="搜索已匹配物品名称 (如: 神圣石 / 崇高石 / 符文)..." class="search-box" style="max-width: 280px;">
+                    <span class="fx-text-muted" id="pricePreviewFilteredCount">显示 0 / 0 条</span>
+                  </div>
+                  <div class="table-container" style="max-height: 360px;">
+                    <table class="compact-table">
+                      <thead>
+                        <tr>
+                          <th style="width: 38px; text-align: center;">序号</th>
+                          <th style="width: 80px; text-align: left;">分类</th>
+                          <th style="min-width: 140px; text-align: left;">客户端原名称</th>
+                          <th style="width: 85px; text-align: center;">注入物价</th>
+                          <th style="min-width: 160px; text-align: left;">地面掉落最终呈现</th>
+                          <th style="width: 60px; text-align: center;">状态</th>
+                        </tr>
+                      </thead>
+                      <tbody id="pricePreviewTableBody"></tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1377,7 +1507,16 @@
       </main>
     </div>
 
-    <footer class="save-bar"><span id="saveStatus">正在加载设置</span><span id="overlayStatus">正在加载运行状态</span></footer>
+    <footer class="save-bar">
+      <span id="saveStatus">正在加载设置</span>
+      <div id="licenseBar" class="license-bar" data-state="loading">
+        <button id="licenseState" class="license-state-button" type="button" title="点击输入或更换会员卡密">授权状态加载中</button>
+        <span class="license-actions">
+          <button id="licenseRefreshButton" class="secondary-button license-action-button" type="button">刷新</button>
+        </span>
+      </div>
+      <span id="overlayStatus">正在加载运行状态</span>
+    </footer>
   </div>
 
   <!-- 模态框: 添加自定义规则 -->
@@ -1577,7 +1716,7 @@
       <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px;">
         <button id="btnRestoreSpellBlocksInModal" class="btn-compact" style="color: #f87171; border-color: rgba(239,68,68,0.3);" title="从独立备份完全还原技能特效">↺ 还原技能特效</button>
         <span id="spellSelectCountBadge" style="color: var(--muted); font-size: 12px;">已选择 0 项</span>
-        <button id="btnSaveSpellBlockModal" class="primary-button" style="height: 28px; padding: 0 16px; font-size: 12px;" title="将当前勾选的技能写入客户端">应用屏蔽</button>
+        <button id="btnSaveSpellBlockModal" class="primary-button" style="height: 28px; padding: 0 16px; font-size: 12px;" title="确认当前勾选并自动保存，回总览点击应用生效">确认选择</button>
       </div>
     </div>
   </div>

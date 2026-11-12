@@ -2,6 +2,7 @@ using FreiAtlas.App.Processes;
 using FreiAtlas.App.Settings;
 using FreiAtlas.Core.Atlas;
 using FreiAtlas.Core.Settings;
+using FreiAtlas.Licensing;
 
 namespace FreiAtlas.App.Runtime;
 
@@ -53,6 +54,7 @@ public sealed class AtlasRuntimeFacade : IAsyncDisposable
     private readonly IGameProcessCatalog _processCatalog;
     private readonly IOverlaySession _overlaySession;
     private readonly AtlasSettingsStore _settingsStore;
+    private readonly IMembershipGate? _membership;
     private readonly TimeSpan _refreshInterval;
     private readonly ProcessSelectionController _selection = new();
     private readonly SemaphoreSlim _commandGate = new(1, 1);
@@ -76,7 +78,8 @@ public sealed class AtlasRuntimeFacade : IAsyncDisposable
         IGameProcessCatalog processCatalog,
         IOverlaySession overlaySession,
         AtlasSettingsStore settingsStore,
-        TimeSpan? refreshInterval = null)
+        TimeSpan? refreshInterval = null,
+        IMembershipGate? membership = null)
     {
         _processCatalog = processCatalog
             ?? throw new ArgumentNullException(nameof(processCatalog));
@@ -84,6 +87,7 @@ public sealed class AtlasRuntimeFacade : IAsyncDisposable
             ?? throw new ArgumentNullException(nameof(overlaySession));
         _settingsStore = settingsStore
             ?? throw new ArgumentNullException(nameof(settingsStore));
+        _membership = membership;
         _refreshInterval = refreshInterval ?? TimeSpan.FromSeconds(2);
         if (_refreshInterval <= TimeSpan.Zero)
         {
@@ -96,6 +100,10 @@ public sealed class AtlasRuntimeFacade : IAsyncDisposable
         _settingsStore.PersistenceChanged += OnPersistenceChanged;
         _overlaySession.SnapshotReceived += OnAtlasSnapshot;
         _overlaySession.Ended += OnOverlayEnded;
+        if (_membership is not null)
+        {
+            _membership.Changed += OnMembershipChanged;
+        }
     }
 
     public AtlasSettingsAppSnapshot Current => Volatile.Read(ref _current);
@@ -199,6 +207,23 @@ public sealed class AtlasRuntimeFacade : IAsyncDisposable
         await _commandGate.WaitAsync(cancellationToken);
         try
         {
+            if (_membership is not null)
+            {
+                var decision = await _membership.EnsureFreshAsync(
+                    MembershipFeature.AtlasOverlay,
+                    cancellationToken).ConfigureAwait(false);
+                if (!decision.Allowed)
+                {
+                    lock (_stateGate)
+                    {
+                        _overlayStatusMessage = decision.Message;
+                    }
+
+                    Publish();
+                    return false;
+                }
+            }
+
             int? processId;
             bool invalidProcess;
             lock (_stateGate)
@@ -376,6 +401,10 @@ public sealed class AtlasRuntimeFacade : IAsyncDisposable
         _settingsStore.PersistenceChanged -= OnPersistenceChanged;
         _overlaySession.SnapshotReceived -= OnAtlasSnapshot;
         _overlaySession.Ended -= OnOverlayEnded;
+        if (_membership is not null)
+        {
+            _membership.Changed -= OnMembershipChanged;
+        }
         await _overlaySession.DisposeAsync();
         _refreshCancellation?.Dispose();
         _commandGate.Dispose();
@@ -400,6 +429,14 @@ public sealed class AtlasRuntimeFacade : IAsyncDisposable
     private void OnSettingsChanged(AtlasDisplaySettings _) => Publish();
 
     private void OnHotkeyChanged(AtlasHotkey _) => Publish();
+
+    private void OnMembershipChanged(object? sender, MembershipSnapshot snapshot)
+    {
+        if (!snapshot.CanContinueOverlay && (_selection.IsOverlayRunning || _overlaySession.IsRunning))
+        {
+            _ = BeginOverlayStop(snapshot.Reason ?? "授权已失效");
+        }
+    }
 
     private void OnPersistenceChanged(AtlasSettingsPersistenceStatus status)
     {

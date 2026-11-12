@@ -7,9 +7,10 @@ const nodeCategories = [
 ];
 
 let runtime = null;
+let license = null;
 let draftSettings = null;
 let catalog = [];
-let activePage = 'nodes';
+let activePage = 'quickAssist';
 let navigationSearch = '';
 let pollenOptionsExpanded = false;
 let lastSnapshotAt = 0;
@@ -145,9 +146,11 @@ function renderProcessBar() {
   const overlayButton = $('overlayButton');
   const running = Boolean(runtime?.isOverlayRunning);
   const stopping = Boolean(runtime?.isOverlayStopping);
+  const paidAllowed = license?.canStartPaid === true;
   $('refreshButton').disabled = false;
   overlayButton.classList.toggle('stop', running);
   overlayButton.disabled = stopping || (!running && !runtime?.selectedProcessId);
+  overlayButton.disabled = overlayButton.disabled || (!running && !paidAllowed);
   overlayButton.innerHTML = stopping
     ? '<i data-lucide="loader-circle"></i><span>正在停止</span>'
     : running
@@ -737,6 +740,79 @@ function renderSettings() {
   renderIcons();
 }
 
+function formatLicenseDeadline(unixSeconds) {
+  const seconds = Number(unixSeconds || 0);
+  if (!seconds) return '长期有效';
+  const date = new Date(seconds * 1000);
+  const pad = value => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function licenseStatusText() {
+  const state = String(license?.state || 'unverified').toLowerCase();
+  const now = Math.floor(Date.now() / 1000);
+  const trialExpiry = Number(license?.trialEndsAt || 0);
+  if (state === 'active' && trialExpiry > now) {
+    return `试用中：${formatLicenseDeadline(trialExpiry)}`;
+  }
+  if (state === 'active') {
+    const expiry = Number(
+      license?.effectiveExpiresAt
+      || license?.licenseExpiresAt
+      || license?.tokenExpiresAt
+      || 0);
+    return `激活有效：${formatLicenseDeadline(expiry)}`;
+  }
+  if (state === 'expired') {
+    return '激活码已到期，请更换。';
+  }
+  if (['activationrequired', 'unverified'].includes(state)) {
+    return '未激活，请输入有效密钥。';
+  }
+  return '激活失败，请重试。';
+}
+
+function renderLicense() {
+  const bar = $('licenseBar');
+  const label = $('licenseState');
+  if (!bar || !label) return;
+
+  const state = String(license?.state || 'unverified');
+  bar.dataset.state = state.toLowerCase();
+  const text = licenseStatusText();
+  label.textContent = text;
+  label.title = license?.reason ? `${text}\n${license.reason}` : '点击输入或更换会员卡密';
+  if (license?.canStartPaid !== true) {
+    window.freiLicense = { canStartPaid: false };
+  } else {
+    window.freiLicense = { canStartPaid: true };
+  }
+  window.dispatchEvent(new CustomEvent('frei-license-changed', { detail: window.freiLicense }));
+}
+
+function openLicenseDialog(message) {
+  const dialog = $('licenseDialog');
+  const messageNode = $('licenseMessage');
+  if (messageNode) messageNode.textContent = message || '请输入会员卡密。';
+  dialog?.classList.remove('hidden');
+  $('licenseKeyInput')?.focus();
+}
+
+function closeLicenseDialog() {
+  $('licenseDialog')?.classList.add('hidden');
+}
+
+function submitLicense() {
+  const input = $('licenseKeyInput');
+  const value = String(input?.value || '').trim();
+  if (!value) {
+    openLicenseDialog('请输入会员卡密。');
+    return;
+  }
+  post('activateLicense', { licenseKey: value });
+  closeLicenseDialog();
+}
+
 function render() {
   if (!runtime) return;
   renderProcessBar();
@@ -829,6 +905,13 @@ async function initialize() {
   window.chrome?.webview?.addEventListener('message', event => {
     const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
     if (message?.version === protocolVersion && message.type === 'quickAssistSnapshot') window.quickAssistUi?.receive(message.payload);
+    if (message?.version === protocolVersion && message.type === 'licenseSnapshot') {
+      license = message.payload;
+      renderLicense();
+      renderProcessBar();
+      window.patcherUi?.receiveLicenseState?.(message.payload);
+      return;
+    }
     if (message?.version === protocolVersion && message.type === 'pricesSnapshot') window.pricesUi?.receive(message.payload);
     if (message?.version === protocolVersion && message.type === 'patcherSnapshot') window.patcherUi?.receive(message.payload);
     // 补丁闸门释放后的轻量同步：只更新按钮可用状态，不重绘整页。
@@ -846,6 +929,15 @@ async function initialize() {
   });
   setInterval(updateStaleStatus, 1000);
   renderIcons();
+  $('licenseState')?.addEventListener('click', () => openLicenseDialog());
+  $('licenseActivateButton')?.addEventListener('click', () => openLicenseDialog());
+  $('licenseRefreshButton')?.addEventListener('click', () => post('refreshLicense'));
+  $('licenseSubmitButton')?.addEventListener('click', submitLicense);
+  $('licenseCloseButton')?.addEventListener('click', closeLicenseDialog);
+  $('licenseKeyInput')?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') submitLicense();
+  });
+  showPage('quickAssist');
   post('ready');
 }
 

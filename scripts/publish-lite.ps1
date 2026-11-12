@@ -111,6 +111,7 @@ $requiredFiles = @(
     'RUNTIME-REQUIREMENTS.txt',
     'app\FreiAtlas.Settings.exe',
     'app\FreiAtlas.Settings.dll',
+    'app\FreiAtlas.Licensing.dll',
     'app\FreiAtlas.Settings.deps.json',
     'app\FreiAtlas.Settings.runtimeconfig.json',
     'app\THIRD-PARTY-NOTICES.md',

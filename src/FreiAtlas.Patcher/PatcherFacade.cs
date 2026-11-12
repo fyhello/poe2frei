@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Collections.Immutable;
+using FreiAtlas.Licensing;
 using FreiAtlas.Patcher.EffectPatch.HealthBar;
 using FreiAtlas.Patcher.EffectPatch.MudMan;
 using FreiAtlas.Patcher.Core;
@@ -31,6 +33,9 @@ public sealed class PatcherFacade
 {
     private readonly PatchBackupManager _backupManager;
     private readonly PatchEngine _engine;
+    private readonly IMembershipGate? _membership;
+    private readonly object _batchGate = new();
+    private PatcherBatchContext? _activeBatch;
     private readonly FontPatchService _fontService;
     private readonly RumourPatchService _rumourService;
     private readonly NamePatchService _nameService;
@@ -63,8 +68,9 @@ public sealed class PatcherFacade
     public MapBeamPatchService MapBeamService => _mapBeamService;
     public FreiAtlas.Patcher.Translation.TranslationPatchService TranslationService => _translationService;
 
-    public PatcherFacade(string? customBackupDir = null)
+    public PatcherFacade(string? customBackupDir = null, IMembershipGate? membership = null)
     {
+        _membership = membership;
         _backupManager = new PatchBackupManager(customBackupDir);
         _engine = new PatchEngine(_backupManager);
         _fontService = new FontPatchService(_engine);
@@ -80,6 +86,79 @@ public sealed class PatcherFacade
         _mudManApplier = new FreiAtlas.Patcher.EffectPatch.MudMan.MudManApplier(_engine, _backupManager);
         _healthBarApplier = new FreiAtlas.Patcher.EffectPatch.HealthBar.HealthBarApplier(_engine, _backupManager);
         _mtxPatchApplier = new FreiAtlas.Patcher.MtxPatch.MtxPatchApplier(_engine);
+    }
+
+    public Guid PatcherInstanceId { get; } = Guid.NewGuid();
+
+    public PatcherBatchContext BeginBatch(ClientPatchBatchLease lease)
+    {
+        ArgumentNullException.ThrowIfNull(lease);
+        lock (_batchGate)
+        {
+            if (_activeBatch is not null)
+            {
+                throw new InvalidOperationException("another patch batch is already active");
+            }
+
+            if (!lease.TryClaim(PatcherInstanceId, Stopwatch.GetTimestamp()))
+            {
+                throw new MembershipDeniedException("batch lease is invalid, expired, or already claimed");
+            }
+
+            var context = new PatcherBatchContext(
+                lease,
+                PatcherInstanceId,
+                lease.AllowedModules.ToImmutableHashSet(),
+                ReleaseBatch);
+            _activeBatch = context;
+            return context;
+        }
+    }
+
+    private void EnsurePaidOrBatch(ClientPatchModule module, PatcherBatchContext? batch)
+    {
+        if (batch is null)
+        {
+            EnsurePaid(module);
+            return;
+        }
+
+        if (!batch.IsValidFor(this, _activeBatch, module))
+        {
+            throw new MembershipDeniedException("invalid, expired, or released batch context");
+        }
+    }
+
+    private void EnsurePaid(ClientPatchModule module)
+    {
+        if (_membership is null)
+        {
+            return;
+        }
+
+        var feature = module switch
+        {
+            ClientPatchModule.Translation => MembershipFeature.ClientPatchTranslation,
+            ClientPatchModule.Mtx => MembershipFeature.ClientPatchMtx,
+            ClientPatchModule.ColorMod => MembershipFeature.ClientPatchColorMod,
+            _ => throw new ArgumentOutOfRangeException(nameof(module)),
+        };
+        var decision = _membership.EnsureFreshAsync(feature).GetAwaiter().GetResult();
+        if (!decision.Allowed)
+        {
+            throw new MembershipDeniedException(decision.Message);
+        }
+    }
+
+    internal void ReleaseBatch(PatcherBatchContext context)
+    {
+        lock (_batchGate)
+        {
+            if (_activeBatch?.BatchId == context.BatchId)
+            {
+                _activeBatch = null;
+            }
+        }
     }
 
     /// <summary>
@@ -266,8 +345,12 @@ public sealed class PatcherFacade
         return _iconPatchService.Restore(info, progress, out _);
     }
 
-    public FreiAtlas.Patcher.Translation.TranslationPatchResult ApplyTranslation(string? preferredDirectory = null, Action<string>? progress = null)
+    public FreiAtlas.Patcher.Translation.TranslationPatchResult ApplyTranslation(
+        string? preferredDirectory = null,
+        Action<string>? progress = null,
+        PatcherBatchContext? batch = null)
     {
+        EnsurePaidOrBatch(ClientPatchModule.Translation, batch);
         if (IsGameRunning())
         {
             return new FreiAtlas.Patcher.Translation.TranslationPatchResult
@@ -674,8 +757,10 @@ public sealed class PatcherFacade
         ColorModStyle style = ColorModStyle.Whole,
         string? preferredDirectory = null,
         IEnumerable<ColorModEntry>? entries = null,
-        Action<string>? progress = null)
+        Action<string>? progress = null,
+        PatcherBatchContext? batch = null)
     {
+        EnsurePaidOrBatch(ClientPatchModule.ColorMod, batch);
         if (IsGameRunning())
         {
             progress?.Invoke("检测到游戏正在运行中，游戏占用了资源文件。请先退出游戏，然后再点击应用补丁。");
@@ -996,8 +1081,10 @@ public sealed class PatcherFacade
         string? preferredDirectory,
         FreiAtlas.Patcher.MtxPatch.MtxPatchOptions options,
         Action<string>? progress,
-        out string message)
+        out string message,
+        PatcherBatchContext? batch = null)
     {
+        EnsurePaidOrBatch(ClientPatchModule.Mtx, batch);
         message = string.Empty;
         if (IsGameRunning())
         {

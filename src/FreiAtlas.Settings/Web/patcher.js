@@ -1,5 +1,6 @@
 (() => {
   let state = null;
+  let licenseAllowsPaid = false;
   const element = id => document.getElementById(id);
   const post = (type, value = {}) => window.chrome?.webview?.postMessage({ version: 1, type, payload: value });
 
@@ -275,6 +276,10 @@
   }
 
   function toggleSelectAll(checked) {
+    if (!licenseAllowsPaid && checked) {
+      showToast('如需重新应用收费模块，需要有效会员授权');
+      return;
+    }
     const list = getCurrentFilteredRules();
     if (list.length === 0) return;
     list.forEach(item => {
@@ -399,11 +404,7 @@
     if (shown !== total) text += `（当前筛选显示 ${shown} 个）`;
     if (iconPatchSkipped > 0) text += ` · ${iconPatchSkipped} 个不适用于当前版本已隐藏`;
     summary.innerText = text;
-
-    const status = element("hubStatus-iconpatch");
-    if (status) {
-      status.innerText = total > 0 ? `● 可用 ${total} 个，已选 ${selected} 个` : "● 未读取客户端";
-    }
+    syncModuleHubStatus();
   }
 
   function buildIconPayload() {
@@ -457,6 +458,13 @@
   // 当前工作台激活的模块 (默认 colormod)
   let currentActiveModule = "colormod";
 
+  const MODULE_RESTORE_META = {
+    effectpatch: { label: "支持独立还原", cls: "pill-independent" },
+    iconpatch: { label: "支持独立还原", cls: "pill-independent" },
+    mtxpatch: { label: "支持独立还原", cls: "pill-independent" },
+    price: { label: "可独立清除后缀", cls: "pill-clean" }
+  };
+
   // 工作台切换
   function openWorkbench(moduleId) {
     currentActiveModule = moduleId;
@@ -470,6 +478,13 @@
     const titleEl = element("wbModuleTitle");
     if (titleEl) titleEl.innerText = MODULE_TITLES[moduleId] || "专注配置工作台";
 
+    const pillEl = element("wbRestorePill");
+    if (pillEl) {
+      const meta = MODULE_RESTORE_META[moduleId] || { label: "共享表快照还原", cls: "pill-snapshot" };
+      pillEl.textContent = meta.label;
+      pillEl.className = "mod-restore-pill " + meta.cls;
+    }
+
     const selectEl = element("wbModuleSelect");
     if (selectEl) selectEl.value = moduleId;
 
@@ -482,43 +497,76 @@
   function backToHub() {
     element("patcherWorkbenchView")?.classList.add("hidden");
     element("patcherHubView")?.classList.remove("hidden");
+    syncModuleHubStatus();
   }
 
   function toggleModuleMaster(moduleId, checked, event) {
     if (event) event.stopPropagation();
     moduleMasters[moduleId] = checked;
-    const card = element("hcard-" + moduleId);
-    if (card) {
-      if (checked) card.classList.remove("card-disabled");
-      else card.classList.add("card-disabled");
-    }
-    const statusEl = element("hubStatus-" + moduleId);
-    if (statusEl) {
-      statusEl.innerText = checked ? "● 已启用" : "○ 已关闭";
-      statusEl.style.color = checked ? "#34d399" : "var(--text-muted, #94a3b8)";
-    }
-    const toggleInput = element("masterToggle-" + moduleId);
-    if (toggleInput && toggleInput.checked !== checked) {
-      toggleInput.checked = checked;
-    }
-    // 关闭总开关时同步取消批量勾选：否则会出现「模块勾着、但因总开关关闭
-    // 不会被应用」的歧义（这正是批量显示成功却零写入的历史成因之一）。
     const batchToggle = document.querySelector(`.batch-module-toggle[data-module="${moduleId}"]`);
     if (!checked && batchToggle && batchToggle.checked) {
       batchToggle.checked = false;
       post("setModuleEnabled", { module: moduleId, enabled: false });
       updateBatchHint();
     }
+    syncModuleHubStatus();
+  }
+
+  /** 将长文本或错误反馈精简为单行摘要，完整文本按需在折叠面板展开。 */
+  function renderFeedback(rawMsg, kind = "info") {
+    const wrap = element("patcherFeedbackWrap");
+    const feedbackBox = element("patcherFeedback");
+    const detailBtn = element("btnToggleFeedbackDetail");
+    const detailPre = element("patcherFeedbackDetail");
+    if (!feedbackBox) return;
+
+    const text = String(rawMsg || "").trim();
+    if (!text) {
+      wrap?.classList.add("hidden");
+      feedbackBox.textContent = "";
+      feedbackBox.className = "patcher-feedback";
+      detailBtn?.classList.add("hidden");
+      detailPre?.classList.add("hidden");
+      return;
+    }
+
+    wrap?.classList.remove("hidden", "is-info", "is-success", "is-error");
+    wrap?.classList.add(`is-${kind}`);
+
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const hasDetails = lines.length > 1 || text.length > 90;
+    const summaryText = lines.length > 1
+      ? `${lines[0]}（共 ${lines.length} 条详情）`
+      : text;
+
+    feedbackBox.textContent = summaryText;
+    feedbackBox.className = `patcher-feedback ${kind}`;
+
+    if (detailPre && detailBtn) {
+      if (hasDetails) {
+        detailPre.textContent = text;
+        detailBtn.classList.remove("hidden");
+        // 错误信息收起保持简洁摘要，点击即可查看详细错误与回滚明细。
+        detailPre.classList.add("hidden");
+        detailBtn.textContent = kind === "error" ? "查看错误详情 ▾" : "展开详情 ▾";
+      } else {
+        detailPre.textContent = "";
+        detailPre.classList.add("hidden");
+        detailBtn.classList.add("hidden");
+      }
+    }
   }
 
   // 状态反馈提示 (Toast)
   function showToast(msg, isError = false) {
+    const kind = isError ? "error" : "info";
+    renderFeedback(msg, kind);
     const feedbackBox = element("patcherFeedback");
     if (feedbackBox) {
-      feedbackBox.textContent = msg;
-      feedbackBox.className = "patcher-feedback " + (isError ? "error" : "info");
       setTimeout(() => {
-        if (feedbackBox.textContent === msg) feedbackBox.className = "patcher-feedback";
+        if (feedbackBox.textContent && feedbackBox.textContent.startsWith(String(msg).split(/\r?\n/)[0].trim())) {
+          feedbackBox.className = "patcher-feedback";
+        }
       }, 4000);
     }
   }
@@ -693,7 +741,7 @@
 
         tr.innerHTML = `
           <td style="text-align: center;">
-            <input type="checkbox" class="rule-enable-toggle" data-id="${item.id}" ${item.enabled ? 'checked' : ''} style="cursor: pointer;">
+            <input type="checkbox" class="rule-enable-toggle" data-id="${item.id}" ${item.enabled ? 'checked' : ''} ${licenseAllowsPaid || item.enabled ? '' : 'disabled'} style="cursor: pointer;">
           </td>
           <td>
             <div style="display: flex; align-items: center; gap: 6px;">
@@ -729,6 +777,11 @@
 
     tbody.querySelectorAll(".rule-enable-toggle").forEach(chk => {
       chk.addEventListener("change", e => {
+        if (!licenseAllowsPaid && e.target.checked) {
+          e.target.checked = false;
+          showToast('如需重新应用收费模块，需要有效会员授权');
+          return;
+        }
         const it = colorModData.find(x => x.id === e.target.dataset.id);
         if (it) {
           it.enabled = e.target.checked;
@@ -1068,18 +1121,8 @@
     }
   }
 
-  function updateRumourSimCard(item) {
-    if (!item) return;
-    const title = element("simRumourMapTitle");
-    const preview = element("simRumourPreviewText");
-    const tag = element("simRumourCategoryTag");
-    if (title) title.innerText = item.mapName ? `${item.mapName} (行 #${item.rowIndex})` : `行 #${item.rowIndex}`;
-    if (preview) {
-      const rendered = (item.modifiedText || "").replace(/<rgb\((\d+),(\d+),(\d+)\)>\{([^}]+)\}/g, '<span style="color: rgb($1,$2,$3); font-weight: bold;">$4</span>');
-      preview.innerHTML = rendered || escapeHtml(item.originalText || "");
-      preview.style.color = item.color || "#eab308";
-    }
-    if (tag) tag.innerText = `🏷️ 规则分类：${item.category || "常规"}`;
+  function updateRumourSimCard() {
+    // 传言着色预览已按要求移除，保留空钩子以免旧调用点报错。
   }
 
   // 7. 价格即时仿真
@@ -1333,21 +1376,33 @@
    */
   function applyTranslationAvailability(state) {
     const disabled = Boolean(state.isChina);
-    const card = element('hcard-translation');
-    const button = element('btnApplyTranslationPatch');
-    const status = element('hubStatus-translation');
+    const row = document.querySelector('[data-module-row="translation"]');
+    const toggle = document.querySelector('.batch-module-toggle[data-module="translation"]');
+    const chip = element('hubState-translation');
+    const note = element('hubTranslationNote');
 
-    if (button) {
-      button.disabled = disabled;
-      button.title = disabled
-        ? '国服客户端原生已是简体中文，无需汉化'
-        : '独立注入官方简体中文，不与字体、物价联动';
+    if (row) {
+      row.classList.toggle('is-disabled', disabled);
     }
-    if (card) {
-      card.style.opacity = disabled ? '0.55' : '';
+    if (toggle) {
+      if (disabled) {
+        if (toggle.checked) {
+          toggle.checked = false;
+          post('setModuleEnabled', { module: 'translation', enabled: false });
+          updateBatchHint();
+        }
+        toggle.disabled = true;
+        toggle.title = '国服客户端原生已是简体中文，无需汉化';
+      } else {
+        toggle.title = '独立注入官方简体中文，不与字体、物价联动';
+      }
     }
-    if (status && disabled) {
-      status.textContent = '● 国服原生简中，无需汉化';
+    if (chip && disabled) {
+      chip.textContent = '国服无需汉化';
+      chip.className = 'mod-status-chip is-blocked';
+    }
+    if (note) {
+      note.textContent = disabled ? '国服原生简中' : '内置词典';
     }
   }
 
@@ -1579,9 +1634,21 @@
     renderFontPresetSelect();
   }
 
+  function formatStepDelta(val) {
+    const n = parseInt(val, 10) || 0;
+    if (n === 0) return "±0";
+    return n > 0 ? `+${n}` : String(n);
+  }
+
+  function syncFontStepperDisplay(id, val) {
+    const disp = element("val-" + id);
+    if (disp) disp.textContent = formatStepDelta(val);
+  }
+
   function setSelectValue(id, val) {
     const el = element(id);
     if (el) el.value = val;
+    syncFontStepperDisplay(id, val);
   }
 
   function saveCustomFontPreset(name) {
@@ -1621,19 +1688,8 @@
   }
 
   function updateFontPreview() {
-    const card = element("fontPreviewCard");
-    const dropdown = element("fontSelectDropdown");
-    const deltaSelect = element("fontSizeDeltaSelect");
     const chkBold = element("chkFontBold");
     const boldText = element("boldStatusText");
-
-    const dropItemDelta = parseInt(element("fontSizeDropItemSelect")?.value, 10) || 0;
-    const generalDelta = parseInt(element("fontSizeGeneralSelect")?.value, 10) || 0;
-    const titleDelta = parseInt(element("fontSizeTitleSelect")?.value, 10) || 0;
-    const tinyDelta = parseInt(element("fontSizeTinySelect")?.value, 10) || 0;
-
-    const font = dropdown?.value || dropdown?.options?.[0]?.value || "";
-    const delta = deltaSelect ? parseInt(deltaSelect.value, 10) || 0 : 0;
     const isBold = chkBold ? !!chkBold.checked : false;
 
     if (boldText) {
@@ -1641,45 +1697,16 @@
       boldText.style.color = isBold ? "#34d399" : "var(--text-muted)";
     }
 
-    // 1. 地面掉落标签联动
-    const elDrop = element("simDropItemPreview");
-    if (elDrop) {
-      elDrop.style.fontFamily = `"${font}", sans-serif`;
-      elDrop.style.fontWeight = isBold ? "700" : "bold";
-      const dropScale = 13 + (dropItemDelta * 1.2) + (delta * 0.8);
-      elDrop.style.fontSize = `${Math.max(9, dropScale)}px`;
-    }
-
-    // 2. 微小数值角标联动
-    const elTiny = element("simTinyBadgePreview");
-    if (elTiny) {
-      elTiny.style.fontFamily = `"${font}", sans-serif`;
-      const tinyScale = 10 + (tinyDelta * 1.0) + (delta * 0.5);
-      elTiny.style.fontSize = `${Math.max(8, tinyScale)}px`;
-    }
-
-    // 3. 悬浮标题联动
-    const elTitle = element("simTitlePreview");
-    if (elTitle) {
-      elTitle.style.fontFamily = `"${font}", sans-serif`;
-      elTitle.style.fontWeight = isBold ? "700" : "bold";
-      const titleScale = 13 + (titleDelta * 1.2) + (delta * 0.8);
-      elTitle.style.fontSize = `${Math.max(10, titleScale)}px`;
-    }
-
-    // 4. 正文描述词缀联动
-    const elGen = element("simGeneralPreview");
-    if (elGen) {
-      elGen.style.fontFamily = `"${font}", sans-serif`;
-      elGen.style.fontWeight = isBold ? "600" : "normal";
-      const genScale = 11.5 + (generalDelta * 1.0) + (delta * 0.8);
-      elGen.style.fontSize = `${Math.max(9, genScale)}px`;
-    }
-
-    // 5. 卡片全局响应
-    if (card) {
-      card.style.fontFamily = `"${font}", sans-serif`;
-    }
+    [
+      "fontSizeDropItemSelect",
+      "fontSizeGeneralSelect",
+      "fontSizeTitleSelect",
+      "fontSizeTinySelect",
+      "fontSizeDeltaSelect"
+    ].forEach(id => {
+      const el = element(id);
+      if (el) syncFontStepperDisplay(id, el.value);
+    });
   }
 
   function buildFontPayload() {
@@ -2057,9 +2084,14 @@
     }).join("");
 
     grid.innerHTML = cardsHtml;
+    grid.classList.toggle("license-locked", !licenseAllowsPaid);
 
     grid.querySelectorAll(".mtx-card").forEach(card => {
       card.addEventListener("click", () => {
+        if (!licenseAllowsPaid && !card.classList.contains("selected")) {
+          showToast('如需重新应用收费模块，需要有效会员授权');
+          return;
+        }
         const name = card.dataset.name;
         const entry = allMtxEntries.find(e => getMtxEntryName(e) === name);
         if (!entry) return;
@@ -2088,6 +2120,8 @@
 
         renderMtxSummary();
         renderMtxGrid();
+        syncModuleHubStatus();
+        scheduleAutoSave();
       });
     });
   }
@@ -2120,7 +2154,6 @@
 
     const badgeStatus = element("badgeMtxStatus");
     const badgeCount = element("badgeMtxCount");
-    const hubStatus = element("hubStatus-mtxpatch");
 
     const applied = mtxState ? mtxState.applied : false;
     const files = mtxState ? mtxState.patchedFiles : 0;
@@ -2142,15 +2175,7 @@
       }
     }
 
-    if (hubStatus) {
-      if (applied) {
-        hubStatus.textContent = `● 已应用 (${files} 个文件)`;
-        hubStatus.style.color = "#34d399";
-      } else {
-        hubStatus.textContent = "● 未应用";
-        hubStatus.style.color = "var(--text-muted, #94a3b8)";
-      }
-    }
+    syncModuleHubStatus();
   }
 
   function buildMtxPayload() {
@@ -2166,6 +2191,10 @@
   }
 
   function applyMtxPatchAction(persistOnly = false) {
+    if (!persistOnly && !licenseAllowsPaid) {
+      showToast("如需应用商城外观特效，需要有效会员授权");
+      return;
+    }
     if (persistOnly) {
       post("applyMtxPatch", { ...buildMtxPayload(), persistOnly: true });
       return;
@@ -2388,15 +2417,8 @@
     // 5.1 同步头顶血条状态
     renderHealthBarUi();
 
-    // 6. 更新 Hub 卡片状态徽章
-    const mudManActive = selectedMudManTier >= 0 ? 1 : 0;
-    const healthBarActive = healthBarState && healthBarState.applied ? 1 : 0;
-    const totalActive = selectedEffectRules.size + selectedBlockedSpells.size + mudManActive + healthBarActive;
-    const hubStatus = element("hubStatus-effectpatch");
-    if (hubStatus) {
-      hubStatus.innerText = totalActive > 0 ? `● ${totalActive} 项已启用` : "● 0 项已启用";
-      hubStatus.style.color = totalActive > 0 ? "var(--accent)" : "";
-    }
+    // 6. 更新总览状态芯片
+    syncModuleHubStatus();
   }
 
   function renderSpellBlockModal() {
@@ -2479,13 +2501,7 @@
       }
     }
 
-    const mudManActive = selectedMudManTier >= 0 ? 1 : 0;
-    const totalActive = selectedEffectRules.size + count + mudManActive;
-    const hubStatus = element("hubStatus-effectpatch");
-    if (hubStatus) {
-      hubStatus.innerText = totalActive > 0 ? `● ${totalActive} 项已启用` : "● 0 项已启用";
-      hubStatus.style.color = totalActive > 0 ? "var(--accent)" : "";
-    }
+    syncModuleHubStatus();
   }
 
 
@@ -2987,21 +3003,19 @@
       badgeBackup.className = 'patcher-badge ' + (state.hasBackup ? 'backup-ready' : '');
     }
 
-    const feedbackBox = element('patcherFeedback');
-    if (feedbackBox) {
-      if (state.error) {
-        feedbackBox.textContent = state.error;
-        feedbackBox.className = 'patcher-feedback error';
-      } else if (state.message) {
-        feedbackBox.textContent = state.message;
-        const isSuccess = state.message.includes('成功') || state.message.includes('完成');
-        feedbackBox.className = 'patcher-feedback ' + (isSuccess ? 'success' : 'info');
-      }
+    if (state.error) {
+      renderFeedback(state.error, 'error');
+    } else if (state.message) {
+      const isSuccess = state.message.includes('成功') || state.message.includes('完成');
+      renderFeedback(state.message, isSuccess ? 'success' : 'info');
+    } else {
+      renderFeedback('', 'info');
     }
 
     // 补丁任务执行期间禁用所有写入型按钮，避免并发改写同一批数据表。
     // 后端另有互斥闸兜底，这里只负责给用户即时反馈。
     applyBusyState(Boolean(state.patchBusy));
+    syncModuleHubStatus();
   }
 
   /**
@@ -3042,100 +3056,159 @@
   // 无法预先登记，由 applyBusyState 统一扫描 data-busy-guard 属性处理。
   // 新增写操作按钮时：固定按钮加进本清单，动态按钮加 data-busy-guard="1"。
   const PATCH_ACTION_BUTTON_IDS = [
-    'btnApplyTranslationPatch',
     'btnRestorePatches',
+    'btnBackupCurrentVersion',
+    'btnSetGameDir',
+    'btnRestoreDefaultRules',
     'btnApplyBatch',
     'btnRestoreSnapshot',
     'btnConfirmCreateSnapshot',
     'btnTriggerCreateSnapInCenter',
-    'btnApplyEffectRules',
     'btnRestoreEffectRules',
     'btnRestoreSpellBlocksInModal',
-    'btnQuickApplyEffectPatch',
     'btnRestoreMudManInModal',
     'btnRestoreIconPatch',
-    'btnApplyMtxPatch',
     'btnRestoreMtxPatch',
-    'btnQuickApplyMtxPatch',
     'btnSaveFontPreset',
     'btnSaveRemoveDarkModal',
-    'btnSaveSpellBlockModal',
-      'btnSaveMudManModal',
-      // 物价清洗也会改写客户端数据表，原先漏掉了
-      'btnCleanPricePatch'
+    'btnSaveMudManModal',
+    // 物价清洗也会改写客户端数据表，原先漏掉了
+    'btnCleanPricePatch'
   ];
 
-  // 同步 6 个模块卡片的真实状态。
-  //
-  // 这些 span 原本是硬编码文案（「● 14 条规则生效中」「● 5 种神图光柱激活」等），
-  // 无论用户是否打过补丁都恒显示「生效中」，属虚假状态。
-  // 现在按设置与实际数据实时计算：未启用时显示「○ 未启用」。
+  // 同步 10 个总览模块行的真实状态与互斥警示。
   function syncModuleHubStatus() {
-    const set = (id, text, active) => {
-      const el = element('hubStatus-' + id);
+    const setChip = (mod, text, tone = 'default') => {
+      const el = element('hubState-' + mod);
       if (!el) return;
-      el.innerText = text;
-      el.style.color = active ? '#34d399' : 'var(--text-muted, #94a3b8)';
+      el.textContent = text;
+      el.className = 'mod-status-chip' + (tone && tone !== 'default' ? ' is-' + tone : '');
     };
 
-    const settings = state.settings || {};
+    const settings = (state && state.settings) ? state.settings : {};
+    const defaultMapBeams = (state && Array.isArray(state.defaultMapBeams)) ? state.defaultMapBeams : [];
+    const selectedSet = new Set(collectSelectedModules());
 
-    // 后端随快照下发的默认清单。用户尚未自定义时设置里的列表为 null，
-    // 此时必须按默认项计数，否则会显示「● 0 条规则生效中」这种假 0。
-    const defaultMapBeams = Array.isArray(state.defaultMapBeams) ? state.defaultMapBeams : [];
+    // 同步行暗淡状态（当前大类与模块并未同时激活）
+    Object.keys(MODULE_SETTING_KEY).forEach(mod => {
+      const row = document.querySelector(`[data-module-row="${mod}"]`);
+      if (row) row.classList.toggle('is-dimmed', !selectedSet.has(mod));
+    });
 
-    // 词缀染色：显示实际启用的规则条数
-    {
-      const on = !!settings.colorModEnabled;
-      const count = Array.isArray(settings.colorModRules)
-        ? settings.colorModRules.filter(r => r && r.enabled).length
-        : 0;
-      set('colormod', on ? `● ${count} 条规则生效中` : '○ 未启用', on);
+    // 1. 汉化
+    if (state?.isChina) {
+      setChip('translation', '国服无需汉化', 'blocked');
+    } else if (!licenseAllowsPaid) {
+      setChip('translation', '需授权启用', 'warn');
+    } else {
+      setChip('translation', settings.translationEnabled ? '已勾选·待应用' : '未启用', settings.translationEnabled ? 'active' : 'default');
     }
 
-    // 神图光柱：设置里没有自定义项时按后端默认清单计数
+    // 2. 词缀染色
+    {
+      const on = !!settings.colorModEnabled;
+      const rules = Array.isArray(settings.colorModRules) && settings.colorModRules.length > 0
+        ? settings.colorModRules
+        : colorModData;
+      const count = Array.isArray(rules) ? rules.filter(r => r && r.enabled).length : 0;
+      setChip('colormod', on ? `已启用 ${count} 条规则` : `未启用 (库内 ${rules?.length || 0} 条)`, on ? 'active' : 'default');
+    }
+
+    // 3. 原生物价注入（优先反馈真实后端时效状态）
+    {
+      const on = !!settings.pricePatchEnabled;
+      const ps = state?.priceStatus;
+      if (ps && !ps.available) {
+        setChip('price', '尚未拉取物价', 'warn');
+      } else if (ps && !ps.isFresh) {
+        setChip('price', '物价数据已过期', 'warn');
+      } else if (on && ps) {
+        setChip('price', `实时挂接中 (${ps.itemCount || 0} 项)`, 'active');
+      } else if (ps) {
+        setChip('price', `数据有效 (${ps.itemCount || 0} 项)`, 'default');
+      } else {
+        setChip('price', on ? '已开启' : '未启用', on ? 'active' : 'default');
+      }
+    }
+
+    // 4. 字体排版
+    {
+      const on = !!settings.fontPatchEnabled;
+      const family = settings.fontFamily && settings.fontFamily !== 'Microsoft YaHei' ? settings.fontFamily : '默认字体';
+      setChip('fontmod', on ? `已开启 (${family})` : '未启用', on ? 'active' : 'default');
+    }
+
+    // 5. 宝箱
+    {
+      const on = !!settings.chestEnhanced;
+      setChip('chests', on ? '保险箱打标开启' : '未启用', on ? 'active' : 'default');
+    }
+
+    // 6. 传言
+    {
+      const on = !!settings.rumourEnhanced;
+      const items = Array.isArray(settings.rumourItems) && settings.rumourItems.length > 0 ? settings.rumourItems : null;
+      if (items) {
+        const count = items.filter(i => i && i.enabled).length;
+        setChip('rumours', on ? `已启用 ${count} 条` : `未启用 (共 ${items.length} 条)`, on ? 'active' : 'default');
+      } else {
+        setChip('rumours', on ? '默认传言清单' : '未启用', on ? 'active' : 'default');
+      }
+    }
+
+    // 7. 图标替换
+    {
+      const iconApplied = Boolean(state?.iconPatch?.applied);
+      const backedUp = state?.iconPatch?.backedUpFiles || 0;
+      const selectedPaths = Array.isArray(settings.iconPatchSelectedPaths) ? settings.iconPatchSelectedPaths.length : 0;
+      if (iconApplied) {
+        setChip('iconpatch', `已生效 (${backedUp} 个文件)`, 'active');
+      } else if (iconPatchEntries.length > 0) {
+        const selCount = iconPatchEntries.filter(e => e.enabled).length;
+        setChip('iconpatch', `已选 ${selCount}/${iconPatchEntries.length}`, 'default');
+      } else {
+        setChip('iconpatch', selectedPaths > 0 ? `待应用 (${selectedPaths} 项)` : '未应用', 'default');
+      }
+    }
+
+    // 8. 特效与性能优化
+    {
+      const mudManActive = (selectedMudManTier >= 0 || mudManState?.applied) ? 1 : 0;
+      const healthBarActive = (healthBarState?.applied || settings.healthBarEnabled) ? 1 : 0;
+      const totalActive = selectedEffectRules.size + selectedBlockedSpells.size + mudManActive + healthBarActive;
+      setChip('effectpatch', totalActive > 0 ? `${totalActive} 项优化已启` : '未开启规则', totalActive > 0 ? 'active' : 'default');
+    }
+
+    // 9. 神图光柱
     {
       const on = !!settings.mapBeamEnabled;
       const targets = Array.isArray(settings.mapBeamTargets) && settings.mapBeamTargets.length > 0
         ? settings.mapBeamTargets
         : defaultMapBeams;
       const count = targets.filter(t => t && t.enabled).length;
-      set('mapbeam', on ? `● ${count} 种神图光柱激活` : '○ 未启用', on);
+      setChip('mapbeam', on ? `${count} 种神图光柱` : '未启用', on ? 'active' : 'default');
     }
 
-    // 宝箱增强
+    // 10. 商城外观 (MTX)
     {
-      const on = !!settings.chestEnhanced;
-      set('chests', on ? '● 陷阱防护开启' : '○ 未启用', on);
-    }
-
-    // 传言增强：设置里没有自定义项时按后端默认清单计数
-    {
-      const on = !!settings.rumourEnhanced;
-      const items = Array.isArray(settings.rumourItems) && settings.rumourItems.length > 0
-        ? settings.rumourItems
-        : null;
-      if (items) {
-        const count = items.filter(i => i && i.enabled).length;
-        set('rumours', on ? `● ${count} 项传言明细解析` : '○ 未启用', on);
+      const applied = Boolean(mtxState?.applied);
+      const files = mtxState?.patchedFiles || 0;
+      if (applied) {
+        setChip('mtxpatch', `已应用 (${files} 文件)`, 'active');
+      } else if (!licenseAllowsPaid) {
+        setChip('mtxpatch', '需授权启用', 'warn');
       } else {
-        // 未自定义时条目数等于后端默认字典大小；前端不重复持有该数据，
-        // 只表述「默认明细」而不编造具体条数。
-        set('rumours', on ? '● 默认传言明细解析' : '○ 未启用', on);
+        const chosen = (selectedArmourSet ? 1 : 0) + (selectedPortal ? 1 : 0) + (selectedPet ? 1 : 0) + selectedMtxNames.size;
+        setChip('mtxpatch', chosen > 0 ? `已选 ${chosen} 项外观` : '未应用', 'default');
       }
     }
 
-    // 字体：ClientPatchSettings 没有独立的「已写入」布尔字段，
-    // 以字体族是否偏离系统默认作为生效依据。
-    {
-      const on = !!settings.fontFamily && settings.fontFamily !== 'Microsoft YaHei';
-      set('fontmod', on ? '● 自定义字体已写入' : '○ 系统原生渲染', on);
-    }
-
-    // 物价：按启用状态
-    {
-      const on = !!settings.pricePatchEnabled;
-      set('price', on ? '● 实时物价挂接中' : '○ 未启用', on);
+    // 泥人 vs 商城外观冲突提醒横幅
+    const conflictBanner = element('patcherConflictBanner');
+    if (conflictBanner) {
+      const mudActive = (selectedMudManTier >= 0 || mudManState?.applied) && selectedSet.has('effectpatch');
+      const mtxActive = selectedSet.has('mtxpatch') || Boolean(mtxState?.applied);
+      conflictBanner.classList.toggle('hidden', !(mudActive && mtxActive));
     }
   }
 
@@ -3235,6 +3308,44 @@
     hint.style.color = excluded.length > 0 ? "#f59e0b" : "#34d399";
   }
 
+  /** 免费状态：允许取消已选收费模块，禁止重新勾选。 */
+  function applyPaidSelectionPolicy() {
+    const paidModules = ["translation", "mtxpatch", "colormod"];
+    paidModules.forEach(mod => {
+      const el = document.querySelector(`.batch-module-toggle[data-module="${mod}"]`);
+      if (!el) return;
+      if (mod === "translation" && state?.isChina) {
+        el.disabled = true;
+        return;
+      }
+      if (licenseAllowsPaid) {
+        el.disabled = false;
+        return;
+      }
+      el.disabled = !el.checked;
+    });
+
+    const selectAll = element("chkSelectAllRules");
+    if (selectAll) selectAll.disabled = !licenseAllowsPaid && !selectAll.checked;
+    ["btnBatchCheckAll", "btnBatchWhole", "btnBatchNumber"].forEach(id => {
+      const el = element(id);
+      if (el) el.disabled = !licenseAllowsPaid;
+    });
+    const batchApply = element("btnApplyBatch");
+    if (batchApply) {
+      const selected = collectSelectedModules();
+      batchApply.disabled = !licenseAllowsPaid
+        && selected.some(m => paidModules.includes(m));
+    }
+  }
+
+  function receiveLicenseState(payload) {
+    licenseAllowsPaid = payload?.canStartPaid === true;
+    applyPaidSelectionPolicy();
+    if (colorModData.length > 0) renderTable();
+    renderMtxGrid();
+  }
+
   /** 按后端下发的设置回显勾选状态。 */
   function renderBatchSelection() {
     const settings = state?.settings || {};
@@ -3250,24 +3361,55 @@
       if (el) el.checked = !!settings[key];
     });
 
+    applyPaidSelectionPolicy();
     updateBatchHint();
+    syncModuleHubStatus();
   }
 
   function bindBatchSelection() {
     document.querySelectorAll(".batch-category-toggle").forEach(el => {
       el.addEventListener("change", () => {
+        if (el.checked && !licenseAllowsPaid) {
+          const paidModules = ["translation", "mtxpatch", "colormod"];
+          (BATCH_CATEGORIES[el.dataset.category] || [])
+            .filter(mod => paidModules.includes(mod))
+            .forEach(mod => {
+              const moduleEl = document.querySelector(`.batch-module-toggle[data-module="${mod}"]`);
+              if (moduleEl?.checked) {
+                moduleEl.checked = false;
+                post("setModuleEnabled", { module: mod, enabled: false });
+              }
+            });
+          showToast("收费模块需要有效会员授权");
+        }
         post("setBatchCategory", { category: el.dataset.category, enabled: el.checked });
+        applyPaidSelectionPolicy();
         updateBatchHint();
+        syncModuleHubStatus();
       });
     });
 
     document.querySelectorAll(".batch-module-toggle").forEach(el => {
       el.addEventListener("change", () => {
         const mod = el.dataset.module;
+        if (el.checked && mod === "translation" && state?.isChina) {
+          el.checked = false;
+          showToast("国服客户端原生已是简体中文，无需开启汉化补丁");
+          return;
+        }
+        const paidModules = ["translation", "mtxpatch", "colormod"];
+        if (el.checked && !licenseAllowsPaid && paidModules.includes(mod)) {
+          el.checked = false;
+          showToast("如需重新应用收费模块，需要有效会员授权");
+          applyPaidSelectionPolicy();
+          return;
+        }
         if (el.checked) ensureCategoryChecked(mod);
         post("setModuleEnabled", { module: mod, enabled: el.checked });
         if (mod in moduleMasters) moduleMasters[mod] = el.checked;
+        applyPaidSelectionPolicy();
         updateBatchHint();
+        syncModuleHubStatus();
       });
     });
 
@@ -3305,6 +3447,12 @@
       return;
     }
 
+    const paidModules = ["translation", "mtxpatch", "colormod"];
+    if (!licenseAllowsPaid && modules.some(mod => paidModules.includes(mod))) {
+      showToast("包含会员模块，需要有效会员授权。", true);
+      return;
+    }
+
     // 先把工作台里的编辑提交到内存，保证写进客户端的内容与界面一致。
     try { commitView(); } catch (e) { /* 不在染色页时无副作用 */ }
 
@@ -3321,23 +3469,39 @@
     post("applyBatch", payload);
   }
 
-  /** 1. 卡片点击进入工作台 */
+  /** 1. 总览交互辅助（展开管线顺序、错误明细折叠、工作台直达） */
   function bindHubCards() {
-    document.querySelectorAll(".hub-card").forEach(card => {
-      card.addEventListener("click", () => {
-        const mod = card.dataset.module;
-        if (mod) openWorkbench(mod);
-      });
+    element("btnTogglePipelineOrder")?.addEventListener("click", () => {
+      const chips = element("batchPipelineChips");
+      const btn = element("btnTogglePipelineOrder");
+      if (!chips || !btn) return;
+      const hidden = chips.classList.toggle("hidden");
+      btn.textContent = hidden ? "执行顺序 ▾" : "收起顺序 ▴";
+    });
+
+    element("btnToggleFeedbackDetail")?.addEventListener("click", () => {
+      const detail = element("patcherFeedbackDetail");
+      const btn = element("btnToggleFeedbackDetail");
+      if (!detail || !btn) return;
+      const hidden = detail.classList.toggle("hidden");
+      const isErr = element("patcherFeedbackWrap")?.classList.contains("is-error");
+      btn.textContent = hidden ? (isErr ? "查看错误详情 ▾" : "展开详情 ▾") : "收起详情 ▴";
+    });
+
+    element("btnJumpToChestMods")?.addEventListener("click", () => {
+      openWorkbench("colormod");
+      const pillGeneral = element("pill-通用");
+      if (pillGeneral && typeof pillGeneral.click === "function") pillGeneral.click();
+      const searchEl = element("searchInput");
+      if (searchEl) {
+        searchEl.value = "chest_display_";
+        searchEl.dispatchEvent(new Event("input", { bubbles: true }));
+      }
     });
   }
 
-  /** 2. 卡片独立开关 */
+  /** 2. 开关同步由 bindBatchSelection 统一处理，保留空钩子兼容初始化顺序 */
   function bindModuleMasters() {
-    Object.keys(moduleMasters).forEach(mod => {
-      const toggle = element("masterToggle-" + mod);
-      toggle?.addEventListener("click", e => e.stopPropagation());
-      toggle?.addEventListener("change", e => toggleModuleMaster(mod, e.target.checked, e));
-    });
   }
 
   /** 3. 工作台返回与直达下拉 */
@@ -3390,19 +3554,6 @@
       }
     };
     element('btnRestorePatches')?.addEventListener('click', handleRestore);
-
-    // 官方纯净简中汉化一键应用
-    element('btnApplyTranslationPatch')?.addEventListener('click', () => {
-      // 国服原生简中，直接拦截（按钮已置灰，这里防御绕过 UI 的调用）
-      if (state?.isChina) {
-        showToast('国服客户端原生已是简体中文，无需应用汉化补丁');
-        return;
-      }
-      if (confirm('确定要对当前客户端应用【官方纯净简中汉化】吗？\n\n• 全量改写 CSD 词缀与属性描述文件\n• 注入官方基础物品与暗金译名，并汉化核心数据表\n• 纯净解耦，不与字体、物价强行捆绑\n• 全程受快照保护，可随时一键恢复纯净底包')) {
-        showToast('正在开始注入官方简中汉化补丁，请稍候...');
-        post('applyTranslationPatch');
-      }
-    });
   }
 
   /**
@@ -3583,28 +3734,47 @@
 
     element('btnResetFontPreset')?.addEventListener('click', () => onFontPresetChange('default'));
 
+    // -4..+6 字号步进器交互：同步更新隐藏输入并冒泡触发自动保存
+    document.querySelectorAll('#psec-fontmod .stepper-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ctrl = btn.closest('.stepper-ctrl');
+        const targetId = ctrl?.dataset.stepperFor;
+        const step = parseInt(btn.dataset.step, 10) || 0;
+        const input = targetId ? element(targetId) : null;
+        if (!input) return;
+
+        const current = parseInt(input.value, 10) || 0;
+        const next = Math.max(-4, Math.min(6, current + step));
+        if (next === current) return;
+
+        setSelectValue(targetId, String(next));
+        updateFontPreview();
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+
     element('fontSizeDropItemSelect')?.addEventListener('change', () => {
       updateFontPreview();
-      const sel = element('fontSizeDropItemSelect');
-      showToast(`掉落物与物品字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
+      const val = element('fontSizeDropItemSelect')?.value || '0';
+      showToast(`掉落物与物品字号偏移：${formatStepDelta(val)}`);
     });
 
     element('fontSizeGeneralSelect')?.addEventListener('change', () => {
       updateFontPreview();
-      const sel = element('fontSizeGeneralSelect');
-      showToast(`通用正文描述字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
+      const val = element('fontSizeGeneralSelect')?.value || '0';
+      showToast(`通用正文描述字号偏移：${formatStepDelta(val)}`);
     });
 
     element('fontSizeTitleSelect')?.addEventListener('change', () => {
       updateFontPreview();
-      const sel = element('fontSizeTitleSelect');
-      showToast(`界面窗口大标题字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
+      const val = element('fontSizeTitleSelect')?.value || '0';
+      showToast(`界面窗口大标题字号偏移：${formatStepDelta(val)}`);
     });
 
     element('fontSizeTinySelect')?.addEventListener('change', () => {
       updateFontPreview();
-      const sel = element('fontSizeTinySelect');
-      showToast(`微型数值角标字号：${sel?.options[sel.selectedIndex]?.text || sel?.value}`);
+      const val = element('fontSizeTinySelect')?.value || '0';
+      showToast(`微型数值角标字号偏移：${formatStepDelta(val)}`);
     });
 
     element('fontSelectDropdown')?.addEventListener('change', () => {
@@ -3616,9 +3786,8 @@
 
     element('fontSizeDeltaSelect')?.addEventListener('change', () => {
       updateFontPreview();
-      const sel = element('fontSizeDeltaSelect');
-      const selText = sel?.options[sel.selectedIndex]?.text || sel?.value;
-      showToast(`已设置全局整平档位：${selText}`);
+      const val = element('fontSizeDeltaSelect')?.value || '0';
+      showToast(`已设置全局整平档位：${formatStepDelta(val)}`);
     });
 
     element('chkFontBold')?.addEventListener('change', () => {
@@ -3793,12 +3962,7 @@
 
   /** 14. 游戏特效与性能优化 (EffectPatch) 事件绑定 */
   function bindEffectPatchControls() {
-    element('btnApplyEffectRules')?.addEventListener('click', applyAllEffectSettings);
     element('btnRestoreEffectRules')?.addEventListener('click', restoreAllEffectSettings);
-    element('btnQuickApplyEffectPatch')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      applyAllEffectSettings();
-    });
 
     // 技能专属设置弹窗控制
     element('btnOpenSpellBlockSettings')?.addEventListener('click', (e) => {
@@ -3812,9 +3976,10 @@
     });
     element('btnSaveSpellBlockModal')?.addEventListener('click', () => {
       element('spellBlockSettingsModal')?.classList.add('hidden');
-      // 「应用屏蔽」：把弹窗里勾选的技能真正写入客户端。
-      // 早期这里只关窗，导致 applySpellBlocks 无任何可达入口。
-      applySpellBlocks();
+      // 写入入口唯一：弹窗只确认勾选并触发自动持久化，真正写入在总览应用执行。
+      renderEffectPatchUi();
+      scheduleAutoSave();
+      showToast(`已保存 ${selectedBlockedSpells.size} 项技能屏蔽选择，回总览点击「保存配置并应用补丁」生效`);
     });
     element('spellBlockSettingsModal')?.addEventListener('click', (e) => {
       if (e.target === element('spellBlockSettingsModal')) {
@@ -4265,24 +4430,23 @@
       renderMtxGrid();
     });
 
-    element("btnApplyMtxPatch")?.addEventListener("click", applyMtxPatchAction);
-    element("btnQuickApplyMtxPatch")?.addEventListener("click", e => {
-      e.stopPropagation();
-      applyMtxPatchAction();
-    });
     element("btnRestoreMtxPatch")?.addEventListener("click", restoreMtxPatchAction);
 
     element("btnClearAllMtxSelections")?.addEventListener("click", () => {
       selectedArmourSet = null;
+      selectedArmourSetFolder = null;
       selectedPortal = null;
       selectedPet = null;
       selectedMtxNames.clear();
       renderMtxSummary();
       renderMtxGrid();
+      syncModuleHubStatus();
+      scheduleAutoSave();
     });
 
     element("selMtxCharacterClass")?.addEventListener("change", e => {
       selectedMtxClass = e.target.value;
+      scheduleAutoSave();
     });
 
     renderMtxUi();
@@ -4291,6 +4455,7 @@
   window.patcherUi = {
     hideOverlay: () => { },   // 遮罩已废除，保留空实现避免旧调用点报错
     receiveBusyState,
+    receiveLicenseState,
     initialize() {
       // 事件绑定按功能区拆到独立方法，避免单函数过长。
       // 各段互不依赖，任一段出问题不影响其余功能区的绑定。
@@ -4319,10 +4484,8 @@
       // 用最小 payload 覆盖它会让 renderStatus 读到 undefined，
       // 表现为游戏目录输入框被清空、模式徽章与备份状态显示错误。
       if (payload.progressOnly) {
-        const box = element('patcherFeedback');
-        if (box && payload.message) {
-          box.textContent = payload.message;
-          box.className = 'patcher-feedback info';
+        if (payload.message) {
+          renderFeedback(payload.message, 'info');
         }
         return;
       }
@@ -4641,9 +4804,8 @@
             setSelectValue("fontSizeTinySelect", String(state.settings.fontTinyBadgeSizeDelta));
           }
 
-          const deltaSelect = element("fontSizeDeltaSelect");
-          if (deltaSelect && state.settings.fontSizeDelta !== undefined && state.settings.fontSizeDelta !== null) {
-            deltaSelect.value = String(state.settings.fontSizeDelta);
+          if (state.settings.fontSizeDelta !== undefined && state.settings.fontSizeDelta !== null) {
+            setSelectValue("fontSizeDeltaSelect", String(state.settings.fontSizeDelta));
           }
           const chkBold = element("chkFontBold");
           if (chkBold && state.settings.fontBold !== undefined && state.settings.fontBold !== null) {

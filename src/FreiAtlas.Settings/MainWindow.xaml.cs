@@ -1,5 +1,7 @@
 using System.ComponentModel;
+using System.Collections.Immutable;
 using System.IO;
+using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
@@ -25,6 +27,7 @@ using FreiAtlas.Patcher.Modules.Font;
 using FreiAtlas.Patcher.Modules.Name;
 using FreiAtlas.Patcher.Modules.Rumour;
 using FreiAtlas.Patcher.Modules.MapBeam;
+using FreiAtlas.Licensing;
 
 namespace FreiAtlas.Settings;
 
@@ -51,6 +54,8 @@ public partial class MainWindow : Window
     private DispatcherTimer? _quickAssistUiTimer;
     private bool _recordingRecoveryKey;
     private PatcherFacade? _patcher;
+    private MembershipService? _membership;
+    private PatcherBatchContext? _activeBatchContext;
     private string? _patcherMessage;
     private string? _patcherError;
 
@@ -135,13 +140,16 @@ public partial class MainWindow : Window
             settingsPath,
             catalog.ContentIds);
         _router = new WebMessageRouter(catalog.ContentIds);
+        _membership = new MembershipService(LicenseBuildConfig.FromEnvironment());
+        _membership.Changed += OnMembershipChanged;
+        _membership.Start();
         _quickAssist = new QuickAssistSession(_settingsStore);
         _quickAssist.Start();
         _prices = new PricesSession(_settingsStore);
         _prices.Start();
         try
         {
-            _patcher = new PatcherFacade();
+            _patcher = new PatcherFacade(membership: _membership);
             // 备份目录受限时不再让整个设置窗口退出，仅把原因带到补丁页展示。
             _patcherError = _patcher.IsBackupAvailable ? null : _patcher.BackupUnavailableReason;
         }
@@ -155,7 +163,8 @@ public partial class MainWindow : Window
         _runtime = new AtlasRuntimeFacade(
             new Poe2ProcessCatalog(),
             _prices.CreateOverlaySession(),
-            _settingsStore);
+            _settingsStore,
+            membership: _membership);
         _runtime.SnapshotChanged += OnSnapshotChanged;
         _hotkeyService = new GlobalHotkeyService(this);
         _hotkeyService.Pressed += OnHotkeyPressed;
@@ -190,6 +199,7 @@ public partial class MainWindow : Window
         _quickAssistUiTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         _quickAssistUiTimer.Tick += OnQuickAssistUiTick;
         _quickAssistUiTimer.Start();
+        SendLicenseSnapshot();
     }
 
     /// <summary>
@@ -309,6 +319,13 @@ public partial class MainWindow : Window
                     SendQuickAssistSnapshot();
                     SendPricesSnapshot(force: true);
                     SendPatcherSnapshot();
+                    SendLicenseSnapshot();
+                    break;
+                case ActivateLicenseWebCommand activate:
+                    await ActivateLicenseAsync(activate.LicenseKey);
+                    break;
+                case RefreshLicenseWebCommand:
+                    await RefreshLicenseAsync();
                     break;
                 case SelectPriceLeagueWebCommand selectLeague:
                     _prices!.SelectLeague(selectLeague.LeagueId);
@@ -792,6 +809,87 @@ public partial class MainWindow : Window
         SendSnapshot(snapshot);
     }
 
+    private async Task ActivateLicenseAsync(string licenseKey)
+    {
+        if (_membership is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _membership.ActivateAsync(licenseKey);
+            SendLicenseSnapshot();
+        }
+        catch (Exception exception) when (exception is MembershipDeniedException or HttpRequestException or TaskCanceledException)
+        {
+            SendLicenseSnapshot(exception.Message);
+        }
+    }
+
+    private async Task RefreshLicenseAsync()
+    {
+        if (_membership is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _membership.RefreshAsync(forceOnline: true);
+            SendLicenseSnapshot();
+        }
+        catch (Exception exception) when (exception is MembershipDeniedException or HttpRequestException or TaskCanceledException)
+        {
+            SendLicenseSnapshot(exception.Message);
+        }
+    }
+
+    private void OnMembershipChanged(object? sender, MembershipSnapshot snapshot)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            _ = Dispatcher.InvokeAsync(() => SendLicenseSnapshot());
+            return;
+        }
+
+        SendLicenseSnapshot();
+    }
+
+    private void SendLicenseSnapshot(string? message = null)
+    {
+        if (SettingsWebView.CoreWebView2 is null || _membership is null)
+        {
+            return;
+        }
+
+        var snapshot = _membership.Current;
+        var json = JsonSerializer.Serialize(
+            new
+            {
+                version = 1,
+                type = "licenseSnapshot",
+                payload = new
+                {
+                    state = snapshot.State,
+                    canStartPaid = snapshot.CanStartPaid,
+                    canContinueOverlay = snapshot.CanContinueOverlay,
+                    freshnessBlocked = snapshot.FreshnessBlocked,
+                    reason = message ?? snapshot.Reason,
+                    lastValidationFailure = snapshot.LastValidationFailure,
+                    licenseExpiresAt = snapshot.LicenseExpiresAt,
+                    trialEndsAt = snapshot.TrialEndsAt,
+                    tokenExpiresAt = snapshot.TokenExpiresAt,
+                    effectiveExpiresAt = snapshot.EffectiveExpiresAt,
+                    graceEndsAt = snapshot.GraceEndsAt,
+                    lastSuccessAt = snapshot.LastSuccessAt,
+                    productId = snapshot.ProductId
+                }
+            },
+            JsonOptions);
+        SettingsWebView.CoreWebView2.PostWebMessageAsJson(json);
+    }
+
     private void SendSnapshot(AtlasSettingsAppSnapshot snapshot)
     {
         if (SettingsWebView.CoreWebView2 is null)
@@ -1217,6 +1315,16 @@ public partial class MainWindow : Window
         // 只保存设置：自动保存路径不写客户端。
         if (cmd.PersistOnly) return;
 
+        if (ActiveBatchContext is null && _membership is not null && cmd.Enabled)
+        {
+            var decision = await _membership.EnsureFreshAsync(MembershipFeature.ClientPatchColorMod);
+            if (!decision.Allowed)
+            {
+                SendPatcherSnapshot(error: decision.Message);
+                return;
+            }
+        }
+
         if (cmd.Enabled)
         {
             SendPatcherSnapshot(message: "正在准备应用装备与地图词缀多色彩染色补丁，请稍候...");
@@ -1234,7 +1342,8 @@ public partial class MainWindow : Window
                 {
                     progressLog = msg;
                     Dispatcher.Invoke(() => SendPatcherProgress(msg));
-                }));
+                },
+                batch: ActiveBatchContext));
 
             if (success)
             {
@@ -2016,6 +2125,14 @@ public partial class MainWindow : Window
         var mudManRestorePoint = _patcher.GetMudManRestorePoint(
             _settingsStore.ClientPatch.CustomGameDirectory);
 
+        var priceBook = _prices?.CurrentBook;
+        var priceAvailable = priceBook is not null && priceBook.ItemCount > 0;
+        var priceFresh = priceAvailable
+            && PatchPreconditions.IsPriceDataFresh(
+                priceBook!.FetchedAtUtc,
+                DateTimeOffset.UtcNow,
+                PatchPreconditions.PriceDataMaxAge);
+
         var json = JsonSerializer.Serialize(new
         {
             version = 1,
@@ -2096,6 +2213,14 @@ public partial class MainWindow : Window
                     applied = _patcher.IsMtxPatchApplied(),
                     patchedFiles = _patcher.MtxPatchedFileCount(),
                     totalCount = FreiAtlas.Patcher.MtxPatch.MtxDatabase.Instance.AllEntries.Count
+                },
+                priceStatus = new
+                {
+                    available = priceAvailable,
+                    isFresh = priceFresh,
+                    itemCount = priceBook?.ItemCount ?? 0,
+                    fetchedAtUtc = priceBook?.FetchedAtUtc,
+                    maxAgeHours = PatchPreconditions.PriceDataMaxAge.TotalHours
                 }
             }
         }, JsonOptions);
@@ -2214,6 +2339,16 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (ActiveBatchContext is null && _membership is not null)
+        {
+            var decision = await _membership.EnsureFreshAsync(MembershipFeature.ClientPatchMtx);
+            if (!decision.Allowed)
+            {
+                SendPatcherSnapshot(error: decision.Message);
+                return;
+            }
+        }
+
         LogBatchProgress($"[诊断] 商城: 名称={cmd.SelectedNames?.Count ?? -1}, 套装={(string.IsNullOrWhiteSpace(cmd.SelectedArmourSetName) ? "无" : cmd.SelectedArmourSetName)}, 传送门={(string.IsNullOrWhiteSpace(cmd.SelectedPortalName) ? "无" : cmd.SelectedPortalName)}, 宠物={(string.IsNullOrWhiteSpace(cmd.SelectedPetName) ? "无" : cmd.SelectedPetName)}");
 
         SendPatcherSnapshot(message: "正在准备应用外观商城特效替换，请稍候...");
@@ -2240,7 +2375,8 @@ public partial class MainWindow : Window
                     progressLog = msg;
                     Dispatcher.Invoke(() => SendPatcherProgress(msg));
                 },
-                out var m);
+                out var m,
+                batch: ActiveBatchContext);
             return (r, m);
         });
 
@@ -2446,6 +2582,15 @@ public partial class MainWindow : Window
                 SendPatcherSnapshot(error: "检测到游戏正在运行中，游戏占用了资源文件。请先完全关闭游戏客户端，然后再应用补丁。");
                 return;
             }
+            if (ActiveBatchContext is null && _membership is not null)
+            {
+                var decision = await _membership.EnsureFreshAsync(MembershipFeature.ClientPatchTranslation);
+                if (!decision.Allowed)
+                {
+                    SendPatcherSnapshot(error: decision.Message);
+                    return;
+                }
+            }
             SendPatcherSnapshot("正在准备应用官方纯净简体中文汉化补丁，请稍候...");
             await RecordAutoSnapshotAsync("汉化补丁写入");
             string? progressLog = null;
@@ -2453,7 +2598,7 @@ public partial class MainWindow : Window
             {
                 progressLog = msg;
                 Dispatcher.Invoke(() => SendPatcherProgress(msg));
-            }));
+            }, batch: ActiveBatchContext));
             if (translationPatchResult.Success)
             {
                 // 中间进度：告诉用户还在跑，但这不是终点。
@@ -3034,6 +3179,65 @@ public partial class MainWindow : Window
     /// 为什么批量前要恢复基线：各模块都是增量写入，取消勾选某个模块后如果不先回滚，
     /// 该模块此前的改动会一直留在客户端里，界面显示已关闭而实际仍生效。
     /// </summary>
+    private sealed record BatchStartResult(bool Allowed, PatcherBatchContext? Context, string? Error);
+
+    private static ImmutableHashSet<ClientPatchModule> MapPaidBatchModules(IReadOnlyList<string> modules)
+    {
+        var builder = ImmutableHashSet.CreateBuilder<ClientPatchModule>();
+        foreach (var module in modules)
+        {
+            switch (module)
+            {
+                case "translation":
+                    builder.Add(ClientPatchModule.Translation);
+                    break;
+                case "mtxpatch":
+                    builder.Add(ClientPatchModule.Mtx);
+                    break;
+                case "colormod":
+                    builder.Add(ClientPatchModule.ColorMod);
+                    break;
+            }
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private PatcherBatchContext? ActiveBatchContext
+        => _activeBatchContext is { IsDisposed: false } context ? context : null;
+
+    private async Task<BatchStartResult> BeginPaidBatchIfNeededAsync(
+        IReadOnlyList<string> modules)
+    {
+        if (_patcher is null)
+        {
+            return new BatchStartResult(false, null, "补丁模块未初始化。");
+        }
+
+        var paidModules = MapPaidBatchModules(modules);
+        if (paidModules.Count == 0)
+        {
+            return new BatchStartResult(true, null, null);
+        }
+
+        if (_membership is null)
+        {
+            return new BatchStartResult(true, null, null);
+        }
+
+        try
+        {
+            var lease = await _membership.CreateClientPatchBatchLeaseAsync(
+                _patcher.PatcherInstanceId,
+                paidModules);
+            return new BatchStartResult(true, _patcher.BeginBatch(lease), null);
+        }
+        catch (MembershipDeniedException exception)
+        {
+            return new BatchStartResult(false, null, exception.Message);
+        }
+    }
+
     private async Task HandleApplyBatchAsync(ApplyBatchWebCommand cmd)
     {
         if (_patcher is null || _settingsStore is null) return;
@@ -3049,6 +3253,16 @@ public partial class MainWindow : Window
             SendPatcherSnapshot(error: "未勾选任何要应用的功能。");
             return;
         }
+
+        var batchStart = await BeginPaidBatchIfNeededAsync(modules);
+        if (!batchStart.Allowed)
+        {
+            SendPatcherSnapshot(error: batchStart.Error ?? "当前会员授权不允许执行该批量。");
+            return;
+        }
+
+        using var batchContext = batchStart.Context;
+        _activeBatchContext = batchContext;
 
         if (PatcherFacade.IsGameRunning())
         {
@@ -3461,6 +3675,14 @@ public partial class MainWindow : Window
             if (_runtime is not null) _runtime.SnapshotChanged -= OnSnapshotChanged;
             _quickAssistUiTimer?.Stop();
             await Cleanup(async () => { if (_quickAssist is not null) await _quickAssist.DisposeAsync(); });
+            await Cleanup(async () =>
+            {
+                if (_membership is not null)
+                {
+                    _membership.Changed -= OnMembershipChanged;
+                    await _membership.DisposeAsync();
+                }
+            });
             await Cleanup(() =>
             {
                 if (_hotkeyService is not null)

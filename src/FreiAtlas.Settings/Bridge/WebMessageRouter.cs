@@ -94,6 +94,8 @@ public sealed class WebMessageRouter
         => type switch
         {
             "ready" => new ReadyWebCommand(),
+            "activateLicense" => RouteActivateLicense(payload),
+            "refreshLicense" => new RefreshLicenseWebCommand(),
             "refreshProcesses" => new RefreshProcessesWebCommand(),
             "selectProcess" => RouteSelectProcess(payload),
             "startOverlay" => new StartOverlayWebCommand(),
@@ -147,6 +149,18 @@ public sealed class WebMessageRouter
             "resetAll" => new ResetAllWebCommand(),
             _ => null
         };
+
+    private static WebCommand? RouteActivateLicense(JsonElement payload)
+    {
+        if (!payload.TryGetProperty("licenseKey", out var licenseKey)
+            || licenseKey.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(licenseKey.GetString()))
+        {
+            return null;
+        }
+
+        return new ActivateLicenseWebCommand(licenseKey.GetString()!.Trim());
+    }
 
     private static WebCommand? RouteSelectPriceLeague(JsonElement payload)
     {

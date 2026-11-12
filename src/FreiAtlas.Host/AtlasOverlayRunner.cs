@@ -38,6 +38,8 @@ public sealed class AtlasOverlayRunner
             CancellationToken.None,
             DefaultAtlasSettingsSource.Instance);
 
+    public static IAtlasSettingsSource DefaultSettingsSource { get; } = DefaultAtlasSettingsSource.Instance;
+
     public int Run(
         int processId,
         CancellationToken cancellationToken,

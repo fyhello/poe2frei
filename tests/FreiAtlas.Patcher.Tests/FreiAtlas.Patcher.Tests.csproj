@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\FreiAtlas.Licensing\FreiAtlas.Licensing.csproj" />
     <ProjectReference Include="..\..\src\FreiAtlas.Patcher\FreiAtlas.Patcher.csproj" />
   </ItemGroup>
 

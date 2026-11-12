@@ -3,6 +3,7 @@ using FreiAtlas.Atlas.Memory;
 using FreiAtlas.Atlas.Replay;
 using FreiAtlas.Core.Atlas;
 using FreiAtlas.Game.Content;
+using FreiAtlas.Licensing;
 using FreiAtlas.Platform.Windows.Process;
 using FreiAtlas.Platform.Windows.Windows;
 
@@ -19,6 +20,7 @@ public sealed class HostRuntime
         + "--projection-log <directory> | --replay <path>";
 
     private readonly AreaCommandRunner _areaRunner;
+    private readonly IMembershipGate? _membership;
     private readonly Func<
         int,
         AreaProjectionProbeMode,
@@ -27,12 +29,19 @@ public sealed class HostRuntime
         int> _runAreaProjectionProbe;
 
     public HostRuntime()
-        : this(new AreaCommandRunner())
+        : this(new AreaCommandRunner(), (IMembershipGate?)null)
     {
     }
 
     internal HostRuntime(AreaCommandRunner areaRunner)
-        : this(areaRunner, CreateProjectionProbeDelegate(areaRunner))
+        : this(areaRunner, (IMembershipGate?)null)
+    {
+    }
+
+    internal HostRuntime(
+        AreaCommandRunner areaRunner,
+        IMembershipGate? membership)
+        : this(areaRunner, membership, CreateProjectionProbeDelegate(areaRunner))
     {
     }
 
@@ -40,8 +49,18 @@ public sealed class HostRuntime
         AreaCommandRunner areaRunner,
         Func<int, AreaProjectionProbeMode, string, CancellationToken, int>
             runAreaProjectionProbe)
+        : this(areaRunner, null, runAreaProjectionProbe)
+    {
+    }
+
+    internal HostRuntime(
+        AreaCommandRunner areaRunner,
+        IMembershipGate? membership,
+        Func<int, AreaProjectionProbeMode, string, CancellationToken, int>
+            runAreaProjectionProbe)
     {
         _areaRunner = areaRunner ?? throw new ArgumentNullException(nameof(areaRunner));
+        _membership = membership;
         _runAreaProjectionProbe = runAreaProjectionProbe
             ?? throw new ArgumentNullException(nameof(runAreaProjectionProbe));
     }
@@ -147,7 +166,7 @@ public sealed class HostRuntime
 
         if (options.AtlasOverlay)
         {
-            return new AtlasOverlayRunner().Run(options.ProcessId!.Value);
+            return RunAtlasOverlay(options.ProcessId!.Value, cancellationToken);
         }
 
         if (options.AtlasProbe && options.ProcessId is null)
@@ -165,6 +184,65 @@ public sealed class HostRuntime
 
         Console.WriteLine(Usage);
         return 0;
+    }
+
+    private int RunAtlasOverlay(int processId, CancellationToken cancellationToken)
+    {
+        var ownsMembership = _membership is null;
+        var membership = _membership ?? new MembershipService(LicenseBuildConfig.FromEnvironment());
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var stopController = new OverlayStopController();
+
+        void OnMembershipChanged(object? sender, MembershipSnapshot snapshot)
+        {
+            if (snapshot.CanContinueOverlay)
+            {
+                return;
+            }
+
+            try
+            {
+                stopController.RequestStop();
+            }
+            finally
+            {
+                linked.Cancel();
+            }
+        }
+
+        try
+        {
+            membership.Changed += OnMembershipChanged;
+            if (membership is MembershipService service)
+            {
+                service.Start();
+            }
+
+            var decision = membership.EnsureFreshAsync(MembershipFeature.AtlasOverlay)
+                .GetAwaiter()
+                .GetResult();
+            if (!decision.Allowed)
+            {
+                Console.WriteLine($"license=blocked");
+                Console.WriteLine($"reason={decision.Message}");
+                return 4;
+            }
+
+            return new AtlasOverlayRunner().Run(
+                processId,
+                linked.Token,
+                AtlasOverlayRunner.DefaultSettingsSource,
+                snapshotObserver: null,
+                stopController);
+        }
+        finally
+        {
+            membership.Changed -= OnMembershipChanged;
+            if (ownsMembership && membership is IAsyncDisposable disposable)
+            {
+                disposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+        }
     }
 
     private static int RunReplay(string path)
