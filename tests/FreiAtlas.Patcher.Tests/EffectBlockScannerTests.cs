@@ -15,30 +15,34 @@ public sealed class EffectBlockScannerTests
         "ParticleEffects", "SoundEvents", "TrailsEffects"
     };
 
-    [Fact]
-    public void 找到简单块并清空内容()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void 找到简单块并清空内容(string newline)
     {
-        const string input = """
+        var input = """
             ParticleEffects
             {
                 Particle { name = "fire" }
             }
-            """;
+            """.ReplaceLineEndings(newline);
 
         var blocks = EffectBlockScanner.FindBlocks(input, ParticleBlocks);
         Assert.Single(blocks);
         Assert.Equal("ParticleEffects", blocks[0].Name);
 
         var cleared = EffectBlockScanner.ClearBlockContents(input, ParticleBlocks);
-        Assert.Equal("ParticleEffects\n{}", cleared.TrimEnd());
+        Assert.Equal("ParticleEffects" + newline + "{}", cleared.TrimEnd());
     }
 
-    [Fact]
-    public void 字符串内的括号不计入深度()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void 字符串内的括号不计入深度(string newline)
     {
         // 这是关键边界：on_death = "RemoveEffects();" 里的括号
         // 如果被当成块边界，会导致截断
-        const string input = """
+        var input = """
             ParticleEffects
             {
                 Particle { on_death = "RemoveEffects(); DisableRendering();" }
@@ -47,40 +51,44 @@ public sealed class EffectBlockScannerTests
             {
                 Sound { id = 1 }
             }
-            """;
+            """.ReplaceLineEndings(newline);
 
         var cleared = EffectBlockScanner.ClearBlockContents(input, ParticleBlocks);
 
         // 两个块都被清空（内容删掉后括号直接相邻），块外内容保留
-        Assert.Contains("ParticleEffects\n{}", cleared);
-        Assert.Contains("SoundEvents\n{}", cleared);
+        Assert.Contains("ParticleEffects" + newline + "{}", cleared);
+        Assert.Contains("SoundEvents" + newline + "{}", cleared);
         // 字符串内容已随块内容一起清掉
         Assert.DoesNotContain("RemoveEffects", cleared);
     }
 
-    [Fact]
-    public void 注释内的括号不计入深度()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void 注释内的括号不计入深度(string newline)
     {
-        const string input = """
+        var input = """
             ParticleEffects
             {
                 // 这里的 } 是注释
                 /* 这里的 { 也是注释 */
                 Particle { name = "x" }
             }
-            """;
+            """.ReplaceLineEndings(newline);
 
         var blocks = EffectBlockScanner.FindBlocks(input, ParticleBlocks);
         Assert.Single(blocks);
 
         var cleared = EffectBlockScanner.ClearBlockContents(input, ParticleBlocks);
-        Assert.Equal("ParticleEffects\n{}", cleared.TrimEnd());
+        Assert.Equal("ParticleEffects" + newline + "{}", cleared.TrimEnd());
     }
 
-    [Fact]
-    public void 嵌套块正确找到最外层配平()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void 嵌套块正确找到最外层配平(string newline)
     {
-        const string input = """
+        var input = """
             ParticleEffects
             {
                 Particle
@@ -91,13 +99,13 @@ public sealed class EffectBlockScannerTests
                     }
                 }
             }
-            """;
+            """.ReplaceLineEndings(newline);
 
         var blocks = EffectBlockScanner.FindBlocks(input, ParticleBlocks);
         Assert.Single(blocks);
 
         var cleared = EffectBlockScanner.ClearBlockContents(input, ParticleBlocks);
-        Assert.Equal("ParticleEffects\n{}", cleared.TrimEnd());
+        Assert.Equal("ParticleEffects" + newline + "{}", cleared.TrimEnd());
     }
 
     [Fact]

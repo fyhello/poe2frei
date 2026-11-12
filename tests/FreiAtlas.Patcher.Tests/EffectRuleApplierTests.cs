@@ -77,15 +77,17 @@ public sealed class EffectRuleApplierTests
         Assert.False(outcome.Changed);
     }
 
-    [Fact]
-    public void ClearBlock保留空括号()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void ClearBlock保留空括号(string newline)
     {
-        const string input = """
+        var input = """
             ParticleEffects
             {
                 Particle { name = "fire" }
             }
-            """;
+            """.ReplaceLineEndings(newline);
         var rule = new EffectPatchRule
         {
             Id = "test_clear",
@@ -99,7 +101,7 @@ public sealed class EffectRuleApplierTests
         var outcome = EffectRuleApplier.Apply(input, rule);
 
         Assert.True(outcome.Changed);
-        Assert.Equal("ParticleEffects\n{}", outcome.Content.TrimEnd());
+        Assert.Equal("ParticleEffects" + newline + "{}", outcome.Content.TrimEnd());
     }
 
     [Fact]
