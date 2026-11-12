@@ -3346,5 +3346,35 @@
   "coverage": 1.0,
   "oldRows": 7,
   "newRows": 7
+ },
+ "endgameplayerhideoutapplymods": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 0,
+  "newRows": 14
+ },
+ "endgameplayerhideoutrewards": {
+  "columns": [
+   "Id"
+  ],
+  "offsets": [
+   0
+  ],
+  "types": [
+   "string"
+  ],
+  "kind": 1,
+  "coverage": 1.0,
+  "oldRows": 0,
+  "newRows": 1202
  }
 }

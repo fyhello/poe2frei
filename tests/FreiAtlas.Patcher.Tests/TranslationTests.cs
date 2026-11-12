@@ -191,6 +191,23 @@ public class TranslationTests
     }
 
     [Fact]
+    public void DatTextPatcher_EmbeddedCatalog_CoversPlayerHideoutTranslations()
+    {
+        var catalog = DatTextPatcher.GetEmbeddedCatalog();
+
+        Assert.True(catalog.Tables.TryGetValue("worldareas.datc64", out var worldAreas));
+        Assert.Contains(worldAreas.RowPatches, p => p.Text == "藏身处：神圣巅峰");
+
+        Assert.True(catalog.Tables.TryGetValue("endgameplayerhideoutapplymods.datc64", out var applyMods));
+        Assert.Equal(14, applyMods.RowPatches.Count);
+        Assert.Contains(applyMods.RowPatches, p => p.Text == "[ContainsAbyss|深渊]词缀（3 至 5 张地图）");
+
+        Assert.True(catalog.Tables.TryGetValue("endgameplayerhideoutrewards.datc64", out var rewards));
+        Assert.Equal(1202, rewards.RowPatches.Count);
+        Assert.Contains(rewards.RowPatches, p => p.Text == "3× 强效冰霜精华");
+    }
+
+    [Fact]
     public void TranslationPatchService_GetEmbeddedMissingRules_LoadsSuccessfully()
     {
         var rules = TranslationPatchService.GetEmbeddedMissingRules();
